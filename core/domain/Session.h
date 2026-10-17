@@ -14,14 +14,14 @@ public:
 
     explicit Session(std::uint64_t seed);
 
-    // First call with no index picks one track. Later calls keep that index.
-    // Starts at position 0 when playback was stopped. Empty list: no effect.
+    // Plays the chosen track from the start when playback was stopped.
+    // Already playing: no effect. Nothing chosen, or an empty list: no effect.
     void play();
 
     // Stops. Position returns to 0. The chosen index stays.
     void stop();
 
-    // Picks a new index, returns to position 0, and ends playing.
+    // Picks a new index and returns to position 0. Does not start playback.
     // Empty list: no effect.
     void randomize();
 
@@ -30,8 +30,9 @@ public:
     // full or the duration is not positive.
     bool append(double durationSec);
 
-    // Removes index 0. If anything remains, randomizes and plays.
-    // The last track: stops, clears the index. Empty list: no effect.
+    // Removes index 0 and keeps the same track chosen when it is still in the
+    // list. The chosen track itself: the choice is cleared. The last track:
+    // stops as well. Does not pick a new track. Empty list: no effect.
     void removeFirst();
 
     // Moves the playhead while playing, wrapping by the chosen track's duration.

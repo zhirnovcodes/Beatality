@@ -82,11 +82,11 @@ export class EngineClient {
         this.emitList()
     }
 
-    // Decodes every file, skips the ones that fail, then one Randomize for the batch.
-    // An empty list is a cancelled dialog: the engine is left untouched.
-    async append(files: readonly File[]): Promise<void> {
+    // Decodes every file and appends the ones that decode. Returns how many were
+    // added. Does not pick a sample. An empty list leaves the engine untouched.
+    async append(files: readonly File[]): Promise<number> {
         if (files.length === 0) {
-            return
+            return 0
         }
         await this.start()
         const decoded: { name: string; frames: number; planar: Float32Array }[] = []
@@ -110,10 +110,8 @@ export class EngineClient {
                 [item.planar.buffer],
             )
         }
-        if (decoded.length > 0) {
-            this.send(Command.Randomize)
-        }
         this.emitList()
+        return decoded.length
     }
 
     private async startInner(): Promise<void> {

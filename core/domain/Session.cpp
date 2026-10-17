@@ -7,11 +7,8 @@ namespace bt {
 Session::Session(std::uint64_t seed) : rng_(seed) {}
 
 void Session::play() {
-    if (count_ == 0) {
+    if (count_ == 0 || index_ < 0) {
         return;
-    }
-    if (index_ < 0) {
-        index_ = rng_.nextInt(count_);
     }
     if (!playing_) {
         position_ = 0;
@@ -30,7 +27,6 @@ void Session::randomize() {
     }
     index_ = rng_.nextInt(count_);
     position_ = 0;
-    playing_ = true;
 }
 
 bool Session::append(double durationSec) {
@@ -56,7 +52,14 @@ void Session::removeFirst() {
         position_ = 0;
         return;
     }
-    randomize();
+    if (index_ == 0) {
+        index_ = -1;
+        position_ = 0;
+        return;
+    }
+    if (index_ > 0) {
+        --index_;
+    }
 }
 
 void Session::advance(double seconds) {

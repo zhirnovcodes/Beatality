@@ -52,12 +52,9 @@ void Engine::fillSnapshot(Snapshot& out) {
 }
 
 void Engine::play() {
-    if (session_.count() == 0) {
-        return;
-    }
     const bool wasPlaying = session_.playing();
     session_.play();
-    if (!wasPlaying) {
+    if (!wasPlaying && session_.playing()) {
         startChosen();
     }
 }
@@ -75,7 +72,9 @@ void Engine::randomize() {
         return;
     }
     session_.randomize();
-    startChosen();
+    if (session_.playing()) {
+        startChosen();
+    }
 }
 
 bool Engine::append(const SampleBuffer& buffer) {
@@ -94,9 +93,9 @@ void Engine::removeFirst() {
     }
     removed_[removedCount_++] = bank_.removeFirst().id;
     session_.removeFirst();
-    if (session_.count() > 0) {
-        startChosen();
-    } else {
+    // A following Randomize starts the next track when one should play.
+    // The last track has nothing to follow it, so this fade is the end.
+    if (session_.count() == 0) {
         fadeOutCurrent();
     }
     collectReleased();
