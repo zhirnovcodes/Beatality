@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beatality — Technical Design</title>
+<style>
+  body { font-family: Segoe UI, Arial, sans-serif; line-height: 1.55; color: #222; max-width: 1040px; margin: 0 auto; padding: 32px 24px 80px; }
+  h1 { margin-bottom: 0; }
+  .subtitle { color: #666; margin-top: 4px; }
+  h2 { border-bottom: 2px solid #ddd; padding-bottom: 4px; margin-top: 48px; }
+  h3 { margin-top: 28px; }
+  h4 { margin: 20px 0 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #f3f3f3; }
+  code { font-family: Consolas, monospace; background: #f5f5f5; padding: 1px 4px; border-radius: 3px; }
+  pre { font-family: Consolas, monospace; font-size: 13px; background: #f5f5f5; padding: 10px 14px; margin: 10px 0; overflow-x: auto; border-radius: 3px; line-height: 1.45; }
+  .note { background: #fff8e1; border-left: 4px solid #f0b400; padding: 8px 14px; margin: 12px 0; }
+  .assume { background: #e8f4fd; border-left: 4px solid #2a8bd8; padding: 8px 14px; margin: 12px 0; }
+  .rule { background: #edf7ed; border-left: 4px solid #2b7a2b; padding: 8px 14px; margin: 12px 0; }
+  .toc ol { margin: 0; }
+  .meta td:first-child { width: 160px; font-weight: 600; }
+  .layer { border: 1px solid #ccc; border-radius: 4px; padding: 4px 16px 8px; margin: 20px 0; }
+  .layer h3 { margin-top: 12px; }
+  .layer .dep { margin: 4px 0; }
+  .api { margin: 0; padding-left: 20px; }
+  .api > li { margin-bottom: 12px; }
+  ol.questions li { margin-bottom: 10px; }
+  .resolved { color: #2b7a2b; font-weight: 600; }
+  .open { color: #b35c00; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h1>Beatality</h1>
+<p class="subtitle">Technical design: layers, main elements, their public interfaces and the tech stack</p>
+
+<table class="meta">
+  <tr><td>Status</td><td>Draft (revision 4)</td></tr>
+  <tr><td>Behavior spec</td><td><a href="Beatality_Concept.html">Beatality_Concept.html</a>, revision 7. Section numbers like <i>§8.3</i> refer to that document.</td></tr>
+  <tr><td>Scope</td><td>Structure, elements, public interfaces, threading and the tech stack. View components and visual design are covered in a separate document.</td></tr>
+  <tr><td>Notation</td><td>All signatures are written in C++, including elements that will be implemented in another language. <a href="#stack">Section 16</a> says which language each element actually uses.</td></tr>
+</table>
+
+<div class="toc">
+<h2>Contents</h2>
+<ol>
+  <li><a href="#principles">Principles</a></li>
+  <li><a href="#layers">Layers</a></li>
+  <li><a href="#catalog">Element catalog</a></li>
+  <li><a href="#repo">Repository layout</a></li>
+  <li><a href="#runtime">Runtime model: threads and data flow</a></li>
+  <li><a href="#domainapi">Domain APIs</a></li>
+  <li><a href="#domain">Core domain interfaces</a></li>
+  <li><a href="#engine">Core engine interfaces</a></li>
+  <li><a href="#flavors">Platform flavors</a></li>
+  <li><a href="#contract">Command and Snapshot contract</a></li>
+  <li><a href="#presentation">Presentation: view models and presenters</a></li>
+  <li><a href="#vst">VST host interfaces</a></li>
+  <li><a href="#web">Web host interfaces</a></li>
+  <li><a href="#formats">Data formats</a></li>
+  <li><a href="#decisions">Decisions</a></li>
+  <li><a href="#stack">Tech stack</a></li>
+</ol>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="principles">1. Principles</h2>
+<ul>
+  <li><b>One behavior implementation.</b> Everything in concept §6–§11 is implemented once and used by both products. That is how §14.3 ("same output") is met without keeping two copies of the rules in sync.</li>
+  <li><b>Concrete, not pluggable.</b> No dependency inversion for swapping technologies. Elements depend on concrete elements. An abstraction exists only where two real implementations exist today, such as the web and VST hosts.</li>
+  <li><b>Atoms.</b> Each rule is a small pure function over plain data. Stateful elements are thin and compose those functions.</li>
+  <li><b>Musical state lives on the audio thread.</b> Views never change musical state directly. User actions become commands, and the screen shows snapshots.</li>
+  <li><b>Two separate UIs.</b> The web UI and the VST UI are separate programs with different features. They share only the Command/Snapshot contract and the skin artwork.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="layers">2. Layers</h2>
+<p>Each product is a stack of the same layers. The two bottom layers are shared; everything above them exists once per platform. Arrows mean "depends on".</p>
+<pre>
+            VST                                              Web
+ ┌──────────────────────────────┐            ┌──────────────────────────────┐
+ │             App              │            │             App              │
+ │                              │            │                              │
+ │  View model ◀── Presenter ───┼──┐      ┌──┼── Presenter ──▶ View model  │
+ │                              │  │      │  │                              │
+ │        Platform host ◀───────┼──┘      └──┼──────▶ Platform host         │
+ └──────────────┬───────────────┘            └──────────────┬───────────────┘
+                └──────────────────┬────────────────────────┘
+                                   ▼
+                             Core engine
+                                   │
+                                   ▼
+                             Core domain
+</pre>
+
+<div class="rule">
+<b>Where does code go?</b> If it needs a number from the concept's formulas, it goes in the core domain. If it touches audio sample data, it goes in the core engine.
+If it needs a file, a thread, a device or the host, it goes in the platform host. If it holds what the screen shows, receives a user action, or draws a control, it goes in the view model.
+If it connects the view model to the host, it goes in the presenter.
+</div>
+
+<p>
+Nothing crosses between the two platform columns. The VST presenter never sees the web host, and the web view model never sees VST code.
+The only things both columns share are the two core layers below them.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="catalog">3. Element catalog</h2>
+
+<div class="layer">
+<h3>Core domain</h3>
+<p class="dep"><b>Depends on:</b> nothing</p>
+<p>
+The data level. It holds the product's rules as plain data and pure functions: what a slot is, how a sequence is generated, what plays at a given time, what each live change does.
+It has no notion of audio samples, threads, files or screens, and can be run and checked with nothing but numbers.
+</p>
+<table>
+  <tr><th>Element</th><th>Description</th><th>Spec</th></tr>
+  <tr><td><code>Settings</code></td><td>The global parameters and their valid ranges</td><td>§3.1</td></tr>
+  <tr><td><code>Timing</code></td><td>Durations and slot count derived from the settings</td><td>§6.1–6.2</td></tr>
+  <tr><td><code>TrackList</code></td><td>Ordered list of track metadata (length, start position)</td><td>§3.2, §4</td></tr>
+  <tr><td><code>TrackGeometry</code></td><td>A track's start offset and slice count</td><td>§6.3</td></tr>
+  <tr><td><code>Sequence</code></td><td>Track index per slot, plus the saved track count</td><td>§7</td></tr>
+  <tr><td><code>Rng</code></td><td>Random number source for sequence generation</td><td>§7</td></tr>
+  <tr><td><code>remap</code></td><td>Maps a stored index onto the current track list</td><td>§8.3</td></tr>
+  <tr><td><code>locate</code></td><td>Answers "what plays at time t"</td><td>§8.1–8.2</td></tr>
+  <tr><td><code>Session</code></td><td>The only mutable musical state; applies every control and live change</td><td>§5, §7–§11</td></tr>
+  <tr><td><code>PresetData</code></td><td>The contents of a preset</td><td>§11</td></tr>
+  <tr><td><code>PresetCodec</code></td><td>Converts a preset to and from text</td><td>§11</td></tr>
+</table>
+</div>
+
+<div class="layer">
+<h3>Core engine</h3>
+<p class="dep"><b>Depends on:</b> Core domain</p>
+<p>
+The shared tech level. It turns the domain's answer ("track 2, at 1.37 s") into audio: it reads sample data, splits each audio block at slot boundaries and performs the crossfades.
+It also holds the rules that exist on only one platform (auto-randomize on web, Trigger/Gate on VST) and defines Command and Snapshot, the only language the upper layers use to talk to the core.
+</p>
+<table>
+  <tr><th>Element</th><th>Description</th><th>Spec</th></tr>
+  <tr><td><code>SampleBuffer</code></td><td>A track's audio data at the output sample rate</td><td>§13</td></tr>
+  <tr><td><code>SampleBank</code></td><td>Finds a track's audio data by track id</td><td>—</td></tr>
+  <tr><td><code>Voice</code></td><td>Reads one source with a volume ramp</td><td>§8.4</td></tr>
+  <tr><td><code>Renderer</code></td><td>Detects source switches and runs crossfades</td><td>§8.4</td></tr>
+  <tr><td><code>Engine</code></td><td>Applies commands, renders audio blocks, produces snapshots</td><td>§8</td></tr>
+  <tr><td><code>AutoRandomizer</code></td><td>Loop Counter and Randomize Every (web flavor)</td><td>§9</td></tr>
+  <tr><td><code>NoteTransport</code></td><td>Trigger/Gate playback from notes and host state (VST flavor)</td><td>§5.1</td></tr>
+  <tr><td><code>WebEngine</code></td><td>Engine combined with the web-only rules</td><td>§14.2</td></tr>
+  <tr><td><code>VstEngine</code></td><td>Engine combined with the VST-only rules</td><td>§14.1</td></tr>
+  <tr><td><code>Command</code></td><td>One user or host action going into the core</td><td>—</td></tr>
+  <tr><td><code>Snapshot</code></td><td>The state coming out of the core for display</td><td>—</td></tr>
+</table>
+</div>
+
+<div class="layer">
+<h3>Platform host: VST</h3>
+<p class="dep"><b>Depends on:</b> Core engine, Core domain</p>
+<p>
+Connects the core to the DAW: the audio callback, MIDI, the DAW's play state, file decoding, sample-rate conversion, preset files and the plugin's part of the project.
+It owns the threads and moves commands and snapshots between them. It knows nothing about how anything is drawn.
+</p>
+<table>
+  <tr><th>Element</th><th>Description</th><th>Spec</th></tr>
+  <tr><td><code>BeatalityProcessor</code></td><td>The plugin object the DAW calls: audio, MIDI, project state</td><td>§5.1, §14.1</td></tr>
+  <tr><td><code>VstBridge</code></td><td>The host's API for the presenter</td><td>—</td></tr>
+  <tr><td><code>SampleLoader</code></td><td>Decodes and converts sample files in the background</td><td>§4, §13</td></tr>
+  <tr><td><code>TrackStore</code></td><td>Owns loaded audio data and display names</td><td>§4</td></tr>
+  <tr><td><code>CommandQueue</code></td><td>Moves commands to the audio thread without blocking</td><td>—</td></tr>
+  <tr><td><code>SnapshotBuffer</code></td><td>Moves the latest snapshot to the UI thread without blocking</td><td>—</td></tr>
+  <tr><td><code>PresetStore</code></td><td>Saves and loads preset files on disk</td><td>§11.2</td></tr>
+</table>
+</div>
+
+<div class="layer">
+<h3>Platform host: Web</h3>
+<p class="dep"><b>Depends on:</b> Core engine, Core domain</p>
+<p>
+Connects the core to the browser: runs it on the browser's audio thread, decodes uploaded files, fetches presets from the server and deals with the browser's autoplay rules.
+</p>
+<table>
+  <tr><th>Element</th><th>Description</th><th>Spec</th></tr>
+  <tr><td>Engine boundary</td><td>Function set through which browser code calls the compiled core</td><td>—</td></tr>
+  <tr><td><code>AudioThreadHost</code></td><td>Runs the core on the browser's audio thread</td><td>—</td></tr>
+  <tr><td><code>EngineClient</code></td><td>The host's API for the presenter</td><td>—</td></tr>
+  <tr><td><code>SampleDecoder</code></td><td>Decodes user-supplied WAV and MP3 files</td><td>§4, §13</td></tr>
+  <tr><td><code>PresetRepository</code></td><td>Lists and fetches presets from the server</td><td>§11.2</td></tr>
+  <tr><td><code>AudioUnlock</code></td><td>Starts audio after a user gesture, as browsers require</td><td>§14.2</td></tr>
+  <tr><td><code>TrackRegistry</code></td><td>Hands out track ids and remembers file names</td><td>§4</td></tr>
+</table>
+</div>
+
+<div class="layer">
+<h3>View model</h3>
+<p class="dep"><b>Depends on:</b> Core domain (value types only, such as <code>SliceSize</code> and <code>PlaybackMode</code>)</p>
+<p>
+One per platform. This is the screen: the values it shows, one method per user action, and the controls that draw them.
+The controls are specified in a separate document. The view model knows nothing about the host. See <a href="#presentation">section 11</a>.
+</p>
+<table>
+  <tr><th>Element</th><th>Description</th><th>Spec</th></tr>
+  <tr><td><code>VstViewModel</code></td><td>Display state and user actions of the plugin window</td><td>§15</td></tr>
+  <tr><td><code>WebViewModel</code></td><td>Display state and user actions of the widget</td><td>§15</td></tr>
+  <tr><td><code>Property&lt;T&gt;</code>, <code>Signal&lt;T…&gt;</code></td><td>Building blocks: a value that notifies when it changes, and an event</td><td>—</td></tr>
+  <tr><td>Screen controls</td><td>Plugin window and widget controls. Specified separately; they bind to the view model.</td><td>§15</td></tr>
+</table>
+</div>
+
+<div class="layer">
+<h3>Presenter</h3>
+<p class="dep"><b>Depends on:</b> View model, Platform host (own platform only)</p>
+<p>
+One per platform. It listens to the view model's user actions and turns them into commands or host calls, and it writes each new snapshot into the view model.
+It holds no musical rules and no drawing code.
+</p>
+<table>
+  <tr><th>Element</th><th>Description</th><th>Spec</th></tr>
+  <tr><td><code>VstPresenter</code></td><td>Connects <code>VstViewModel</code> to the VST host</td><td>—</td></tr>
+  <tr><td><code>WebPresenter</code></td><td>Connects <code>WebViewModel</code> to the web host</td><td>—</td></tr>
+</table>
+</div>
+
+<div class="layer">
+<h3>App</h3>
+<p class="dep"><b>Depends on:</b> all layers of its own platform</p>
+<p>
+The composition root. It creates the host, the view model and the presenter, and connects them.
+It exists because the host has to create the UI on demand while not being allowed to depend on it, so the app layer does the wiring.
+</p>
+<table>
+  <tr><th>Element</th><th>Description</th><th>Spec</th></tr>
+  <tr><td>VST plugin</td><td>Wires the VST host, view model and presenter together</td><td>§14.1</td></tr>
+  <tr><td>Web widget</td><td>Wires the web host, view model and presenter; the embeddable element</td><td>§14.2</td></tr>
+</table>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="repo">4. Repository layout</h2>
+<p>One folder per layer, and inside the upper layers one folder per platform. A folder may only include code from the folders its layer depends on.</p>
+<pre>
+Beatality/
+  Production/            concept and design documents
+  core/
+    domain/              Settings, Timing, TrackList, Sequence, Rng, remap, locate, Session, PresetData, PresetCodec
+    engine/              SampleBuffer, SampleBank, Voice, Renderer, Engine
+    flavor/              AutoRandomizer, NoteTransport, WebEngine, VstEngine
+    contract/            Command, Snapshot
+  hosts/
+    vst/                 BeatalityProcessor, VstBridge, SampleLoader, TrackStore, queues, PresetStore
+    web/
+      boundary/          functions exposed by the compiled core
+      audio-thread/      AudioThreadHost
+      client/            EngineClient, SampleDecoder, PresetRepository, AudioUnlock, TrackRegistry
+  viewmodels/
+    common/              Property, Signal (one copy per language)
+    vst/                 VstViewModel, then the plugin window controls (separate document)
+    web/                 WebViewModel, then the widget controls (separate document)
+  presenters/
+    vst/                 VstPresenter
+    web/                 WebPresenter
+  apps/
+    vst-plugin/          composition root for the plugin
+    web-widget/          composition root for the embeddable widget
+  assets/skin/           shared skin artwork
+  presets/               sample presets
+</pre>
+
+<!-- ============================================================ -->
+<h2 id="runtime">5. Runtime model: threads and data flow</h2>
+
+<pre>
+ UI thread                                                    audio thread
+ ─────────                                                    ────────────
+ view model ─ signal ─▶ presenter ─ Command ─▶ command channel ─▶ Engine.apply
+                                                                                    │
+                                                                                    ├─ Session
+                                                                                    ├─ Renderer
+                                                                                    ▼
+ view model ◀─ set ── presenter ◀─ Snapshot ── snapshot channel ◀── Engine.fillSnapshot
+
+ loader (background)
+ ───────────────────
+ file ─▶ decode ─▶ convert to output rate ─▶ SampleBuffer ── append track ──▶ audio thread
+ owner frees buffer ◀── "track released" ◀── audio thread (after removal)
+</pre>
+
+<p>There are three kinds of work, kept on separate threads:</p>
+<ul>
+  <li><b>Audio thread.</b> Owned by the DAW or the browser. It asks for a block of audio every few milliseconds and must never wait. The <code>Engine</code>, and with it the <code>Session</code>, lives here. Commands are applied at the start of each block, which is what makes Randomize and every live change take effect immediately.</li>
+  <li><b>UI thread.</b> Runs the view model and the presenter. It never touches the <code>Session</code>. It writes commands into the command channel and reads the latest snapshot from the snapshot channel about 30 times a second.</li>
+  <li><b>Loader.</b> Decoding a file and converting its sample rate takes too long for the audio thread, so it happens in the background. The finished <code>SampleBuffer</code> is handed to the audio thread ready to play. When a track is removed, the audio thread hands the buffer back so its owner can free it outside the audio thread.</li>
+</ul>
+
+<table>
+  <tr><th>Concern</th><th>VST</th><th>Web</th></tr>
+  <tr><td>Audio thread</td><td>The DAW's audio callback</td><td>The browser's audio rendering thread</td></tr>
+  <tr><td>Command channel</td><td>Lock-free queue inside the plugin</td><td>Message from the page to the audio thread</td></tr>
+  <tr><td>Snapshot channel</td><td>Lock-free buffer that always holds the latest snapshot</td><td>Message from the audio thread about 30 times a second</td></tr>
+  <tr><td>Loader</td><td>Background thread in the plugin</td><td>The page's main thread, using the browser's decoder</td></tr>
+  <tr><td>Transport input</td><td>MIDI notes and the DAW's play state, read on the audio thread</td><td>Play/Stop commands from the presenter</td></tr>
+</table>
+
+<div class="assume">
+<b>Indices and ids.</b> Track commands use list positions: append, remove at index, move from one index to another.
+Each track also carries a <code>TrackId</code> that never changes. It is used only to find the track's audio data and display name, never to address a command.
+Commands are applied in the order they were sent, so a sequence of index-based edits always lands on the intended rows.
+</div>
+
+<!-- ============================================================ -->
+<h2 id="domainapi">6. Domain APIs</h2>
+<p>
+The surface each domain offers to the domains above it. Elements inside a domain call each other freely; those calls are not part of this API.
+The class-level signatures in the following sections are the inside of a domain.
+</p>
+
+<h3>Core domain</h3>
+<p><b>Open to:</b> Core engine</p>
+<p>Timing, the track list, the sequence, remap and locate stay inside the domain. The engine never calls them.</p>
+<pre>
+play()
+stop()
+randomize()
+
+setBpm(bpm)
+setLoopSize(beats)
+setSliceSize(slice)
+setRandomizeEvery(loops)
+setPlaybackMode(mode)
+
+appendTrack(info)
+removeTrackAt(index)
+moveTrack(from, to)          // the sequence is not told, and is not changed
+setStartPosition(index, position)
+
+applyPreset(preset)
+presetData()
+encodePreset(preset) → text
+decodePreset(text) → preset
+
+advance(elapsedBeats) → loopsWrapped
+position()                   // what is sounding now, for the renderer
+state()                      // settings, tracks, sequence, playhead, for a snapshot
+</pre>
+
+<h3>Core engine</h3>
+<p><b>Open to:</b> Platform hosts</p>
+<p>Sample reading, voices and crossfades stay inside the engine. A host uses one flavor, the web one or the VST one.</p>
+<pre>
+prepare(sampleRate, maxBlockFrames)
+
+apply(command)               // play, stop, randomize, parameter changes, removeAt, move
+appendTrack(id, audio, startPosition)
+applyPreset(preset)
+
+render(outLeft, outRight, frameCount)
+events()                     // loops wrapped, audio buffers that are safe to free
+fillSnapshot(snapshot)
+presetData()
+
+noteOn(frameOffset)          // VST flavor only
+noteOff(frameOffset)         // VST flavor only
+hostPlaying(playing)         // VST flavor only
+</pre>
+
+<!-- ============================================================ -->
+<h2 id="domain">7. Core domain interfaces</h2>
+<p>Namespace <code>bt</code>. Functions are pure unless stated otherwise. Time in the domain is measured in <b>beats</b> or <b>seconds</b>, never in audio frames.</p>
+
+<h3>7.1 Settings</h3>
+<pre>
+enum class PlaybackMode { Trigger, Gate };
+
+// Slice Size is 2^exponent beats, exponent in [-6, 4]  (1/64 … 16). Exact, no float error.
+struct SliceSize {
+    int exponent;
+    double beats() const;
+    static constexpr int kMin = -6, kMax = 4;
+};
+
+struct Settings {
+    double       bpm            = 120.0;
+    int          loopSize       = 8;          // beats, 1..32
+    SliceSize    sliceSize      { 0 };        // 1 beat
+    int          randomizeEvery = -1;         // web only; -1 or 1..8
+    PlaybackMode playbackMode   = PlaybackMode::Trigger;  // VST only
+};
+
+bool      isValidSlice(SliceSize s, int loopSize);              // s.beats() &lt;= loopSize
+SliceSize largestValidSlice(SliceSize wanted, int loopSize);    // §10 clamp
+Settings  normalize(Settings s);                                // clamps every field to its range
+</pre>
+
+<h3>7.2 Timing</h3>
+<pre>
+struct Timing {
+    double beatSec, sliceSec, loopSec, remainderSec;
+    int    slotCount;
+    double sliceBeats, loopBeats;
+};
+
+Timing computeTiming(const Settings&amp;);    // §6.1–6.2
+</pre>
+
+<h3>7.3 Tracks</h3>
+<pre>
+using TrackId = uint32_t;
+
+struct TrackInfo {
+    TrackId id;               // identity of the audio data; never used to address commands
+    double  durationSec;
+    double  startPosition;    // 0..1
+};
+
+struct TrackGeometry { double startOffsetSec; int sliceCount; };
+
+TrackGeometry computeGeometry(const TrackInfo&amp;, double sliceSec);   // §6.3
+
+class TrackList {                           // fixed capacity
+public:
+    static constexpr int kMaxTracks = 128;
+    int  count() const;
+    const TrackInfo&amp; at(int index) const;
+    std::optional&lt;int&gt; indexOf(TrackId) const;
+
+    bool append(const TrackInfo&amp;);           // §4: adds at the end
+    bool removeAt(int index);                // later tracks shift up
+    bool move(int from, int to);             // track at 'from' ends up at 'to'; the ones between shift by one
+    bool setStartPosition(int index, double);
+};
+</pre>
+<div class="note">
+<code>move</code> only reorders the track list. It does not call into <code>Sequence</code>, and the sequence is not changed.
+A slot keeps its stored index, so after a move it plays whichever track is now at that index. Remap is only for a change in the number of tracks (§8.3).
+</div>
+
+<h3>7.4 Sequence, remap, Rng</h3>
+<pre>
+class Rng {                                  // deterministic per seed
+public:
+    explicit Rng(uint64_t seed);
+    uint32_t below(uint32_t n);              // uniform in [0, n)
+};
+
+class Sequence {                             // fixed capacity: 32 / (1/64) = 2048 slots
+public:
+    static constexpr int kMaxSlots = 2048;
+    bool  empty() const;
+    int   size() const;
+    int   savedCount() const;
+    uint16_t at(int slot) const;
+    std::span&lt;const uint16_t&gt; indices() const;
+
+    void clear();
+    void generate(int slotCount, int trackCount, Rng&amp;);   // §7, sets savedCount
+    void crop(int slotCount);                             // §10 Loop Size decreased
+    void extend(int slotCount, Rng&amp;);                     // §10 Loop Size increased, draws from savedCount
+};
+
+std::optional&lt;int&gt; remap(int storedIndex, int savedCount, int currentCount);  // §8.3; nullopt = silence
+</pre>
+
+<h3>7.5 Locate</h3>
+<pre>
+struct Position {
+    int     slot;                    // -1 in the remainder zone
+    std::optional&lt;int&gt; trackIndex;   // nullopt = silence
+    TrackId trackId;
+    double  readSec;                 // position in the track's own timeline
+    double  slotEndBeats;            // where the next slot boundary is
+};
+
+Position locate(double tBeats, const Timing&amp;, const Sequence&amp;, const TrackList&amp;);   // §8.1–8.3
+</pre>
+
+<h3>7.6 Session</h3>
+<p>The only stateful domain element. Each method implements one control from concept §5 or one row of §10.</p>
+<pre>
+class Session {
+public:
+    explicit Session(uint64_t seed);
+
+    // transport (§5)
+    void play();                  // t = 0; generate if no sequence. Also used for a new note while playing.
+    void stop();                  // stop, t = 0, keep sequence
+    void randomize();             // §9: immediate, keeps t; does nothing with 0 tracks
+
+    // parameters (§10)
+    void setBpm(double);
+    void setLoopSize(int);        // crop / extend / clamp slice and regenerate
+    void setSliceSize(SliceSize); // regenerate
+    void setRandomizeEvery(int);  // stored only; used by AutoRandomizer
+    void setPlaybackMode(PlaybackMode);  // stored only; used by NoteTransport
+
+    // tracks (§4)
+    void appendTrack(const TrackInfo&amp;);   // generates if playing and no sequence (§13)
+    void removeTrackAt(int index);
+    void moveTrack(int from, int to);
+    void setStartPosition(int index, double);
+
+    // presets (§11); also used for the DAW project
+    void applyPreset(const PresetData&amp;);  // discard sequence; regenerate if playing
+    PresetData presetData() const;        // current settings + start positions
+
+    // playhead
+    int advance(double elapsedBeats);     // see below
+
+    // queries
+    bool  isPlaying() const;
+    double tBeats() const;
+    const Settings&amp;  settings() const;
+    const Timing&amp;    timing() const;
+    const TrackList&amp; tracks() const;
+    const Sequence&amp;  sequence() const;
+    Position position() const;            // locate() at the current playhead
+    uint32_t sequenceRevision() const;    // changes whenever the sequence changes
+};
+</pre>
+
+<h4>What <code>advance</code> does</h4>
+<p>
+The domain has no clock. Time only moves when the engine says so. The engine renders audio in pieces: it asks <code>position()</code> what to play,
+renders that many frames, then calls <code>advance</code> with the time it just rendered, converted to beats. <code>advance</code> moves the playhead forward
+by that amount and wraps it to 0 when it passes the end of the loop. It returns how many times the loop wrapped during that step (in practice 0 or 1).
+The web flavor uses that number to count loops for Randomize Every (§9). When playback is stopped, <code>advance</code> does nothing and returns 0.
+</p>
+
+<div class="assume">
+<b>Playhead in beats.</b> The concept stores <code>t</code> in seconds and scales it by <code>oldBPM / newBPM</code> on a BPM change (§10).
+Storing <code>t</code> in beats gives the same result with no scaling step. Seconds are derived as <code>tBeats × beatSec</code> where the formulas need them.
+</div>
+
+<h3>7.7 PresetData and PresetCodec</h3>
+<p>
+The preset text format is defined once, in the core, so the VST and the web read and write exactly the same thing. Hosts only move text between the codec and their storage.
+</p>
+<pre>
+struct PresetData {
+    Settings settings;
+    std::array&lt;double, TrackList::kMaxTracks&gt; startPositions;
+    int startPositionCount;
+};
+
+PresetData normalize(PresetData);                             // §11.3: range clamps, Slice ≤ Loop
+
+std::string               encodePreset(const PresetData&amp;);
+std::optional&lt;PresetData&gt; decodePreset(std::string_view text); // nullopt: unreadable or newer version
+</pre>
+
+<!-- ============================================================ -->
+<h2 id="engine">8. Core engine interfaces</h2>
+
+<h4>SampleBuffer</h4>
+<p>One track's audio data, already converted to the output sample rate. It never changes after creation and is owned by the host, not the engine.</p>
+<pre>
+struct SampleBuffer {
+    const float* channels[2];         // mono files point both channels at the same data
+    int64_t frames;
+    double  durationSec;              // original duration, used for TrackInfo
+};
+</pre>
+
+<h4>SampleBank</h4>
+<p>Lets the engine find a track's audio data by id. It stores pointers only.</p>
+<pre>
+class SampleBank {
+public:
+    void put(TrackId, const SampleBuffer*);
+    const SampleBuffer* take(TrackId);        // removes and returns the pointer so the owner can free it
+    const SampleBuffer* get(TrackId) const;
+};
+</pre>
+
+<h4>Voice</h4>
+<p>Reads one source from one position, with a volume ramp. A crossfade is two voices ramping in opposite directions.</p>
+<pre>
+class Voice {
+public:
+    void start(const SampleBuffer*, double readFrame, float fromGain, float toGain, int rampFrames);
+    void fadeOut(int rampFrames);
+    void render(float* l, float* r, int frames);   // adds into the output; silence past the end of the data
+    bool active() const;
+    const SampleBuffer* buffer() const;
+    double readFrame() const;
+};
+</pre>
+
+<h4>Renderer</h4>
+<p>
+Decides when a crossfade is needed. At the start of every piece of audio it compares what should play with what is playing.
+If the track changed, sound changed to silence or back, or the read position jumped, it fades the old voice out and the new one in (§8.4).
+If the same track simply continues across a slot boundary, nothing changes.
+</p>
+<pre>
+class Renderer {
+public:
+    void prepare(double sampleRate);
+    void follow(const Position&amp;, const SampleBuffer*, double slotSec);
+    void render(float* l, float* r, int frames);
+    void stopAll(int fadeFrames);
+};
+</pre>
+
+<h4>Engine</h4>
+<p>Owns the <code>Session</code>, the <code>SampleBank</code> and the <code>Renderer</code>. It is the core's single entry point for a host.</p>
+<pre>
+struct EngineEvents {                 // filled during one render call, read by the host afterwards
+    int loopsWrapped;
+    std::array&lt;TrackId, 16&gt; released; int releasedCount;   // buffers the host may now free
+};
+
+class Engine {
+public:
+    explicit Engine(uint64_t seed);
+    void prepare(double sampleRate, int maxBlockFrames);
+
+    void apply(const Command&amp;);                    // includes RemoveTrackAt and MoveTrack
+    void appendTrack(TrackId, const SampleBuffer*, double startPosition);
+    void applyPreset(const PresetData&amp;);
+
+    void render(float* l, float* r, int frames);   // splits the block at slot boundaries and loop wraps
+
+    const EngineEvents&amp; events() const;
+    void fillSnapshot(Snapshot&amp;) const;
+    PresetData presetData() const;
+};
+</pre>
+
+<table>
+  <tr><th>Engine behavior</th><th>Decision</th></tr>
+  <tr><td>Crossfade length</td><td>The shorter of 10 ms and the current slot (§8.4)</td></tr>
+  <tr><td>Crossfade shape</td><td>Equal-power. The sources are unrelated recordings, so a linear fade would sound about 3 dB quieter in the middle.</td></tr>
+  <tr><td>A switch during a fade</td><td>Up to three voices. The oldest fading voice is dropped when a third source arrives, which only happens with very small slices.</td></tr>
+  <tr><td>Start and stop</td><td>10 ms fade-in when playback starts and 10 ms fade-out on stop. The concept doesn't cover this, but it removes the same click.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="flavors">9. Platform flavors</h2>
+<p>
+The rules that differ between the products (§14.3) are still musical rules, so they live in the core. Each host creates only its own flavor. Nothing in the core asks which platform it runs on.
+</p>
+
+<h4>AutoRandomizer (web only, §9)</h4>
+<p>Counts completed loops and says when the sequence must be regenerated.</p>
+<pre>
+class AutoRandomizer {
+public:
+    void setEvery(int every);           // -1 = off
+    void reset();                       // on Play and on manual Randomize
+    bool onLoopWrapped();               // true when the sequence must regenerate now
+    int  loopsRemaining() const;        // -1 when off
+};
+</pre>
+
+<h4>NoteTransport (VST only, §5.1)</h4>
+<p>Turns note and host events into Play and Stop according to the Playback Mode. Pitch and velocity are not passed in at all.</p>
+<pre>
+enum class TransportAction { None, Play, Stop };
+
+class NoteTransport {
+public:
+    void setMode(PlaybackMode);
+    TransportAction noteOn();                           // always Play (restart from t = 0)
+    TransportAction noteOff();                          // Gate: Stop when no notes are held
+    TransportAction hostPlayingChanged(bool playing);   // host stopped → Stop
+    TransportAction pending();                          // Stop after switching Trigger → Gate with no notes held
+    void reset();
+};
+</pre>
+
+<h4>WebEngine</h4>
+<p>An <code>Engine</code> plus an <code>AutoRandomizer</code>. Play and Randomize also reset the loop counter; loop wraps reported by the engine drive automatic regeneration.</p>
+<pre>
+class WebEngine {
+public:
+    explicit WebEngine(uint64_t seed);
+    void prepare(double sampleRate, int maxBlockFrames);
+    void apply(const Command&amp;);
+    void appendTrack(TrackId, const SampleBuffer*, double startPosition);
+    void applyPreset(const PresetData&amp;);
+    void render(float* l, float* r, int frames);
+    void fillSnapshot(Snapshot&amp;) const;            // includes loopsRemaining
+    const EngineEvents&amp; events() const;
+};
+</pre>
+
+<h4>VstEngine</h4>
+<p>An <code>Engine</code> plus a <code>NoteTransport</code>. Notes carry their position inside the block so playback starts on the exact frame.</p>
+<pre>
+class VstEngine {
+public:
+    explicit VstEngine(uint64_t seed);
+    void prepare(double sampleRate, int maxBlockFrames);
+    void apply(const Command&amp;);
+    void appendTrack(TrackId, const SampleBuffer*, double startPosition);
+    void applyPreset(const PresetData&amp;);
+    void noteOn(int frameOffset);
+    void noteOff(int frameOffset);
+    void hostPlaying(bool playing);
+    void render(float* l, float* r, int frames);
+    void fillSnapshot(Snapshot&amp;) const;
+    const EngineEvents&amp; events() const;
+    PresetData presetData() const;                 // for preset save and the DAW project
+};
+</pre>
+
+<!-- ============================================================ -->
+<h2 id="contract">10. Command and Snapshot contract</h2>
+<p>Plain, fixed-size data with no pointers, so it can cross any channel in <a href="#runtime">section 5</a> unchanged.</p>
+
+<pre>
+struct Command {
+    enum class Type : uint8_t {
+        Play, Stop, Randomize,
+        SetBpm, SetLoopSize, SetSliceSize, SetRandomizeEvery, SetPlaybackMode,
+        SetStartPosition,   // a = index, value = position
+        RemoveTrackAt,      // a = index
+        MoveTrack           // a = from, b = to
+    };
+    Type    type;
+    double  value;          // bpm, start position
+    int32_t a;              // loop size, slice exponent, randomize every, mode, index, from
+    int32_t b;              // to
+};
+
+struct Snapshot {
+    // settings
+    Settings settings;
+    int      validSliceMin, validSliceMax;     // slice exponents the UI may offer (§3.1)
+    // transport
+    bool     playing;
+    double   tBeats;
+    int      currentSlot;                      // -1 = remainder or stopped
+    int      loopsRemaining;                   // web only, -1 otherwise
+    int      heldNotes;                        // VST only
+    // tracks, in list order
+    int      trackCount;
+    struct Track { TrackId id; double startPosition; double durationSec; int sliceCount; };
+    std::array&lt;Track, TrackList::kMaxTracks&gt; tracks;
+    // sequence (effective indices after remap; -1 = silence)
+    uint32_t sequenceRevision;
+    int      slotCount;
+    std::array&lt;int16_t, Sequence::kMaxSlots&gt; effective;
+};
+</pre>
+
+<p>
+Appending a track and applying a preset are not commands: the first carries audio data and the second carries variable-length text,
+so each host has its own call for them (<code>VstBridge</code>, <code>EngineClient</code>).
+</p>
+
+<div class="note">
+Track <b>names</b> are not in the snapshot, because names come from files and the core doesn't know about files. Each host keeps a <code>TrackId → name</code> map, and the presenter joins it with the snapshot rows.
+</div>
+
+<!-- ============================================================ -->
+<h2 id="presentation">11. Presentation: view models and presenters</h2>
+<p>
+Both platforms use the same pattern. The on-screen controls belong to the view model and are specified in a separate document; this section only fixes how the view model and the presenter meet.
+</p>
+
+<pre>
+ view model ── randomizePressed ──▶ presenter ── Command ──▶ host
+ view model ◀── loopSize.set(12) ── presenter ◀── Snapshot ── host
+</pre>
+
+<ul>
+  <li><b>View model</b> holds <b>properties</b> (values the screen shows) and <b>actions</b> (one public method per user gesture: a press, a value change, a drag).
+    An action method does nothing except fire a signal. A property's <code>set</code> notifies listeners only if the value actually changed.
+    The controls read the properties and call the actions. They never see the presenter or the host.</li>
+  <li><b>Presenter</b> is the only active part. On construction it connects to every action signal of the view model and forwards each one to the host as a command or host call.
+    When a new snapshot arrives, it converts it into display values and calls <code>set</code> on the matching properties.</li>
+</ul>
+
+<p>
+The presenter can be checked without any screen, and the musical rules stay in the core.
+The view model and presenter are separate per platform, because the controls differ and a shared base would tie the two UIs together.
+</p>
+
+<h3>11.1 Building blocks</h3>
+<pre>
+class Connection {                               // disconnects when destroyed
+public:
+    void disconnect();
+};
+
+template &lt;typename T&gt;
+class Property {
+public:
+    const T&amp; get() const;
+    void set(const T&amp;);                          // notifies only if the value changed
+    Connection onChanged(std::function&lt;void(const T&amp;)&gt;);
+};
+
+template &lt;typename... Args&gt;
+class Signal {
+public:
+    void emit(Args...);
+    Connection connect(std::function&lt;void(Args...)&gt;);
+};
+</pre>
+
+<h3>11.2 Shape of a view model</h3>
+<p>An illustrative excerpt, not the final member list.</p>
+<pre>
+class VstViewModel {
+public:
+    // properties: written by the presenter, read by views
+    Property&lt;double&gt;                 bpm;
+    Property&lt;int&gt;                    loopSize;
+    Property&lt;std::vector&lt;SliceSize&gt;&gt; sliceOptions;
+    Property&lt;std::vector&lt;TrackRow&gt;&gt;  tracks;
+    // …
+
+    // actions: called by views
+    void pressRandomize();                       // fires randomizePressed
+    void changeBpm(double);                      // fires bpmChanged
+    void changeLoopSize(int);                    // fires loopSizeChanged
+    void moveTrack(int from, int to);            // fires trackMoved
+    // …
+
+    // signals: connected by the presenter
+    Signal&lt;&gt;          randomizePressed;
+    Signal&lt;double&gt;    bpmChanged;
+    Signal&lt;int&gt;       loopSizeChanged;
+    Signal&lt;int, int&gt;  trackMoved;
+    // …
+};
+</pre>
+
+<h3>11.3 Presenters</h3>
+<pre>
+class VstPresenter {
+public:
+    VstPresenter(VstViewModel&amp;, VstBridge&amp;);   // connects all action signals
+    void tick();                                // ~30 times a second: read latest snapshot, update properties
+};
+
+class WebPresenter {
+public:
+    WebPresenter(WebViewModel&amp;, EngineClient&amp;, SampleDecoder&amp;, PresetRepository&amp;, AudioUnlock&amp;, TrackRegistry&amp;);
+    void dispose();                             // snapshots arrive by message, so no tick
+};
+</pre>
+
+<!-- ============================================================ -->
+<h2 id="vst">12. VST host interfaces</h2>
+
+<h4>BeatalityProcessor</h4>
+<p>
+The plugin object the DAW talks to. Its audio callback does all the real-time work in a fixed order: apply pending commands, pass the DAW's play state and the MIDI notes to the <code>VstEngine</code>,
+render, publish a snapshot, and hand back any released buffers.
+Its part of the DAW project contains only the parameters, in the same text format as a preset. Samples are not saved with the project.
+No parameters are exposed to the DAW for automation.
+</p>
+<pre>
+class BeatalityProcessor {
+public:
+    BeatalityProcessor();                              // stereo out, MIDI in, no audio in
+
+    void prepareToPlay(double sampleRate, int maxBlock);   // converts tracks again if the rate changed
+    void releaseResources();
+    void processBlock(AudioBuffer&amp;, MidiBuffer&amp;);
+
+    void getStateInformation(MemoryBlock&amp;);            // encodePreset(engine.presetData())
+    void setStateInformation(const void* data, int size); // decodePreset → applied like a loaded preset
+
+    VstBridge&amp; bridge();
+    virtual Editor* createEditor();                    // overridden by the app layer
+};
+</pre>
+
+<h4>VstBridge</h4>
+<p>The host's API for the presenter. Every method runs on the UI thread and returns immediately; results show up in a later snapshot or through <code>onError</code>.</p>
+<pre>
+class VstBridge {
+public:
+    void send(const Command&amp;);                         // includes RemoveTrackAt and MoveTrack
+    bool latest(Snapshot&amp; out);                        // true if newer than the last read
+    std::string trackName(TrackId) const;
+
+    void appendFiles(const std::vector&lt;std::filesystem::path&gt;&amp;);   // loaded in the background, appended in order
+
+    void savePreset(const std::filesystem::path&amp;);
+    void loadPreset(const std::filesystem::path&amp;);
+    std::function&lt;void(std::string)&gt; onError;
+};
+</pre>
+
+<h4>SampleLoader</h4>
+<p>
+Decodes a WAV or MP3 file and converts it to the plugin's output sample rate on a background thread, so the UI and the audio never wait for a file.
+Any other file, including an Ableton Live Clip (<code>.alc</code>), is rejected.
+When it finishes, it reports either the ready audio data or an error.
+</p>
+<pre>
+class SampleLoader {
+public:
+    void load(const std::filesystem::path&amp;, TrackId, double targetSampleRate);
+    std::function&lt;void(TrackId, LoadedSample)&gt; onLoaded;
+    std::function&lt;void(TrackId, std::string)&gt;  onFailed;
+};
+</pre>
+
+<h4>TrackStore</h4>
+<p>
+Owns every loaded track's audio data and display name. It gives the engine a pointer, and it frees the data only after the engine reports the track as released.
+When the DAW changes the sample rate, it has every track converted again.
+</p>
+<pre>
+class TrackStore {
+public:
+    TrackId reserveId();
+    const SampleBuffer* adopt(TrackId, LoadedSample, std::string name);
+    void release(TrackId);                             // after the engine has let go
+    std::string name(TrackId) const;
+    void reconvertAll(double sampleRate);
+};
+</pre>
+
+<h4>CommandQueue and SnapshotBuffer</h4>
+<p>
+Move data between the UI thread and the audio thread without either side ever waiting. The command queue keeps every command in order.
+The snapshot buffer keeps only the newest snapshot, because the UI only ever needs the current state.
+</p>
+<pre>
+template &lt;typename T, int Capacity&gt;
+class CommandQueue {
+public:
+    bool push(const T&amp;);                               // UI thread
+    bool pop(T&amp;);                                      // audio thread
+};
+
+template &lt;typename T&gt;
+class SnapshotBuffer {
+public:
+    void write(const T&amp;);                              // audio thread
+    bool read(T&amp;);                                     // UI thread; true if newer
+};
+</pre>
+
+<h4>PresetStore</h4>
+<p>Saves the current settings as a preset file on disk and reads one back (§11.2). The text itself comes from and goes to <code>PresetCodec</code>; this element only deals with files and folders.</p>
+<pre>
+class PresetStore {
+public:
+    bool save(const std::filesystem::path&amp;, const PresetData&amp;);
+    std::optional&lt;PresetData&gt; load(const std::filesystem::path&amp;);
+    std::filesystem::path defaultFolder() const;
+};
+</pre>
+
+<!-- ============================================================ -->
+<h2 id="web">13. Web host interfaces</h2>
+<p>
+In the browser, the core runs on the browser's audio thread. The page's main thread, where the presenter lives, can only talk to it by sending messages.
+That gives the web host three parts: the <b>engine boundary</b>, the <b>audio thread host</b>, and the <b>main-thread client</b>.
+</p>
+
+<h3>13.1 Engine boundary</h3>
+<p>
+Browsers can't run C++ directly. The core is compiled to WebAssembly, a compact binary format that browsers execute at close to native speed.
+Browser code can only call functions that the compiled module exports, and those functions can only take and return numbers. Anything larger, like audio data, preset text or a snapshot,
+lives in the module's memory, and the two sides exchange its address. So the core can't be used from the browser as C++ classes.
+It needs a flat list of plain functions that wrap <code>WebEngine</code>. That list is the engine boundary (often called an ABI, application binary interface).
+</p>
+<pre>
+extern "C" {
+    Handle create(uint32_t seedLo, uint32_t seedHi, double sampleRate, int maxBlock);
+    void   destroy(Handle);
+
+    void   command(Handle, int type, double value, int32_t a, int32_t b);
+    char*  textAlloc(Handle, int length);                     // caller copies preset text into this memory
+    bool   applyPresetText(Handle, const char* text, int length);   // decodePreset + applyPreset
+
+    float* trackAlloc(Handle, uint32_t id, int64_t frames, int channels);    // caller copies audio into this memory
+    void   trackAppend(Handle, uint32_t id, double durationSec, double startPosition);
+
+    float* output(Handle, int channel);                       // where render() writes
+    void   render(Handle, int frames);
+    const Snapshot* snapshot(Handle);                         // read field by field from module memory
+}
+</pre>
+
+<h3>13.2 AudioThreadHost</h3>
+<p>
+Browsers let a page run its own code on the audio thread by registering an audio processor class. The browser calls that class every 128 frames
+(about 3 ms) and expects audio back. <code>AudioThreadHost</code> is Beatality's processor. It loads the compiled core, applies incoming messages through the engine boundary,
+calls <code>render</code> on every call from the browser, copies the output to the speakers, and posts a snapshot back to the page about 30 times a second.
+It is the web counterpart of <code>BeatalityProcessor</code>.
+</p>
+<table>
+  <tr><th>Direction</th><th>Message</th><th>Effect</th></tr>
+  <tr><td>page → audio thread</td><td><code>init { module, seed }</code></td><td>Load the compiled core and create the engine</td></tr>
+  <tr><td>page → audio thread</td><td><code>command { Command }</code></td><td>Applied before the next block</td></tr>
+  <tr><td>page → audio thread</td><td><code>appendTrack { id, channels, durationSec, startPosition }</code></td><td>Copy the audio into module memory and append the track</td></tr>
+  <tr><td>page → audio thread</td><td><code>preset { text }</code></td><td>Decode and apply the preset</td></tr>
+  <tr><td>audio thread → page</td><td><code>ready</code></td><td>The client starts sending commands</td></tr>
+  <tr><td>audio thread → page</td><td><code>snapshot { Snapshot }</code></td><td>About 30 times a second; the sequence is included only when it changed</td></tr>
+  <tr><td>audio thread → page</td><td><code>error { message }</code></td><td>Out of memory, track limit reached, unreadable preset</td></tr>
+</table>
+
+<h3>13.3 Main-thread client</h3>
+
+<h4>EngineClient</h4>
+<p>The web host's API for the presenter, and the web counterpart of <code>VstBridge</code>. It wraps the message protocol above in typed methods and keeps the latest snapshot.</p>
+<pre>
+class EngineClient {
+public:
+    static void create(AudioContext&amp;, std::function&lt;void(EngineClient*)&gt; ready);
+
+    void send(const Command&amp;);                         // includes RemoveTrackAt and MoveTrack
+    void appendTrack(TrackId, const DecodedSample&amp;, double startPosition);
+    void applyPresetText(const std::string&amp;);
+
+    const Snapshot* latest() const;                    // nullptr until the first snapshot
+    Connection onSnapshot(std::function&lt;void(const Snapshot&amp;)&gt;);
+    Connection onError(std::function&lt;void(std::string)&gt;);
+    void dispose();
+};
+</pre>
+
+<h4>SampleDecoder</h4>
+<p>
+Decodes a file the user picked or dropped, using the browser's built-in decoder, which also converts it to the output sample rate.
+Only WAV and MP3 files are accepted; anything else is rejected before decoding.
+</p>
+<pre>
+struct DecodedSample { std::vector&lt;std::vector&lt;float&gt;&gt; channels; double durationSec; std::string name; };
+
+class SampleDecoder {
+public:
+    static bool accepts(const File&amp;);                  // WAV or MP3, by type and extension
+    void decode(const File&amp;, std::function&lt;void(DecodedSample)&gt; done, std::function&lt;void(std::string)&gt; failed);
+};
+</pre>
+
+<h4>PresetRepository</h4>
+<p>
+Fetches the list of presets hosted on the author's server and the text of one preset (§11.2). It doesn't parse presets; the text goes to the core, which decodes it with <code>PresetCodec</code>.
+The widget never saves presets.
+</p>
+<pre>
+struct PresetItem { std::string id; std::string name; };
+
+class PresetRepository {
+public:
+    explicit PresetRepository(std::string baseUrl);
+    void list(std::function&lt;void(std::vector&lt;PresetItem&gt;)&gt; done, std::function&lt;void(std::string)&gt; failed);
+    void loadText(const std::string&amp; id, std::function&lt;void(std::string)&gt; done, std::function&lt;void(std::string)&gt; failed);
+};
+</pre>
+
+<h4>AudioUnlock</h4>
+<p>Browsers only allow audio to start after the user interacts with the page (§14.2). This element starts audio from inside a click and reports whether audio is still blocked.</p>
+<pre>
+class AudioUnlock {
+public:
+    void ensureRunning(std::function&lt;void()&gt; done);   // call from a user gesture
+    bool blocked() const;
+    Connection onChange(std::function&lt;void(bool blocked)&gt;);
+};
+</pre>
+
+<h4>TrackRegistry</h4>
+<p>The web counterpart of <code>TrackStore</code>, without the audio data, which lives on the audio thread. It hands out track ids and remembers file names.</p>
+<pre>
+class TrackRegistry {
+public:
+    TrackId nextId();
+    void setName(TrackId, std::string);
+    std::string name(TrackId) const;
+    void forget(TrackId);
+};
+</pre>
+
+<!-- ============================================================ -->
+<h2 id="formats">14. Data formats</h2>
+
+<h3>14.1 Preset</h3>
+<p>A small text file in JSON format, so it can be written by hand and served as-is from the website. Encoded and decoded only by <code>PresetCodec</code>.</p>
+<pre>
+{
+  "format": "beatality-preset",
+  "version": 1,
+  "name": "Choppy breaks",
+  "bpm": 120,
+  "loopSize": 8,
+  "sliceSize": "1/4",            // one of 1/64 … 16
+  "randomizeEvery": 2,           // -1 or 1..8
+  "playbackMode": "gate",        // "trigger" | "gate"
+  "startPositions": [0, 0.5, 0.25]
+}
+</pre>
+<p>Unknown fields are ignored. A file with a higher <code>version</code> is rejected.</p>
+
+<h3>14.2 VST project state</h3>
+<p>
+The plugin's part of a DAW project is the same preset text. No samples, file paths or sequence are stored.
+After a project opens, the plugin has its parameters back and an empty track list.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="decisions">15. Decisions</h2>
+<ul>
+  <li><span class="resolved">Sequence storage:</span> the sequence is never stored, in presets or in DAW projects.</li>
+  <li><span class="resolved">Track list operations:</span> append, remove at index, move from one index to another. A move does not change the sequence and the sequence is not told about it. A slot keeps its index.</li>
+  <li><span class="resolved">DAW automation:</span> no parameters are exposed to the DAW.</li>
+  <li><span class="resolved">DAW project contents:</span> parameters only, in preset format. Samples are added again by the user.</li>
+  <li><span class="resolved">File formats:</span> WAV and MP3 on both platforms. An Ableton Live Clip (<code>.alc</code>) is a clip description that points at a sample; it is not audio, and it is rejected.</li>
+  <li><span class="resolved">Randomness:</span> each instance starts from an unpredictable seed taken from the operating system or browser. The seed is not shown to the user.</li>
+  <li><span class="resolved">First plugin target:</span> VST3.</li>
+  <li><span class="resolved">Web snapshot channel:</span> messages about 30 times a second, which work on any website. This is enough for a demonstration widget; shared memory is the fallback if the display turns out to lag.</li>
+  <li><span class="resolved">Plugin licence:</span> the plugin is sold closed-source. JUCE is used under its free Starter licence, which allows closed-source commercial products while revenue from the product stays under $20,000 per year. Above that, an Indie licence is required (see 16.3).</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="stack">16. Tech stack</h2>
+<p>This section ties each layer to a concrete technology and explains the choice.</p>
+
+<h3>16.1 Core domain and core engine: C++20</h3>
+<p>
+The core has to run inside a VST plugin, where C++ is the standard language, and inside a web page. C++ covers both: it compiles natively for the plugin,
+and the same source compiles to WebAssembly for the browser (<a href="#web">section 13.1</a>). Writing the core once is the only reliable way to guarantee that both products behave
+identically. A second implementation in another language would slowly drift apart from the first.
+</p>
+<p>
+C++20 specifically brings <code>std::span</code> (views over arrays without copying), <code>std::optional</code> (for "silence" and "no track" results), and designated initializers for readable settings structs.
+The core uses only the standard library, with no third-party dependencies, so it builds the same way for both targets. <code>PresetCodec</code> uses a small hand-written reader and writer limited to the preset format, rather than a general JSON library.
+Floating-point "fast math" compiler options stay off, so the native and web builds compute identical numbers.
+</p>
+
+<h3>16.2 Build: CMake</h3>
+<p>
+CMake is the build system that both the plugin framework and the WebAssembly compiler support directly, so one build description produces the core library, the plugin and the web module.
+Named build presets (for example plugin debug, plugin release, web release) keep the command lines out of people's heads. The compiler for the plugin is MSVC 2022 on Windows.
+</p>
+
+<h3>16.3 VST host, VST view model, presenter and views: JUCE 8</h3>
+<p>
+JUCE is the most widely used C++ framework for audio plugins. It provides the pieces the VST host needs: the VST3 wrapper, the audio callback, MIDI input, the DAW's play state,
+project save and recall, audio file decoders, file dialogs, and a lock-free FIFO used for the command queue. It also has its own UI toolkit, which the VST views use, including a skinning system suited to the Winamp look.
+</p>
+<p>
+JUCE is used only in the VST column of the layers. The core never includes it.
+</p>
+<p>
+<b>Licence.</b> JUCE is offered either under AGPLv3, which would force the plugin's source to be published, or under its own commercial licence. Beatality is sold closed-source, so it uses the commercial licence's free <b>Starter</b> tier.
+Starter allows closed-source commercial distribution with no splash screen, as long as the revenue generated by the product (sales, donations, sponsorship) stays under $20,000 over the previous 12 months.
+Above that, the next tier is Indie (up to $300,000; $40 per month or $800 perpetual at the time of writing). The terms are in the <a href="https://juce.com/legal/juce-8-licence/">JUCE 8 licence</a>; check the current terms before release, because a newer major version may change them.
+</p>
+<p>
+The VST3 SDK itself is MIT-licensed, so selling a VST3 plugin needs no extra fee. Using the "VST" name or logo on the product page needs Steinberg's separate (free) usage agreement.
+</p>
+
+<h3>16.4 Sample-rate conversion in the plugin: r8brain-free-src</h3>
+<p>
+A sample recorded at 44.1 kHz must play at the correct pitch in a 48 kHz project (§13). The plugin converts each sample once, at load time, rather than during playback.
+r8brain-free-src is a small, high-quality converter under the MIT licence that is common in commercial audio software. Converting at load time keeps the audio thread simple and cheap.
+</p>
+
+<h3>16.5 Web engine: WebAssembly via Emscripten</h3>
+<p>
+Emscripten is the standard compiler from C++ to WebAssembly. It produces one small binary module containing the core. The build exports only the engine boundary functions,
+and leaves out the file system emulation and exceptions, which keeps the module small and lets it load on the browser's audio thread.
+</p>
+
+<h3>16.6 Web audio: Web Audio API with an AudioWorklet</h3>
+<p>
+The Web Audio API is the browser's built-in audio system, supported by every current browser. Its <b>AudioWorklet</b> feature is the mechanism behind <code>AudioThreadHost</code>:
+the page registers a processor class, and the browser runs it on its real-time audio thread. Older approaches ran audio code on the page's main thread, where any UI work causes dropouts.
+The same API's <code>decodeAudioData</code> decodes WAV and MP3 uploads and converts their sample rate, so the web host needs no decoder of its own.
+</p>
+
+<h3>16.7 Web host client, view model and presenter: TypeScript</h3>
+<p>
+The page side of the web host, the web view model and the web presenter are written in TypeScript, which is JavaScript with type checking.
+The <code>Command</code>, <code>Snapshot</code> and view model types in this document are mirrored as TypeScript types, so a mismatch with the core shows up when compiling, not as a silent bug in the browser.
+Where this document shows C++ signatures for these elements, the TypeScript versions use promises instead of callbacks, and the browser's own types for files and the audio context.
+<code>Property</code> and <code>Signal</code> map onto Preact signals (16.8).
+</p>
+
+<h3>16.8 Web views: Preact with signals</h3>
+<p>
+Preact is a very small (about 4 KB) library with the same component model as React. Size matters because the widget is embedded in someone else's page.
+Its "signals" feature updates only the parts of the screen whose data changed, which fits a view model whose playhead changes 30 times a second while everything else is mostly still.
+</p>
+
+<h3>16.9 Embedding: a custom HTML element</h3>
+<p>
+The widget app is packaged as a custom HTML element, <code>&lt;beatality-player&gt;</code>. The website adds one tag and one script.
+The element keeps its markup and styles in a Shadow DOM, an isolated area of the page, so the website's CSS can't break the widget's look and the widget's CSS can't leak out.
+</p>
+
+<h3>16.10 Web build: Vite and pnpm</h3>
+<p>
+Vite bundles the TypeScript and views into one script, alongside the audio thread file and the WebAssembly module, and provides a fast development server with live reload.
+pnpm manages the web packages and lets the web host, view model, presenter and app live as separate packages in one repository, matching the layer folders.
+</p>
+
+<h3>16.11 Summary</h3>
+<table>
+  <tr><th>Layer</th><th>VST</th><th>Web</th></tr>
+  <tr><td>Core domain</td><td colspan="2">C++20, standard library only</td></tr>
+  <tr><td>Core engine</td><td colspan="2">C++20, standard library only</td></tr>
+  <tr><td>Platform host</td><td>C++20, JUCE 8 (Starter licence), r8brain-free-src</td><td>WebAssembly (Emscripten), AudioWorklet in JavaScript, TypeScript client, Web Audio API</td></tr>
+  <tr><td>View model</td><td>C++20, JUCE 8 components</td><td>TypeScript, Preact, CSS</td></tr>
+  <tr><td>Presenter</td><td>C++20, JUCE 8</td><td>TypeScript</td></tr>
+  <tr><td>App</td><td>JUCE 8 plugin target (VST3)</td><td>Custom element, Vite bundle</td></tr>
+  <tr><td>Build</td><td>CMake, MSVC 2022</td><td>CMake + Emscripten for the core; Vite + pnpm for the rest</td></tr>
+</table>
+
+</body>
+</html>

@@ -1,0 +1,77 @@
+:root {
+    color-scheme: dark;
+}
+
+body {
+    margin: 0;
+    background: #141414;
+    color: #f3f3f3;
+    font: 16px/1.4 system-ui, sans-serif;
+}
+
+main {
+    max-width: 28rem;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    display: grid;
+    gap: 0.75rem;
+}
+
+h1 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+button,
+.append {
+    font: inherit;
+}
+
+button {
+    padding: 0.4rem 0.8rem;
+    background: #2a2a2a;
+    color: inherit;
+    border: 1px solid #555;
+    border-radius: 4px;
+}
+
+button:disabled {
+    opacity: 0.4;
+}
+
+#transport {
+    justify-self: start;
+    min-width: 5rem;
+}
+
+.row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    min-height: 2rem;
+}
+
+li {
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid #2c2c2c;
+}
+
+li.chosen {
+    background: #243524;
+    font-weight: 700;
+}
+
+.append input {
+    display: block;
+    margin-top: 0.25rem;
+}
+
+.error {
+    margin: 0;
+    color: #ffb4b4;
+}
