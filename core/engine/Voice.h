@@ -11,7 +11,7 @@ namespace bt {
 // so the restart is not a click.
 class Voice {
 public:
-    void start(const SampleBuffer& buffer, int fadeLength);   // fades in from silence
+    void start(const SampleBuffer& buffer, int fadeLength);   // fades in from the first frame
     void fadeOut(int fadeLength);   // continues from the current gain
     void cut();
 

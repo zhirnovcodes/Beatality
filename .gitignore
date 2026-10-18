@@ -3,3 +3,4 @@ dist/
 build/
 build-wasm/
 .emscripten
+third_party/
