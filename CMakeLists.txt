@@ -21,6 +21,19 @@ add_library(beatality_domain
 target_include_directories(beatality_domain PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/core/domain)
 beatality_core_flags(beatality_domain)
 
+# The grid and the sequence throw on a broken call, so this library keeps exceptions.
+add_library(beatality_slices
+    core/domain/Sequence.cpp
+    core/domain/SliceGrid.cpp
+)
+target_include_directories(beatality_slices PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/core/domain)
+target_link_libraries(beatality_slices PUBLIC beatality_domain)
+if(MSVC)
+    target_compile_options(beatality_slices PRIVATE /EHsc)
+else()
+    target_compile_options(beatality_slices PRIVATE -fexceptions)
+endif()
+
 add_library(beatality_engine
     core/engine/Ramp.cpp
     core/engine/SampleBank.cpp
@@ -37,6 +50,14 @@ beatality_core_flags(beatality_engine)
 add_executable(domain_tests tests/domain/session_tests.cpp)
 target_link_libraries(domain_tests PRIVATE beatality_domain)
 beatality_core_flags(domain_tests)
+
+add_executable(slice_tests tests/domain/slice_tests.cpp)
+target_link_libraries(slice_tests PRIVATE beatality_slices)
+if(MSVC)
+    target_compile_options(slice_tests PRIVATE /EHsc)
+else()
+    target_compile_options(slice_tests PRIVATE -fexceptions)
+endif()
 
 if(EMSCRIPTEN)
     # Standalone module for the AudioWorklet: instantiated directly, no Emscripten JS glue.
