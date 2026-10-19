@@ -9,10 +9,11 @@ import { TrackRegistry } from './TrackRegistry'
 
 export interface EngineSnapshot {
     count: number
-    index: number
     playing: boolean
-    position: number
-    duration: number
+    // Null when this snapshot only refreshed the names, before the audio thread answered.
+    sliceExp: number | null
+    loopBeats: number
+    bpm: number
     names: string[]
     peak: number
 }
@@ -72,14 +73,29 @@ export class EngineClient {
         this.send(Command.Randomize)
     }
 
-    async removeFirst(): Promise<void> {
+    async removeAt(index: number): Promise<void> {
         await this.start()
-        if (this.registry.count === 0) {
+        if (index < 0 || index >= this.registry.count) {
             return
         }
-        this.registry.removeFirst()
-        this.send(Command.RemoveFirst)
+        this.registry.removeAt(index)
+        this.node?.port.postMessage({ type: 'remove', index })
         this.emitList()
+    }
+
+    async setBpm(bpm: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'bpm', bpm })
+    }
+
+    async setLoop(beats: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'loop', beats })
+    }
+
+    async setSlice(exponent: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'slice', exponent })
     }
 
     // Decodes every file and appends the ones that decode. Returns how many were
@@ -161,10 +177,10 @@ export class EngineClient {
         }
         const snapshot: EngineSnapshot = {
             count: message.count,
-            index: message.index,
             playing: message.playing,
-            position: message.position,
-            duration: message.duration,
+            sliceExp: message.sliceExp,
+            loopBeats: message.loopBeats,
+            bpm: message.bpm,
             names: this.registry.list(),
             peak: message.peak,
         }
@@ -177,18 +193,18 @@ export class EngineClient {
     }
 
     // Names change on this thread, before the audio thread has answered.
-    // The chosen index stays unknown until that answer arrives.
+    // Playing follows the list. The slice stays until a real snapshot reports it.
     private emitList() {
         const snapshot: EngineSnapshot = {
             count: this.registry.count,
-            index: -1,
             playing: this.registry.count > 0 && (this.latest?.playing ?? false),
-            position: this.latest?.position ?? 0,
-            duration: this.latest?.duration ?? 0,
+            sliceExp: null,
+            loopBeats: this.latest?.loopBeats ?? 8,
+            bpm: this.latest?.bpm ?? 120,
             names: this.registry.list(),
             peak: this.latest?.peak ?? 0,
         }
-        this.latest = snapshot
+        this.latest = { ...snapshot, sliceExp: this.latest?.sliceExp ?? null }
         this.onSnapshot?.(snapshot)
     }
 

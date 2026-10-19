@@ -1,8 +1,6 @@
 #include "SliceGrid.h"
 
 #include <cmath>
-#include <limits>
-#include <stdexcept>
 
 namespace bt {
 
@@ -29,27 +27,14 @@ int countSlots(int loopBeats, int sliceExp) {
 
 SliceGrid::SliceGrid() = default;
 
-void SliceGrid::setBpm(double bpm) {
-    if (!(bpm > 0.0) || !std::isfinite(bpm)) {
-        throw std::logic_error("bpm");
-    }
-    bpm_ = bpm;
-}
+void SliceGrid::setBpm(double bpm) { bpm_ = bpm; }
 
 void SliceGrid::setLoop(int beats) {
-    if (beats < kMinLoop || beats > kMaxLoop) {
-        throw std::logic_error("loop");
-    }
     loopBeats_ = beats;
     sliceExp_ = fitExp(sliceExp_, loopBeats_);
 }
 
-void SliceGrid::setSlice(int exponent) {
-    if (exponent < kExpMin || exponent > kExpMax) {
-        throw std::logic_error("slice");
-    }
-    sliceExp_ = fitExp(exponent, loopBeats_);
-}
+void SliceGrid::setSlice(int exponent) { sliceExp_ = fitExp(exponent, loopBeats_); }
 
 double SliceGrid::bpm() const { return bpm_; }
 
@@ -75,9 +60,6 @@ double SliceGrid::remainderSec() const {
 int SliceGrid::slotCount() const { return countSlots(loopBeats_, sliceExp_); }
 
 PlayheadPosition SliceGrid::positionAt(double playheadBeats) const {
-    if (!std::isfinite(playheadBeats) || playheadBeats < 0.0 || !(playheadBeats < loopBeats_)) {
-        throw std::logic_error("playhead");
-    }
     PlayheadPosition position;
     const double slice = sliceBeats();
     position.slot = static_cast<int>(std::floor(playheadBeats / slice));
@@ -86,23 +68,14 @@ PlayheadPosition SliceGrid::positionAt(double playheadBeats) const {
 }
 
 int SliceGrid::trackSlices(double durationSec) const {
-    if (!(durationSec > 0.0) || !std::isfinite(durationSec)) {
-        throw std::logic_error("duration");
-    }
     const double n = std::round(durationSec / sliceSec());
     if (n < 1.0) {
         return 1;
-    }
-    if (n > static_cast<double>(std::numeric_limits<int>::max())) {
-        throw std::logic_error("duration");
     }
     return static_cast<int>(n);
 }
 
 double SliceGrid::trackRead(double playheadBeats, int slot, double durationSec) const {
-    if (slot < 0 || slot >= slotCount()) {
-        throw std::logic_error("slot");
-    }
     const double slice = sliceBeats();
     const double localBeats = playheadBeats - slot * slice;
     const int trackSlice = slot % trackSlices(durationSec);

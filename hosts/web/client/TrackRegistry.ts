@@ -22,7 +22,7 @@ export class TrackRegistry {
         return this.nextId++
     }
 
-    removeFirst(): void {
-        this.names.shift()
+    removeAt(index: number): void {
+        this.names.splice(index, 1)
     }
 }

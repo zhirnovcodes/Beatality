@@ -3,7 +3,6 @@
 
 #include <cmath>
 #include <cstdio>
-#include <stdexcept>
 
 namespace {
 
@@ -19,17 +18,6 @@ void check(bool ok, const char* text, int line) {
 #define CHECK(cond) check(static_cast<bool>(cond), #cond, __LINE__)
 
 bool near(double a, double b) { return std::fabs(a - b) < 1e-9; }
-
-template <typename Fn>
-void throws(Fn fn) {
-    bool threw = false;
-    try {
-        fn();
-    } catch (const std::logic_error&) {
-        threw = true;
-    }
-    CHECK(threw);
-}
 
 void testGridDefaults() {
     const bt::SliceGrid grid;
@@ -115,23 +103,6 @@ void testTrackRead() {
     CHECK(grid.trackRead(0.8, 0, 0.2) > 0.2);
 }
 
-void testGridRejectsBrokenCalls() {
-    bt::SliceGrid grid;
-    throws([&] { grid.setBpm(0.0); });
-    throws([&] { grid.setBpm(-3.0); });
-    throws([&] { grid.setLoop(0); });
-    throws([&] { grid.setLoop(100); });
-    throws([&] { grid.setSlice(-9); });
-    throws([&] { grid.setSlice(99); });
-    throws([&] { grid.positionAt(-0.1); });
-    throws([&] { grid.positionAt(8.0); });
-    throws([&] { grid.trackRead(1.0, 8, 1.0); });
-    throws([&] { grid.trackSlices(0.0); });
-    CHECK(near(grid.bpm(), 120.0));
-    CHECK(grid.loopBeats() == 8);
-    CHECK(grid.sliceExp() == 0);
-}
-
 void testSequenceAppendAndCrop() {
     bt::Rng rng(7);
     bt::Sequence sequence;
@@ -164,6 +135,10 @@ void testSequenceAppendAndCrop() {
         CHECK(sequence.indexAt(i, 2) == prefix[i]);
     }
     CHECK(buffer[5] == 0);
+
+    sequence.clear();
+    CHECK(sequence.empty());
+    CHECK(sequence.savedCount() == 0);
 }
 
 void testIndexMapsOntoTheCurrentCount() {
@@ -192,27 +167,6 @@ void testSameSeedSameSequence() {
     }
 }
 
-void testSequenceRejectsBrokenCalls() {
-    bt::Sequence sequence;
-    bt::Rng rng(1);
-    throws([&] { sequence.generate(0, 2, rng); });
-    throws([&] { sequence.generate(8, 0, rng); });
-    throws([&] { sequence.indexAt(0, 1); });
-    throws([&] { sequence.append(4, rng); });
-    throws([&] { sequence.clear(); });
-
-    sequence.generate(4, 2, rng);
-    throws([&] { sequence.indexAt(4, 2); });
-    throws([&] { sequence.indexAt(0, 0); });
-    throws([&] { sequence.crop(4); });
-    throws([&] { sequence.append(4, rng); });
-    CHECK(sequence.size() == 4);
-
-    sequence.clear();
-    CHECK(sequence.empty());
-    CHECK(sequence.savedCount() == 0);
-}
-
 } // namespace
 
 int main() {
@@ -221,11 +175,9 @@ int main() {
     testSliceShrinksToTheLoop();
     testPlayheadIsNotStored();
     testTrackRead();
-    testGridRejectsBrokenCalls();
     testSequenceAppendAndCrop();
     testIndexMapsOntoTheCurrentCount();
     testSameSeedSameSequence();
-    testSequenceRejectsBrokenCalls();
 
     if (g_failed != 0) {
         std::printf("%d check(s) failed\n", g_failed);

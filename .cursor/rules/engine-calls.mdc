@@ -1,5 +1,5 @@
 ---
-description: Engine and domain calls throw on a broken contract instead of guarding it
+description: Engine and domain calls are not defended
 globs: core/**/*.{h,cpp}
 alwaysApply: false
 ---
@@ -8,16 +8,11 @@ alwaysApply: false
 
 Engine and domain methods are called by our own classes, by the hosts, and by tests. The tests run before a release. Do not defend those calls.
 
-Do not check for null, non-finite numbers, a zero count, a negative index, or an empty list in order to return, skip, or substitute a default. A broken call throws `std::logic_error`.
+Do not check for null, non-finite numbers, a zero count, a negative index, or an empty list. Do not throw. A broken call is allowed to crash.
 
-A real musical state is not a broken call. The silent remainder, a stopped transport, and a sequence that has not been generated yet are states the engine handles. An empty track list passed to `generate` is a broken call.
+A real musical state is not a broken call. The silent remainder, a stopped transport, and a sequence that has not been generated yet are states the engine handles.
 
 ```cpp
 // The caller already promised a positive tempo.
 double beatSec = 60.0 / bpm;
-
-// A broken call fails out loud.
-if (!(bpm > 0.0) || !std::isfinite(bpm)) {
-    throw std::logic_error("bpm");
-}
 ```

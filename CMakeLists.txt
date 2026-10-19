@@ -21,30 +21,32 @@ add_library(beatality_domain
 target_include_directories(beatality_domain PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/core/domain)
 beatality_core_flags(beatality_domain)
 
-# The grid and the sequence throw on a broken call, so this library keeps exceptions.
 add_library(beatality_slices
     core/domain/Sequence.cpp
     core/domain/SliceGrid.cpp
 )
 target_include_directories(beatality_slices PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/core/domain)
 target_link_libraries(beatality_slices PUBLIC beatality_domain)
-if(MSVC)
-    target_compile_options(beatality_slices PRIVATE /EHsc)
-else()
-    target_compile_options(beatality_slices PRIVATE -fexceptions)
-endif()
+beatality_core_flags(beatality_slices)
+
+add_library(beatality_engine_common
+    core/engine/common/Ramp.cpp
+)
+target_include_directories(beatality_engine_common PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/engine/common
+)
+beatality_core_flags(beatality_engine_common)
 
 add_library(beatality_engine
-    core/engine/Ramp.cpp
-    core/engine/SampleBank.cpp
-    core/engine/Voice.cpp
-    core/engine/Engine.cpp
+    core/engine/legacy/SampleBank.cpp
+    core/engine/legacy/Voice.cpp
+    core/engine/legacy/Engine.cpp
 )
 target_include_directories(beatality_engine PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/engine
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/engine/legacy
     ${CMAKE_CURRENT_SOURCE_DIR}/core/contract
 )
-target_link_libraries(beatality_engine PUBLIC beatality_domain)
+target_link_libraries(beatality_engine PUBLIC beatality_domain beatality_engine_common)
 beatality_core_flags(beatality_engine)
 
 add_executable(domain_tests tests/domain/session_tests.cpp)
@@ -53,16 +55,28 @@ beatality_core_flags(domain_tests)
 
 add_executable(slice_tests tests/domain/slice_tests.cpp)
 target_link_libraries(slice_tests PRIVATE beatality_slices)
-if(MSVC)
-    target_compile_options(slice_tests PRIVATE /EHsc)
-else()
-    target_compile_options(slice_tests PRIVATE -fexceptions)
-endif()
+beatality_core_flags(slice_tests)
+
+add_library(beatality_slice_engine
+    core/engine/main/Curve.cpp
+    core/engine/main/SampleBank.cpp
+    core/engine/main/SliceEngine.cpp
+)
+target_include_directories(beatality_slice_engine PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/engine/main
+)
+target_link_libraries(beatality_slice_engine PUBLIC beatality_slices beatality_engine_common)
+beatality_core_flags(beatality_slice_engine)
+
+add_executable(pair_tests tests/engine/pair_tests.cpp)
+target_link_libraries(pair_tests PRIVATE beatality_slice_engine)
+beatality_core_flags(pair_tests)
 
 if(EMSCRIPTEN)
     # Standalone module for the AudioWorklet: instantiated directly, no Emscripten JS glue.
+    # The web page plays the slice engine. The plugin below stays on the 0.0.1 engine.
     add_executable(beatality hosts/web/boundary/engine_api.cpp)
-    target_link_libraries(beatality PRIVATE beatality_engine)
+    target_link_libraries(beatality PRIVATE beatality_slice_engine)
     beatality_core_flags(beatality)
     set_target_properties(beatality PROPERTIES SUFFIX ".wasm")
     target_link_options(beatality PRIVATE
@@ -71,7 +85,7 @@ if(EMSCRIPTEN)
         -sSTANDALONE_WASM
         -sALLOW_MEMORY_GROWTH
         -sFILESYSTEM=0
-        -sEXPORTED_FUNCTIONS=_bt_alloc,_bt_free,_bt_create,_bt_destroy,_bt_append,_bt_command,_bt_render,_bt_snapshot,_bt_snapshot_count,_bt_snapshot_index,_bt_snapshot_playing,_bt_snapshot_position,_bt_snapshot_duration,_bt_snapshot_released_count,_bt_snapshot_released_id
+        -sEXPORTED_FUNCTIONS=_bt_alloc,_bt_free,_bt_create,_bt_destroy,_bt_append,_bt_command,_bt_remove,_bt_set_bpm,_bt_set_loop,_bt_set_slice,_bt_render,_bt_snapshot,_bt_snapshot_count,_bt_snapshot_playing,_bt_snapshot_slice_exp,_bt_snapshot_loop,_bt_snapshot_bpm,_bt_snapshot_released_count,_bt_snapshot_released_id
     )
 else()
     set(BEATALITY_JUCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/JUCE)

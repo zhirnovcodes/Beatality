@@ -1,8 +1,7 @@
 // Functions the browser calls on the compiled core. Plain C ABI, no Emscripten JS glue.
+// This is the web engine. The plugin keeps the 0.0.1 core.
 
-#include "Command.h"
-#include "Engine.h"
-#include "Snapshot.h"
+#include "SliceEngine.h"
 
 #include <cstdint>
 #include <cstdlib>
@@ -10,9 +9,14 @@
 
 namespace {
 
+// Play, Stop, and Randomize. The same numbers are in hosts/web/messages.ts.
+constexpr int kPlay = 0;
+constexpr int kStop = 1;
+constexpr int kRandomize = 2;
+
 struct Instance {
-    bt::Engine engine;
-    bt::Snapshot snapshot;
+    bt::SliceEngine engine;
+    bt::SliceSnapshot snapshot;
 
     Instance(double sampleRate, std::uint64_t seed) : engine(sampleRate, seed) {}
 };
@@ -50,20 +54,54 @@ BT_EXPORT int bt_append(Instance* instance, std::uint32_t id, const float* plana
     if (instance == nullptr || planar == nullptr || frames <= 0) {
         return 0;
     }
-    bt::Command command;
-    command.type = bt::Command::Type::Append;
-    command.buffer = {id, planar, planar + frames, frames};
-    return instance->engine.apply(command) ? 1 : 0;
+    if (instance->engine.count() >= bt::SliceEngine::kMaxTracks) {
+        return 0;
+    }
+    const bt::SampleBuffer buffer{id, planar, planar + frames, frames};
+    instance->engine.append(buffer);
+    return 1;
 }
 
-// `type` is a bt::Command::Type value other than Append.
+// `type` is Play, Stop, or Randomize.
 BT_EXPORT void bt_command(Instance* instance, int type) {
-    if (instance == nullptr || type < 0 || type > static_cast<int>(bt::Command::Type::RemoveFirst)) {
+    if (instance == nullptr) {
         return;
     }
-    bt::Command command;
-    command.type = static_cast<bt::Command::Type>(type);
-    instance->engine.apply(command);
+    if (type == kPlay) {
+        instance->engine.play();
+    } else if (type == kStop) {
+        instance->engine.stop();
+    } else if (type == kRandomize) {
+        instance->engine.randomize();
+    }
+}
+
+BT_EXPORT void bt_remove(Instance* instance, int index) {
+    if (instance == nullptr || index < 0 || index >= instance->engine.count()) {
+        return;
+    }
+    instance->engine.remove(index);
+}
+
+BT_EXPORT void bt_set_bpm(Instance* instance, double bpm) {
+    if (instance == nullptr || !(bpm > 0.0)) {
+        return;
+    }
+    instance->engine.setBpm(bpm);
+}
+
+BT_EXPORT void bt_set_loop(Instance* instance, int beats) {
+    if (instance == nullptr || beats < bt::SliceGrid::kMinLoop || beats > bt::SliceGrid::kMaxLoop) {
+        return;
+    }
+    instance->engine.setLoop(beats);
+}
+
+BT_EXPORT void bt_set_slice(Instance* instance, int exponent) {
+    if (instance == nullptr || exponent < bt::SliceGrid::kExpMin || exponent > bt::SliceGrid::kExpMax) {
+        return;
+    }
+    instance->engine.setSlice(exponent);
 }
 
 BT_EXPORT void bt_render(Instance* instance, float* left, float* right, int frames) {
@@ -84,20 +122,20 @@ BT_EXPORT int bt_snapshot_count(const Instance* instance) {
     return instance != nullptr ? instance->snapshot.count : 0;
 }
 
-BT_EXPORT int bt_snapshot_index(const Instance* instance) {
-    return instance != nullptr ? instance->snapshot.index : -1;
-}
-
 BT_EXPORT int bt_snapshot_playing(const Instance* instance) {
     return instance != nullptr && instance->snapshot.playing ? 1 : 0;
 }
 
-BT_EXPORT double bt_snapshot_position(const Instance* instance) {
-    return instance != nullptr ? instance->snapshot.position : 0.0;
+BT_EXPORT int bt_snapshot_slice_exp(const Instance* instance) {
+    return instance != nullptr ? instance->snapshot.sliceExp : 0;
 }
 
-BT_EXPORT double bt_snapshot_duration(const Instance* instance) {
-    return instance != nullptr ? instance->snapshot.duration : 0.0;
+BT_EXPORT int bt_snapshot_loop(const Instance* instance) {
+    return instance != nullptr ? instance->snapshot.loopBeats : 8;
+}
+
+BT_EXPORT double bt_snapshot_bpm(const Instance* instance) {
+    return instance != nullptr ? instance->snapshot.bpm : 120.0;
 }
 
 BT_EXPORT int bt_snapshot_released_count(const Instance* instance) {

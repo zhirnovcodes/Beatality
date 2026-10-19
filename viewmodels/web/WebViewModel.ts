@@ -1,26 +1,60 @@
 export interface TrackRow {
     name: string
-    chosen: boolean
 }
 
 export interface ViewActions {
     playOrStop: () => void
     append: (files: File[]) => void
-    remove: () => void
+    remove: (index: number) => void
     randomize: () => void
+    setBpm: (bpm: number) => void
+    setLoop: (beats: number) => void
+    setSlice: (exponent: number) => void
 }
 
 export interface ViewState {
     names: string[]
-    index: number
     playing: boolean
+    // Null keeps the slice the page already shows.
+    sliceExp: number | null
 }
 
-// What the widget shows, and the actions its controls send. No audio code.
+export interface SliceChoice {
+    exponent: number
+    label: string
+}
+
+const expMin = -6
+const expMax = 4
+
+function sliceBeats(exponent: number): number {
+    return 2 ** exponent
+}
+
+function sliceLabel(exponent: number): string {
+    if (exponent >= 0) {
+        return String(sliceBeats(exponent))
+    }
+    return `1/${sliceBeats(-exponent)}`
+}
+
+// The largest 2^n that is still no longer than the loop.
+function fitSlice(exponent: number, loopBeats: number): number {
+    let fitted = exponent
+    while (sliceBeats(fitted) > loopBeats) {
+        fitted -= 1
+    }
+    return fitted
+}
+
+// What the page shows, and the actions its controls send. No audio code.
 export class WebViewModel {
     tracks: TrackRow[] = []
     playing = false
     error = ''
+    bpm = 120
+    loopBeats = 8
+    sliceExp = 0
 
     private actions: ViewActions | null = null
     private listeners = new Set<() => void>()
@@ -44,6 +78,16 @@ export class WebViewModel {
         return this.playing ? 'Stop' : 'Play'
     }
 
+    get sliceChoices(): SliceChoice[] {
+        const choices: SliceChoice[] = []
+        for (let exponent = expMin; exponent <= expMax; exponent++) {
+            if (sliceBeats(exponent) <= this.loopBeats) {
+                choices.push({ exponent, label: sliceLabel(exponent) })
+            }
+        }
+        return choices
+    }
+
     playOrStop() {
         this.actions?.playOrStop()
     }
@@ -54,24 +98,63 @@ export class WebViewModel {
         }
     }
 
-    remove() {
-        this.actions?.remove()
+    remove(index: number) {
+        this.actions?.remove(index)
     }
 
     randomize() {
         this.actions?.randomize()
     }
 
+    setBpm(bpm: number) {
+        if (!(bpm > 0) || !Number.isFinite(bpm)) {
+            return
+        }
+        if (bpm === this.bpm) {
+            return
+        }
+        this.bpm = bpm
+        this.notify()
+        this.actions?.setBpm(bpm)
+    }
+
+    setLoop(beats: number) {
+        if (!Number.isInteger(beats) || beats < 1 || beats > 32) {
+            return
+        }
+        const sliceExp = fitSlice(this.sliceExp, beats)
+        if (beats === this.loopBeats && sliceExp === this.sliceExp) {
+            return
+        }
+        this.loopBeats = beats
+        this.sliceExp = sliceExp
+        this.notify()
+        this.actions?.setLoop(beats)
+    }
+
+    setSlice(exponent: number) {
+        if (!Number.isInteger(exponent) || exponent < expMin || exponent > expMax) {
+            return
+        }
+        if (sliceBeats(exponent) > this.loopBeats || exponent === this.sliceExp) {
+            return
+        }
+        this.sliceExp = exponent
+        this.notify()
+        this.actions?.setSlice(exponent)
+    }
+
     show(state: ViewState) {
-        const tracks = state.names.map((name, i) => ({ name, chosen: i === state.index }))
+        const tracks = state.names.map((name) => ({ name }))
+        const sliceExp = fitSlice(state.sliceExp ?? this.sliceExp, this.loopBeats)
         const sameTracks =
-            tracks.length === this.tracks.length &&
-            tracks.every((track, i) => track.name === this.tracks[i].name && track.chosen === this.tracks[i].chosen)
-        if (sameTracks && this.playing === state.playing) {
+            tracks.length === this.tracks.length && tracks.every((track, i) => track.name === this.tracks[i].name)
+        if (sameTracks && this.playing === state.playing && this.sliceExp === sliceExp) {
             return
         }
         this.tracks = tracks
         this.playing = state.playing
+        this.sliceExp = sliceExp
         this.error = ''
         this.notify()
     }

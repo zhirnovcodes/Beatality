@@ -1,11 +1,10 @@
 // Messages between the page and the AudioWorklet. The processor repeats the
-// command numbers so that it can be served as one script.
+// command numbers and the message shapes so that it can be served as one script.
 
 export const Command = {
     Play: 0,
     Stop: 1,
     Randomize: 2,
-    RemoveFirst: 3,
 } as const
 
 export interface InitMessage {
@@ -26,12 +25,40 @@ export interface CommandMessage {
     command: number
 }
 
+export interface RemoveMessage {
+    type: 'remove'
+    index: number
+}
+
+export interface BpmMessage {
+    type: 'bpm'
+    bpm: number
+}
+
+export interface LoopMessage {
+    type: 'loop'
+    beats: number
+}
+
+export interface SliceMessage {
+    type: 'slice'
+    exponent: number
+}
+
 export interface FreeMessage {
     type: 'free'
     id: number
 }
 
-export type HostMessage = InitMessage | AppendMessage | CommandMessage | FreeMessage
+export type HostMessage =
+    | InitMessage
+    | AppendMessage
+    | CommandMessage
+    | RemoveMessage
+    | BpmMessage
+    | LoopMessage
+    | SliceMessage
+    | FreeMessage
 
 export interface ReadyMessage {
     type: 'ready'
@@ -40,10 +67,10 @@ export interface ReadyMessage {
 export interface SnapshotMessage {
     type: 'snapshot'
     count: number
-    index: number
     playing: boolean
-    position: number
-    duration: number
+    sliceExp: number
+    loopBeats: number
+    bpm: number
     released: number[]
     peak: number
 }

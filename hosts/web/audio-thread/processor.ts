@@ -6,7 +6,6 @@ declare const sampleRate: number
 const Play = 0
 const Stop = 1
 const Randomize = 2
-const RemoveFirst = 3
 
 interface Core {
     memory: WebAssembly.Memory
@@ -16,13 +15,17 @@ interface Core {
     bt_create: (sampleRate: number, seed: number) => number
     bt_append: (engine: number, id: number, planar: number, frames: number) => number
     bt_command: (engine: number, type: number) => void
+    bt_remove: (engine: number, index: number) => void
+    bt_set_bpm: (engine: number, bpm: number) => void
+    bt_set_loop: (engine: number, beats: number) => void
+    bt_set_slice: (engine: number, exponent: number) => void
     bt_render: (engine: number, left: number, right: number, frames: number) => void
     bt_snapshot: (engine: number) => void
     bt_snapshot_count: (engine: number) => number
-    bt_snapshot_index: (engine: number) => number
     bt_snapshot_playing: (engine: number) => number
-    bt_snapshot_position: (engine: number) => number
-    bt_snapshot_duration: (engine: number) => number
+    bt_snapshot_slice_exp: (engine: number) => number
+    bt_snapshot_loop: (engine: number) => number
+    bt_snapshot_bpm: (engine: number) => number
     bt_snapshot_released_count: (engine: number) => number
     bt_snapshot_released_id: (engine: number, index: number) => number
 }
@@ -45,12 +48,40 @@ interface CommandMessage {
     command: number
 }
 
+interface RemoveMessage {
+    type: 'remove'
+    index: number
+}
+
+interface BpmMessage {
+    type: 'bpm'
+    bpm: number
+}
+
+interface LoopMessage {
+    type: 'loop'
+    beats: number
+}
+
+interface SliceMessage {
+    type: 'slice'
+    exponent: number
+}
+
 interface FreeMessage {
     type: 'free'
     id: number
 }
 
-type HostMessage = InitMessage | AppendMessage | CommandMessage | FreeMessage
+type HostMessage =
+    | InitMessage
+    | AppendMessage
+    | CommandMessage
+    | RemoveMessage
+    | BpmMessage
+    | LoopMessage
+    | SliceMessage
+    | FreeMessage
 
 interface WorkletPort {
     onmessage: ((event: { data: HostMessage }) => void) | null
@@ -175,10 +206,22 @@ class BeatalityProcessor extends AudioWorkletProcessor {
         if (message.type === 'append') {
             this.append(message)
         } else if (message.type === 'command') {
-            if (message.command < Play || message.command > RemoveFirst) {
+            if (message.command < Play || message.command > Randomize) {
                 return
             }
             this.core!.bt_command(this.engine, message.command)
+            this.postSnapshot(0)
+        } else if (message.type === 'remove') {
+            this.core!.bt_remove(this.engine, message.index)
+            this.postSnapshot(0)
+        } else if (message.type === 'bpm') {
+            this.core!.bt_set_bpm(this.engine, message.bpm)
+            this.postSnapshot(0)
+        } else if (message.type === 'loop') {
+            this.core!.bt_set_loop(this.engine, message.beats)
+            this.postSnapshot(0)
+        } else if (message.type === 'slice') {
+            this.core!.bt_set_slice(this.engine, message.exponent)
             this.postSnapshot(0)
         } else if (message.type === 'free') {
             this.freeId(message.id)
@@ -265,10 +308,10 @@ class BeatalityProcessor extends AudioWorkletProcessor {
         this.port.postMessage({
             type: 'snapshot',
             count: core.bt_snapshot_count(this.engine),
-            index: core.bt_snapshot_index(this.engine),
             playing: core.bt_snapshot_playing(this.engine) === 1,
-            position: core.bt_snapshot_position(this.engine),
-            duration: core.bt_snapshot_duration(this.engine),
+            sliceExp: core.bt_snapshot_slice_exp(this.engine),
+            loopBeats: core.bt_snapshot_loop(this.engine),
+            bpm: core.bt_snapshot_bpm(this.engine),
             released,
             peak,
         })

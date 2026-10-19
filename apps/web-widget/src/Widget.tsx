@@ -28,6 +28,23 @@ export function Widget({ model }: { model: WebViewModel }) {
         model.append(files)
     }
 
+    const onBpm = (event: Event) => {
+        const input = event.currentTarget as HTMLInputElement
+        model.setBpm(input.valueAsNumber)
+        input.value = String(model.bpm)
+    }
+
+    const onLoop = (event: Event) => {
+        const input = event.currentTarget as HTMLInputElement
+        model.setLoop(input.valueAsNumber)
+        input.value = String(model.loopBeats)
+    }
+
+    const onSlice = (event: Event) => {
+        const select = event.currentTarget as HTMLSelectElement
+        model.setSlice(Number(select.value))
+    }
+
     return (
         <main>
             <h1>Beatality</h1>
@@ -36,13 +53,15 @@ export function Widget({ model }: { model: WebViewModel }) {
             </button>
             <ul id="samples">
                 {model.tracks.map((track, index) => (
-                    <li key={index} class={track.chosen ? 'chosen' : undefined}>
-                        {track.chosen ? 'Chosen: ' : ''}
+                    <li key={index}>
                         {track.name}
+                        <button type="button" onClick={() => model.remove(index)}>
+                            Remove
+                        </button>
                     </li>
                 ))}
             </ul>
-            <label class="append">
+            <label>
                 Append
                 <input
                     type="file"
@@ -53,15 +72,36 @@ export function Widget({ model }: { model: WebViewModel }) {
                     onChange={onFiles}
                 />
             </label>
-            <div class="row">
-                <button id="remove" type="button" disabled={!model.hasTracks} onClick={() => model.remove()}>
-                    Remove
-                </button>
-                <button id="randomize" type="button" disabled={!model.hasTracks} onClick={() => model.randomize()}>
-                    Randomize
-                </button>
-            </div>
-            {model.error ? <p class="error">{model.error}</p> : null}
+            <button id="randomize" type="button" disabled={!model.hasTracks} onClick={() => model.randomize()}>
+                Randomize
+            </button>
+            <label>
+                BPM
+                <input id="bpm" type="number" step="any" defaultValue={model.bpm} onChange={onBpm} />
+            </label>
+            <label>
+                Loop
+                <input
+                    id="loop"
+                    type="number"
+                    min={1}
+                    max={32}
+                    step={1}
+                    defaultValue={model.loopBeats}
+                    onChange={onLoop}
+                />
+            </label>
+            <label>
+                Slice
+                <select id="slice" value={model.sliceExp} onChange={onSlice}>
+                    {model.sliceChoices.map((choice) => (
+                        <option key={choice.exponent} value={choice.exponent}>
+                            {choice.label}
+                        </option>
+                    ))}
+                </select>
+            </label>
+            {model.error ? <p>{model.error}</p> : null}
         </main>
     )
 }
