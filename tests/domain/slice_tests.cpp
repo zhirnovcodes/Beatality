@@ -154,6 +154,33 @@ void testIndexMapsOntoTheCurrentCount() {
     }
 }
 
+void testGenerateDrawsEveryTrack() {
+    constexpr int kTracks = 8;
+    constexpr int kSlots = bt::Sequence::kMaxSlots;
+    for (std::uint64_t seed = 1; seed <= 4; ++seed) {
+        bt::Rng rng(seed);
+        bt::Sequence sequence;
+        sequence.generate(kSlots, kTracks, rng);
+        int seen[kTracks] = {};
+        int highest = 0;
+        for (int i = 0; i < kSlots; ++i) {
+            const int index = sequence.indexAt(i, kTracks);
+            CHECK(index >= 0);
+            CHECK(index < kTracks);
+            if (index >= 0 && index < kTracks) {
+                ++seen[index];
+            }
+            if (index > highest) {
+                highest = index;
+            }
+        }
+        CHECK(highest > 2);
+        for (int track = 0; track < kTracks; ++track) {
+            CHECK(seen[track] > 0);
+        }
+    }
+}
+
 void testSameSeedSameSequence() {
     bt::Rng aRng(42);
     bt::Rng bRng(42);
@@ -177,6 +204,7 @@ int main() {
     testTrackRead();
     testSequenceAppendAndCrop();
     testIndexMapsOntoTheCurrentCount();
+    testGenerateDrawsEveryTrack();
     testSameSeedSameSequence();
 
     if (g_failed != 0) {

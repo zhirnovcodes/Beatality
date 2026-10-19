@@ -2,7 +2,7 @@
 
 namespace bt {
 
-// Fade length in output samples. About 4 ms, and at most half the slice.
+// Fade length in output samples. About 2 ms, and at most half the slice.
 // A slice under two frames does not fade.
 int fadeLength(double sampleRate, double sliceSec);
 

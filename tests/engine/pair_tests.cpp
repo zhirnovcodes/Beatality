@@ -40,7 +40,7 @@ void testCurveRisesThenFalls() {
 }
 
 void testFadeLength() {
-    CHECK(bt::fadeLength(48000.0, 1.0) == 192);
+    CHECK(bt::fadeLength(48000.0, 1.0) == 96);
     CHECK(bt::fadeLength(48000.0, 20.0 / 48000.0) == 10);
     CHECK(bt::fadeLength(48000.0, 2.0 / 48000.0) == 1);
     CHECK(bt::fadeLength(48000.0, 0.5 / 48000.0) == 0);
@@ -57,7 +57,7 @@ void testFileIsNotBlendedIntoItsHead() {
     float right[60];
     engine.render(left, right, 60);
     for (int i = 0; i < 6; ++i) {
-        const float gain = static_cast<float>(i) / 40.0f;
+        const float gain = static_cast<float>(i) / 20.0f;
         CHECK(near(left[i], file[i] * gain));
         CHECK(near(right[i], file[i] * gain));
     }
@@ -123,8 +123,8 @@ void testSliceCutIsLinear() {
     engine.render(left.data(), right.data(), kFrames);
 
     CHECK(near(left[4800], 0.8));
-    CHECK(near(left[4980], 0.5));
-    CHECK(near(right[4980], 0.5));
+    CHECK(near(left[4990], 0.5));
+    CHECK(near(right[4990], 0.5));
     CHECK(near(left[5100], 0.2));
 }
 
@@ -156,6 +156,42 @@ void testRandomizeFadesTheOldPlayCurve() {
     }
 }
 
+void testRandomizeReachesPastTheFirstThreeTracks() {
+    constexpr int kRate = 10000;
+    constexpr int kTracks = 8;
+    constexpr int kSlots = 32;
+    constexpr int kSlice = 5000;
+    std::vector<std::vector<float>> tracks(kTracks);
+    bt::SliceEngine engine(kRate, 7);
+    for (int track = 0; track < kTracks; ++track) {
+        tracks[track].assign(8000, 0.1f * static_cast<float>(track + 1));
+        engine.append(bufferOf(static_cast<std::uint32_t>(track + 1), tracks[track]));
+    }
+    engine.setLoop(kSlots);
+    engine.randomize();
+    engine.play();
+
+    std::vector<float> left(static_cast<std::size_t>(kSlice) * kSlots);
+    std::vector<float> right(left.size());
+    engine.render(left.data(), right.data(), static_cast<int>(left.size()));
+
+    bool aboveTwo = false;
+    for (int slot = 0; slot < kSlots; ++slot) {
+        const float sample = left[static_cast<std::size_t>(slot) * kSlice + kSlice / 2];
+        int match = -1;
+        for (int track = 0; track < kTracks; ++track) {
+            if (near(sample, 0.1 * (track + 1))) {
+                match = track;
+            }
+        }
+        CHECK(match >= 0);
+        if (match > 2) {
+            aboveTwo = true;
+        }
+    }
+    CHECK(aboveTwo);
+}
+
 void testStopFallsFromTheCurrentGain() {
     constexpr int kRate = 10000;
     std::vector<float> samples(8000, 1.0f);
@@ -163,9 +199,9 @@ void testStopFallsFromTheCurrentGain() {
     engine.append(bufferOf(1, samples));
     engine.play();
 
-    std::vector<float> open(16);
-    std::vector<float> openR(16);
-    engine.render(open.data(), openR.data(), 16);
+    std::vector<float> open(8);
+    std::vector<float> openR(8);
+    engine.render(open.data(), openR.data(), 8);
 
     engine.stop();
     std::vector<float> tail(120);
@@ -182,7 +218,7 @@ void testStopFallsFromTheCurrentGain() {
 
 void testPlayAndStopReturnToTheStart() {
     constexpr int kRate = 10000;
-    constexpr int kFade = 40;
+    constexpr int kFade = 20;
     constexpr int kRun = 1000;
     CHECK(bt::fadeLength(static_cast<double>(kRate), 0.5) == kFade);
 
@@ -234,6 +270,7 @@ int main() {
     testFileIsNotBlendedIntoItsHead();
     testLinearJoinIsTransparent();
     testSliceCutIsLinear();
+    testRandomizeReachesPastTheFirstThreeTracks();
     testRandomizeFadesTheOldPlayCurve();
     testStopFallsFromTheCurrentGain();
     testPlayAndStopReturnToTheStart();

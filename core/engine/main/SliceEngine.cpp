@@ -41,10 +41,13 @@ void SliceEngine::stop() {
 }
 
 void SliceEngine::randomize() {
-    const int slot = position_ / sliceFrames();
-    const SampleBuffer from = bufferForSlot(slot);
+    SampleBuffer from{};
+    const bool live = playing_ || play_.fadingOut();
+    if (live) {
+        from = bufferForSlot(position_ / sliceFrames());
+    }
     sequence_.generate(grid_.slotCount(), bank_.count(), rng_);
-    if (playing_ || play_.fadingOut()) {
+    if (live) {
         handoff(from);
     }
 }

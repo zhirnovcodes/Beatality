@@ -10,7 +10,7 @@ int fadeLength(double sampleRate, double sliceSec) {
         return 0;
     }
     const int half = sliceFrames / 2;
-    const long fade = std::lround(0.004 * sampleRate);
+    const long fade = std::lround(0.002 * sampleRate);
     const int frames = fade < 1 ? 1 : static_cast<int>(fade);
     return frames < half ? frames : half;
 }
