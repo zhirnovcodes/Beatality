@@ -13,6 +13,16 @@ export interface SamplePicture {
     playheadBeats: number
 }
 
+export interface SampleFollow {
+    samples: Float32Array
+    sampleRate: number
+    bpm: number
+    loopBeats: number
+    sliceBeats: number
+}
+
+const silent = new Float32Array(0)
+
 // Maps a sample onto the strip. The view receives pixels, not musical time.
 export class SampleBufferPresenter {
     private picture: SamplePicture | null = null
@@ -27,6 +37,8 @@ export class SampleBufferPresenter {
     private buildingLoop = 0
     private buildToken = 0
 
+    onEdit: ((start: number, length: number, loop: boolean) => void) | null = null
+
     constructor(private readonly view: SampleBufferView) {
         view.onKnobChange = (value) => {
             if (!this.picture) {
@@ -34,6 +46,7 @@ export class SampleBufferPresenter {
             }
             this.picture.start = value
             this.publish()
+            this.edited()
         }
         view.onLengthChange = (value) => {
             if (!this.picture) {
@@ -41,6 +54,7 @@ export class SampleBufferPresenter {
             }
             this.picture.length = value
             this.publish()
+            this.edited()
         }
         view.onLoopChange = (loop) => {
             if (!this.picture) {
@@ -48,6 +62,7 @@ export class SampleBufferPresenter {
             }
             this.picture.loop = loop
             this.publish()
+            this.edited()
         }
     }
 
@@ -56,12 +71,73 @@ export class SampleBufferPresenter {
         this.publish()
     }
 
+    // Tempo and audio from the page. Start, length, and the strip's Loop stay as the user left them.
+    follow(input: SampleFollow): void {
+        const sameAudio = this.picture?.samples === input.samples
+        if (!this.picture || !sameAudio) {
+            this.picture = {
+                samples: input.samples,
+                sampleRate: input.sampleRate,
+                bpm: input.bpm,
+                loopBeats: input.loopBeats,
+                sliceBeats: input.sliceBeats,
+                start: 0,
+                length: 1,
+                loop: false,
+                playheadBeats: -1,
+            }
+            this.publish()
+            return
+        }
+        if (
+            this.picture.bpm === input.bpm &&
+            this.picture.loopBeats === input.loopBeats &&
+            this.picture.sliceBeats === input.sliceBeats &&
+            this.picture.sampleRate === input.sampleRate
+        ) {
+            return
+        }
+        this.picture.bpm = input.bpm
+        this.picture.loopBeats = input.loopBeats
+        this.picture.sliceBeats = input.sliceBeats
+        this.picture.sampleRate = input.sampleRate
+        this.publish()
+    }
+
+    clear(): void {
+        this.picture = {
+            samples: silent,
+            sampleRate: 48000,
+            bpm: 120,
+            loopBeats: 8,
+            sliceBeats: 1,
+            start: 0,
+            length: 1,
+            loop: false,
+            playheadBeats: -1,
+        }
+        this.buildToken++
+        this.buildingSamples = null
+        this.source = silent
+        this.image?.close()
+        this.image = null
+        this.view.applyImage(null)
+        this.publish()
+    }
+
     setPlayhead(beats: number): void {
-        if (!this.picture) {
+        if (!this.picture || this.picture.playheadBeats === beats) {
             return
         }
         this.picture.playheadBeats = beats
         this.publish()
+    }
+
+    private edited(): void {
+        if (!this.picture) {
+            return
+        }
+        this.onEdit?.(this.picture.start, this.picture.length, this.picture.loop)
     }
 
     private publish(): void {
@@ -70,6 +146,18 @@ export class SampleBufferPresenter {
             return
         }
         const placed = this.place(picture)
+        if (picture.samples.length === 0) {
+            this.buildToken++
+            this.buildingSamples = null
+            this.source = picture.samples
+            if (this.image) {
+                this.image.close()
+                this.image = null
+                this.view.applyImage(null)
+            }
+            this.view.applyNumbers(this.numbers(picture, placed))
+            return
+        }
         if (this.needsImage(picture)) {
             const token = ++this.buildToken
             this.buildingSamples = picture.samples
@@ -149,7 +237,7 @@ export class SampleBufferPresenter {
         const contentWidth = sliceCount * gridWidth
 
         const slotCount = Math.floor(picture.loopBeats / picture.sliceBeats)
-        const slot = Math.floor(picture.playheadBeats / picture.sliceBeats)
+        const slot = picture.playheadBeats < 0 ? -1 : Math.floor(picture.playheadBeats / picture.sliceBeats)
         const inSlot = slot >= 0 && slot < slotCount
         return {
             imageWidth,

@@ -50,6 +50,14 @@ export interface AttackMessage {
     ms: number
 }
 
+export interface TrackMessage {
+    type: 'track'
+    index: number
+    start: number
+    length: number
+    loop: boolean
+}
+
 export interface FreeMessage {
     type: 'free'
     id: number
@@ -64,6 +72,7 @@ export type HostMessage =
     | LoopMessage
     | SliceMessage
     | AttackMessage
+    | TrackMessage
     | FreeMessage
 
 export interface ReadyMessage {
@@ -77,6 +86,8 @@ export interface SnapshotMessage {
     sliceExp: number
     loopBeats: number
     bpm: number
+    playSlot: number
+    playTrack: number
     released: number[]
     peak: number
 }

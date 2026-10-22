@@ -17,6 +17,8 @@ struct SliceSnapshot {
     int sliceExp = 0;
     int loopBeats = 8;
     double bpm = 120.0;
+    int playSlot = -1;
+    int playTrack = -1;
     std::uint32_t released[SampleBank::kCapacity]{};
     int releasedCount = 0;
 };
@@ -43,6 +45,7 @@ public:
     void setLoop(int beats);
     void setSlice(int exponent);
     void setAttack(int ms);
+    void setTrack(int index, double start, double length, bool loop);
 
     int count() const { return bank_.count(); }
 
@@ -62,7 +65,8 @@ private:
     int heard() const;
 
     const SampleBuffer& bufferForSlot(int slot) const;
-    int frameIn(const SampleBuffer& buffer, int slot, int position) const;
+    int frameIn(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position) const;
+    void remember(const SampleBuffer& buffer);
     void take(const SampleBuffer& buffer, int frame, float& left, float& right) const;
 
     int fadeFrames() const;
@@ -90,6 +94,7 @@ private:
     int outgoingAt_ = 0;
     int outgoingPosition_ = 0;
     SampleBuffer outgoingBuffer_{};
+    TrackPlay outgoingPlay_{};
     std::uint32_t pending_ = 0;
     bool pendingHeld_ = false;
 

@@ -20,6 +20,7 @@ interface Core {
     bt_set_loop: (engine: number, beats: number) => void
     bt_set_slice: (engine: number, exponent: number) => void
     bt_set_attack: (engine: number, ms: number) => void
+    bt_set_track: (engine: number, index: number, start: number, length: number, loop: number) => void
     bt_render: (engine: number, left: number, right: number, frames: number) => void
     bt_snapshot: (engine: number) => void
     bt_snapshot_count: (engine: number) => number
@@ -27,6 +28,8 @@ interface Core {
     bt_snapshot_slice_exp: (engine: number) => number
     bt_snapshot_loop: (engine: number) => number
     bt_snapshot_bpm: (engine: number) => number
+    bt_snapshot_play_slot: (engine: number) => number
+    bt_snapshot_play_track: (engine: number) => number
     bt_snapshot_released_count: (engine: number) => number
     bt_snapshot_released_id: (engine: number, index: number) => number
 }
@@ -74,6 +77,14 @@ interface AttackMessage {
     ms: number
 }
 
+interface TrackMessage {
+    type: 'track'
+    index: number
+    start: number
+    length: number
+    loop: boolean
+}
+
 interface FreeMessage {
     type: 'free'
     id: number
@@ -88,6 +99,7 @@ type HostMessage =
     | LoopMessage
     | SliceMessage
     | AttackMessage
+    | TrackMessage
     | FreeMessage
 
 interface WorkletPort {
@@ -233,6 +245,8 @@ class BeatalityProcessor extends AudioWorkletProcessor {
         } else if (message.type === 'attack') {
             this.core!.bt_set_attack(this.engine, message.ms)
             this.postSnapshot(0)
+        } else if (message.type === 'track') {
+            this.core!.bt_set_track(this.engine, message.index, message.start, message.length, message.loop ? 1 : 0)
         } else if (message.type === 'free') {
             this.freeId(message.id)
         }
@@ -322,6 +336,8 @@ class BeatalityProcessor extends AudioWorkletProcessor {
             sliceExp: core.bt_snapshot_slice_exp(this.engine),
             loopBeats: core.bt_snapshot_loop(this.engine),
             bpm: core.bt_snapshot_bpm(this.engine),
+            playSlot: core.bt_snapshot_play_slot(this.engine),
+            playTrack: core.bt_snapshot_play_track(this.engine),
             released,
             peak,
         })

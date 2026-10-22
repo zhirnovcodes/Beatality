@@ -111,6 +111,14 @@ BT_EXPORT void bt_set_attack(Instance* instance, int ms) {
     instance->engine.setAttack(ms);
 }
 
+// start and length are fractions of the file, 0..1. loop is 0 or 1.
+BT_EXPORT void bt_set_track(Instance* instance, int index, double start, double length, int loop) {
+    if (instance == nullptr) {
+        return;
+    }
+    instance->engine.setTrack(index, start, length, loop != 0);
+}
+
 BT_EXPORT void bt_render(Instance* instance, float* left, float* right, int frames) {
     if (instance == nullptr || left == nullptr || right == nullptr || frames <= 0) {
         return;
@@ -143,6 +151,14 @@ BT_EXPORT int bt_snapshot_loop(const Instance* instance) {
 
 BT_EXPORT double bt_snapshot_bpm(const Instance* instance) {
     return instance != nullptr ? instance->snapshot.bpm : 120.0;
+}
+
+BT_EXPORT int bt_snapshot_play_slot(const Instance* instance) {
+    return instance != nullptr ? instance->snapshot.playSlot : -1;
+}
+
+BT_EXPORT int bt_snapshot_play_track(const Instance* instance) {
+    return instance != nullptr ? instance->snapshot.playTrack : -1;
 }
 
 BT_EXPORT int bt_snapshot_released_count(const Instance* instance) {

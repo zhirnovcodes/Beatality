@@ -14,6 +14,8 @@ export interface EngineSnapshot {
     sliceExp: number | null
     loopBeats: number
     bpm: number
+    playSlot: number
+    playTrack: number
     names: string[]
     peak: number
 }
@@ -103,6 +105,11 @@ export class EngineClient {
         this.node?.port.postMessage({ type: 'attack', ms })
     }
 
+    async setTrack(index: number, start: number, length: number, loop: boolean): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'track', index, start, length, loop })
+    }
+
     // Decodes every file and appends the ones that decode. Returns how many were
     // added. Does not pick a sample. An empty list leaves the engine untouched.
     async append(files: readonly File[]): Promise<number> {
@@ -110,7 +117,7 @@ export class EngineClient {
             return 0
         }
         await this.start()
-        const decoded: { name: string; frames: number; planar: Float32Array }[] = []
+        const decoded: { name: string; frames: number; planar: Float32Array; wave: Float32Array; sampleRate: number }[] = []
         for (const file of files) {
             if (this.registry.count + decoded.length >= TrackRegistry.capacity) {
                 break
@@ -119,10 +126,17 @@ export class EngineClient {
             if (!audio) {
                 continue
             }
-            decoded.push({ name: file.name, frames: audio.length, planar: toPlanarStereo(audio) })
+            const planar = toPlanarStereo(audio)
+            decoded.push({
+                name: file.name,
+                frames: audio.length,
+                planar,
+                wave: louderChannel(planar, audio.length),
+                sampleRate: audio.sampleRate,
+            })
         }
         for (const item of decoded) {
-            const id = this.registry.add(item.name)
+            const id = this.registry.add(item.name, { samples: item.wave, sampleRate: item.sampleRate })
             if (id === null || !this.node) {
                 break
             }
@@ -186,6 +200,8 @@ export class EngineClient {
             sliceExp: message.sliceExp,
             loopBeats: message.loopBeats,
             bpm: message.bpm,
+            playSlot: message.playSlot,
+            playTrack: message.playTrack,
             names: this.registry.list(),
             peak: message.peak,
         }
@@ -206,6 +222,8 @@ export class EngineClient {
             sliceExp: null,
             loopBeats: this.latest?.loopBeats ?? 8,
             bpm: this.latest?.bpm ?? 120,
+            playSlot: this.latest?.playSlot ?? -1,
+            playTrack: this.latest?.playTrack ?? -1,
             names: this.registry.list(),
             peak: this.latest?.peak ?? 0,
         }
@@ -222,4 +240,15 @@ export class EngineClient {
         // surface as an unhandled rejection once startup has already settled.
         this.ready.catch(() => {})
     }
+}
+
+// One sample per frame: whichever channel is louder. The view draws this, not the planar copy sent to the engine.
+function louderChannel(planar: Float32Array, frames: number): Float32Array {
+    const mono = new Float32Array(frames)
+    for (let frame = 0; frame < frames; frame++) {
+        const left = planar[frame]
+        const right = planar[frames + frame]
+        mono[frame] = Math.abs(left) >= Math.abs(right) ? left : right
+    }
+    return mono
 }

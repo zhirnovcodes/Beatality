@@ -1,0 +1,11 @@
+C:/Work/Beatality/build-em/CMakeFiles/beatality_domain.dir
+C:/Work/Beatality/build-em/CMakeFiles/beatality_slices.dir
+C:/Work/Beatality/build-em/CMakeFiles/beatality_engine_common.dir
+C:/Work/Beatality/build-em/CMakeFiles/beatality_engine.dir
+C:/Work/Beatality/build-em/CMakeFiles/domain_tests.dir
+C:/Work/Beatality/build-em/CMakeFiles/slice_tests.dir
+C:/Work/Beatality/build-em/CMakeFiles/beatality_slice_engine.dir
+C:/Work/Beatality/build-em/CMakeFiles/pair_tests.dir
+C:/Work/Beatality/build-em/CMakeFiles/beatality.dir
+C:/Work/Beatality/build-em/CMakeFiles/edit_cache.dir
+C:/Work/Beatality/build-em/CMakeFiles/rebuild_cache.dir

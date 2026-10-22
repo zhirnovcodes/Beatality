@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'preact/hooks'
 import type { WebViewModel } from '../../../viewmodels/web/WebViewModel'
+import './sampleBufferView.css'
 
-export function Widget({ model }: { model: WebViewModel }) {
+export function Widget({ model, bank }: { model: WebViewModel; bank: HTMLElement }) {
     const [, setTick] = useState(0)
     useEffect(() => model.subscribe(() => setTick((tick) => tick + 1)), [model])
 
@@ -51,22 +52,19 @@ export function Widget({ model }: { model: WebViewModel }) {
         input.value = String(model.attackMs)
     }
 
+    const placeBank = (node: HTMLDivElement | null) => {
+        if (node && bank.parentElement !== node) {
+            node.replaceChildren(bank)
+        }
+    }
+
     return (
         <main>
             <h1>Beatality</h1>
+            <div ref={placeBank} />
             <button id="transport" type="button" disabled={!model.hasTracks} onClick={() => model.playOrStop()}>
                 {model.playLabel}
             </button>
-            <ul id="samples">
-                {model.tracks.map((track, index) => (
-                    <li key={index}>
-                        {track.name}
-                        <button type="button" onClick={() => model.remove(index)}>
-                            Remove
-                        </button>
-                    </li>
-                ))}
-            </ul>
             <label>
                 Append
                 <input

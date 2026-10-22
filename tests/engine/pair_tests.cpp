@@ -167,6 +167,7 @@ void testRandomizeReachesPastTheFirstThreeTracks() {
     for (int track = 0; track < kTracks; ++track) {
         tracks[track].assign(8000, 0.1f * static_cast<float>(track + 1));
         engine.append(bufferOf(static_cast<std::uint32_t>(track + 1), tracks[track]));
+        engine.setTrack(track, 0.0, 1.0, true);
     }
     engine.setLoop(kSlots);
     engine.randomize();
@@ -288,6 +289,60 @@ void testPlayAndStopReturnToTheStart() {
     CHECK(near(fromStart[mid], crossed));
 }
 
+void testTrackWindowIsWhatPlays() {
+    constexpr int kRate = 10000;
+    constexpr int kSlice = 5000;
+    std::vector<float> samples(kSlice * 3, 0.8f);
+    for (int i = 0; i < kSlice; ++i) {
+        samples[static_cast<std::size_t>(i)] = 0.2f;
+    }
+    for (int i = kSlice; i < kSlice * 2; ++i) {
+        samples[static_cast<std::size_t>(i)] = 0.5f;
+    }
+
+    auto probe = [&](double start, double length, bool loop, int at) {
+        bt::SliceEngine engine(kRate, 1);
+        engine.append(bufferOf(1, samples));
+        engine.setLoop(4);
+        engine.setTrack(0, start, length, loop);
+        engine.play();
+        std::vector<float> left(at + 1);
+        std::vector<float> right(at + 1);
+        engine.render(left.data(), right.data(), at + 1);
+        return left[static_cast<std::size_t>(at)];
+    };
+
+    CHECK(near(probe(0.0, 1.0, false, 200), 0.2));
+    CHECK(near(probe(0.0, 1.0, false, 5200), 0.5));
+    CHECK(near(probe(0.0, 1.0, false, 10200), 0.8));
+    CHECK(probe(0.0, 1.0, false, 15200) == 0.0f);
+
+    CHECK(near(probe(1.0 / 3.0, 1.0, false, 200), 0.5));
+    CHECK(near(probe(1.0 / 3.0, 1.0, false, 5200), 0.8));
+    CHECK(probe(1.0 / 3.0, 1.0, false, 10200) == 0.0f);
+
+    CHECK(near(probe(1.0 / 3.0, 0.0, false, 200), 0.5));
+    CHECK(probe(1.0 / 3.0, 0.0, false, 5200) == 0.0f);
+
+    CHECK(near(probe(1.0 / 3.0, 0.0, true, 200), 0.5));
+    CHECK(near(probe(1.0 / 3.0, 0.0, true, 5200), 0.5));
+    CHECK(near(probe(1.0 / 3.0, 0.0, true, 15200), 0.5));
+
+    bt::SliceEngine engine(kRate, 1);
+    engine.append(bufferOf(1, samples));
+    engine.setLoop(4);
+    engine.setTrack(0, 1.0 / 3.0, 0.0, true);
+    engine.play();
+    std::vector<float> lead(10200);
+    std::vector<float> leadR(10200);
+    engine.render(lead.data(), leadR.data(), 10200);
+    engine.randomize();
+    std::vector<float> after(200);
+    std::vector<float> afterR(200);
+    engine.render(after.data(), afterR.data(), 200);
+    CHECK(near(after[199], 0.5));
+}
+
 } // namespace
 
 int main() {
@@ -301,6 +356,7 @@ int main() {
     testRandomizeFadesTheOldPlayCurve();
     testStopFallsFromTheCurrentGain();
     testPlayAndStopReturnToTheStart();
+    testTrackWindowIsWhatPlays();
 
     if (g_failed != 0) {
         std::printf("%d check(s) failed\n", g_failed);

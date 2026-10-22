@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Work/Beatality/build-em/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
