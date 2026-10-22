@@ -19,6 +19,7 @@ interface Core {
     bt_set_bpm: (engine: number, bpm: number) => void
     bt_set_loop: (engine: number, beats: number) => void
     bt_set_slice: (engine: number, exponent: number) => void
+    bt_set_attack: (engine: number, ms: number) => void
     bt_render: (engine: number, left: number, right: number, frames: number) => void
     bt_snapshot: (engine: number) => void
     bt_snapshot_count: (engine: number) => number
@@ -68,6 +69,11 @@ interface SliceMessage {
     exponent: number
 }
 
+interface AttackMessage {
+    type: 'attack'
+    ms: number
+}
+
 interface FreeMessage {
     type: 'free'
     id: number
@@ -81,6 +87,7 @@ type HostMessage =
     | BpmMessage
     | LoopMessage
     | SliceMessage
+    | AttackMessage
     | FreeMessage
 
 interface WorkletPort {
@@ -222,6 +229,9 @@ class BeatalityProcessor extends AudioWorkletProcessor {
             this.postSnapshot(0)
         } else if (message.type === 'slice') {
             this.core!.bt_set_slice(this.engine, message.exponent)
+            this.postSnapshot(0)
+        } else if (message.type === 'attack') {
+            this.core!.bt_set_attack(this.engine, message.ms)
             this.postSnapshot(0)
         } else if (message.type === 'free') {
             this.freeId(message.id)

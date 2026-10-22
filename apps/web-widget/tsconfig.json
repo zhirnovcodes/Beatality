@@ -15,6 +15,7 @@
         "src",
         "../../hosts/web",
         "../../viewmodels/web",
-        "../../presenters/web"
+        "../../presenters/web",
+        "../../views/web"
     ]
 }

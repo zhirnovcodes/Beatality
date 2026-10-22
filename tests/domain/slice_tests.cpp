@@ -35,9 +35,11 @@ void testGridDefaults() {
 void testGridDivisions() {
     bt::SliceGrid fine;
     fine.setLoop(32);
+    fine.setSlice(-4);
+    CHECK(near(fine.sliceBeats(), 1.0 / 16.0));
+    CHECK(fine.slotCount() == 512);
     fine.setSlice(-6);
-    CHECK(near(fine.sliceBeats(), 1.0 / 64.0));
-    CHECK(fine.slotCount() == 2048);
+    CHECK(fine.sliceExp() == -4);
 
     bt::SliceGrid three;
     three.setLoop(3);

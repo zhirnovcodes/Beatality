@@ -104,6 +104,13 @@ BT_EXPORT void bt_set_slice(Instance* instance, int exponent) {
     instance->engine.setSlice(exponent);
 }
 
+BT_EXPORT void bt_set_attack(Instance* instance, int ms) {
+    if (instance == nullptr || ms < bt::SliceEngine::kAttackMinMs || ms > bt::SliceEngine::kAttackMaxMs) {
+        return;
+    }
+    instance->engine.setAttack(ms);
+}
+
 BT_EXPORT void bt_render(Instance* instance, float* left, float* right, int frames) {
     if (instance == nullptr || left == nullptr || right == nullptr || frames <= 0) {
         return;

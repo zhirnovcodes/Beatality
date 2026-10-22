@@ -60,4 +60,12 @@ function processorScript(): Plugin {
 export default defineConfig({
     plugins: [processorScript()],
     server: { fs: { allow: [repoRoot] } },
+    build: {
+        rollupOptions: {
+            input: {
+                main: fileURLToPath(new URL('./index.html', import.meta.url)),
+                sampleBuffer: fileURLToPath(new URL('./sample-buffer.html', import.meta.url)),
+            },
+        },
+    },
 })

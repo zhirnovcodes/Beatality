@@ -145,6 +145,11 @@ void SliceEngine::setSlice(int exponent) {
     }
 }
 
+void SliceEngine::setAttack(int ms) {
+    attackMs_ = ms;
+    listen();
+}
+
 void SliceEngine::render(float* left, float* right, int frames) {
     for (int i = 0; i < frames; ++i) {
         float sampleL = 0.0f;
@@ -355,7 +360,9 @@ void SliceEngine::take(const SampleBuffer& buffer, int frame, float& left, float
     right = buffer.right[frame];
 }
 
-int SliceEngine::fadeFrames() const { return fadeLength(sampleRate_, grid_.sliceSec()); }
+int SliceEngine::fadeFrames() const {
+    return fadeLength(sampleRate_, grid_.sliceSec(), attackMs_ * 0.001);
+}
 
 int SliceEngine::sliceFrames() const {
     return static_cast<int>(std::llround(grid_.sliceSec() * sampleRate_));

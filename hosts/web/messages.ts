@@ -45,6 +45,11 @@ export interface SliceMessage {
     exponent: number
 }
 
+export interface AttackMessage {
+    type: 'attack'
+    ms: number
+}
+
 export interface FreeMessage {
     type: 'free'
     id: number
@@ -58,6 +63,7 @@ export type HostMessage =
     | BpmMessage
     | LoopMessage
     | SliceMessage
+    | AttackMessage
     | FreeMessage
 
 export interface ReadyMessage {

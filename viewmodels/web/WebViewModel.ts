@@ -10,6 +10,7 @@ export interface ViewActions {
     setBpm: (bpm: number) => void
     setLoop: (beats: number) => void
     setSlice: (exponent: number) => void
+    setAttack: (ms: number) => void
 }
 
 export interface ViewState {
@@ -24,7 +25,7 @@ export interface SliceChoice {
     label: string
 }
 
-const expMin = -6
+const expMin = -4
 const expMax = 4
 
 function sliceBeats(exponent: number): number {
@@ -55,6 +56,7 @@ export class WebViewModel {
     bpm = 120
     loopBeats = 8
     sliceExp = 0
+    attackMs = 2
 
     private actions: ViewActions | null = null
     private listeners = new Set<() => void>()
@@ -142,6 +144,18 @@ export class WebViewModel {
         this.sliceExp = exponent
         this.notify()
         this.actions?.setSlice(exponent)
+    }
+
+    setAttack(ms: number) {
+        if (!Number.isInteger(ms) || ms < 2 || ms > 16) {
+            return
+        }
+        if (ms === this.attackMs) {
+            return
+        }
+        this.attackMs = ms
+        this.notify()
+        this.actions?.setAttack(ms)
     }
 
     show(state: ViewState) {

@@ -98,6 +98,11 @@ export class EngineClient {
         this.node?.port.postMessage({ type: 'slice', exponent })
     }
 
+    async setAttack(ms: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'attack', ms })
+    }
+
     // Decodes every file and appends the ones that decode. Returns how many were
     // added. Does not pick a sample. An empty list leaves the engine untouched.
     async append(files: readonly File[]): Promise<number> {

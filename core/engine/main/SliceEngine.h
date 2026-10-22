@@ -28,6 +28,8 @@ struct SliceSnapshot {
 class SliceEngine {
 public:
     static constexpr int kMaxTracks = SampleBank::kCapacity;
+    static constexpr int kAttackMinMs = 2;
+    static constexpr int kAttackMaxMs = 16;
 
     SliceEngine(double sampleRate, std::uint64_t seed);
 
@@ -40,6 +42,7 @@ public:
     void setBpm(double bpm);
     void setLoop(int beats);
     void setSlice(int exponent);
+    void setAttack(int ms);
 
     int count() const { return bank_.count(); }
 
@@ -68,6 +71,7 @@ private:
     double framesPerBeat() const;
 
     double sampleRate_;
+    int attackMs_ = kAttackMinMs;
     Rng rng_;
     SliceGrid grid_;
     Sequence sequence_;

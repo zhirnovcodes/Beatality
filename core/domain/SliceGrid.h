@@ -13,8 +13,8 @@ struct PlayheadPosition {
 // The playhead, the slot, and the track list are not kept here.
 class SliceGrid {
 public:
-    // Slice size is 2^exponent beats. -6 is 1/64, 0 is 1, 4 is 16.
-    static constexpr int kExpMin = -6;
+    // Slice size is 2^exponent beats. -4 is 1/16, 0 is 1, 4 is 16.
+    static constexpr int kExpMin = -4;
     static constexpr int kExpMax = 4;
     static constexpr int kMinLoop = 1;
     static constexpr int kMaxLoop = 32;

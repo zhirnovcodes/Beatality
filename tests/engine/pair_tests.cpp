@@ -40,10 +40,11 @@ void testCurveRisesThenFalls() {
 }
 
 void testFadeLength() {
-    CHECK(bt::fadeLength(48000.0, 1.0) == 96);
-    CHECK(bt::fadeLength(48000.0, 20.0 / 48000.0) == 10);
-    CHECK(bt::fadeLength(48000.0, 2.0 / 48000.0) == 1);
-    CHECK(bt::fadeLength(48000.0, 0.5 / 48000.0) == 0);
+    CHECK(bt::fadeLength(48000.0, 1.0, 0.002) == 96);
+    CHECK(bt::fadeLength(48000.0, 1.0, 0.016) == 768);
+    CHECK(bt::fadeLength(48000.0, 20.0 / 48000.0, 0.016) == 10);
+    CHECK(bt::fadeLength(48000.0, 2.0 / 48000.0, 0.002) == 1);
+    CHECK(bt::fadeLength(48000.0, 0.5 / 48000.0, 0.002) == 0);
 }
 
 void testFileIsNotBlendedIntoItsHead() {
@@ -192,6 +193,31 @@ void testRandomizeReachesPastTheFirstThreeTracks() {
     CHECK(aboveTwo);
 }
 
+void testAttackLengthensTheSliceFade() {
+    constexpr int kRate = 10000;
+    const std::uint64_t seed = seedForZeroThenOne();
+    CHECK(seed != 0);
+
+    std::vector<float> trackA(8000, 0.8f);
+    std::vector<float> trackB(8000, 0.2f);
+    bt::SliceEngine engine(kRate, seed);
+    engine.append(bufferOf(1, trackA));
+    engine.append(bufferOf(2, trackB));
+    engine.setLoop(2);
+    engine.setAttack(16);
+    engine.play();
+
+    constexpr int kFrames = 5200;
+    std::vector<float> left(kFrames);
+    std::vector<float> right(kFrames);
+    engine.render(left.data(), right.data(), kFrames);
+
+    CHECK(near(left[4800], 0.8));
+    CHECK(near(left[4920], 0.5));
+    CHECK(near(right[4920], 0.5));
+    CHECK(near(left[5100], 0.2));
+}
+
 void testStopFallsFromTheCurrentGain() {
     constexpr int kRate = 10000;
     std::vector<float> samples(8000, 1.0f);
@@ -220,7 +246,7 @@ void testPlayAndStopReturnToTheStart() {
     constexpr int kRate = 10000;
     constexpr int kFade = 20;
     constexpr int kRun = 1000;
-    CHECK(bt::fadeLength(static_cast<double>(kRate), 0.5) == kFade);
+    CHECK(bt::fadeLength(static_cast<double>(kRate), 0.5, 0.002) == kFade);
 
     std::vector<float> samples(8000);
     for (int i = 0; i < static_cast<int>(samples.size()); ++i) {
@@ -270,6 +296,7 @@ int main() {
     testFileIsNotBlendedIntoItsHead();
     testLinearJoinIsTransparent();
     testSliceCutIsLinear();
+    testAttackLengthensTheSliceFade();
     testRandomizeReachesPastTheFirstThreeTracks();
     testRandomizeFadesTheOldPlayCurve();
     testStopFallsFromTheCurrentGain();

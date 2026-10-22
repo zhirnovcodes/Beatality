@@ -34,7 +34,9 @@ void SliceGrid::setLoop(int beats) {
     sliceExp_ = fitExp(sliceExp_, loopBeats_);
 }
 
-void SliceGrid::setSlice(int exponent) { sliceExp_ = fitExp(exponent, loopBeats_); }
+void SliceGrid::setSlice(int exponent) {
+    sliceExp_ = fitExp(exponent < kExpMin ? kExpMin : exponent, loopBeats_);
+}
 
 double SliceGrid::bpm() const { return bpm_; }
 

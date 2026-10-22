@@ -45,6 +45,12 @@ export function Widget({ model }: { model: WebViewModel }) {
         model.setSlice(Number(select.value))
     }
 
+    const onAttack = (event: Event) => {
+        const input = event.currentTarget as HTMLInputElement
+        model.setAttack(input.valueAsNumber)
+        input.value = String(model.attackMs)
+    }
+
     return (
         <main>
             <h1>Beatality</h1>
@@ -100,6 +106,18 @@ export function Widget({ model }: { model: WebViewModel }) {
                         </option>
                     ))}
                 </select>
+            </label>
+            <label>
+                Attack
+                <input
+                    id="attack"
+                    type="number"
+                    min={2}
+                    max={16}
+                    step={1}
+                    defaultValue={model.attackMs}
+                    onChange={onAttack}
+                />
             </label>
             {model.error ? <p>{model.error}</p> : null}
         </main>

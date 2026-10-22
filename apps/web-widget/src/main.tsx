@@ -1,7 +1,9 @@
 import { render } from 'preact'
 import { EngineClient } from '../../../hosts/web/client/EngineClient'
+import { SampleBufferPresenter } from '../../../presenters/web/SampleBufferPresenter'
 import { WebPresenter } from '../../../presenters/web/WebPresenter'
 import { WebViewModel } from '../../../viewmodels/web/WebViewModel'
+import { SampleBufferView } from '../../../views/web/SampleBufferView'
 import { Widget } from './Widget'
 import './widget.css'
 import wasmUrl from '../../../build-wasm/beatality.wasm?url'
@@ -11,7 +13,8 @@ const client = new EngineClient({
     wasmUrl,
     processorUrl: '/beatality-processor.js',
 })
-new WebPresenter(model, client)
+const sampleBuffer = new SampleBufferPresenter(new SampleBufferView(document.createElement('div')))
+new WebPresenter(model, client, sampleBuffer)
 
 const app = document.querySelector('#app')
 if (!app) {

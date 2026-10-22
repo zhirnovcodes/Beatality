@@ -85,7 +85,7 @@ if(EMSCRIPTEN)
         -sSTANDALONE_WASM
         -sALLOW_MEMORY_GROWTH
         -sFILESYSTEM=0
-        -sEXPORTED_FUNCTIONS=_bt_alloc,_bt_free,_bt_create,_bt_destroy,_bt_append,_bt_command,_bt_remove,_bt_set_bpm,_bt_set_loop,_bt_set_slice,_bt_render,_bt_snapshot,_bt_snapshot_count,_bt_snapshot_playing,_bt_snapshot_slice_exp,_bt_snapshot_loop,_bt_snapshot_bpm,_bt_snapshot_released_count,_bt_snapshot_released_id
+        -sEXPORTED_FUNCTIONS=_bt_alloc,_bt_free,_bt_create,_bt_destroy,_bt_append,_bt_command,_bt_remove,_bt_set_bpm,_bt_set_loop,_bt_set_slice,_bt_set_attack,_bt_render,_bt_snapshot,_bt_snapshot_count,_bt_snapshot_playing,_bt_snapshot_slice_exp,_bt_snapshot_loop,_bt_snapshot_bpm,_bt_snapshot_released_count,_bt_snapshot_released_id
     )
 else()
     set(BEATALITY_JUCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/JUCE)

@@ -2,9 +2,9 @@
 
 namespace bt {
 
-// Fade length in output samples. About 2 ms, and at most half the slice.
-// A slice under two frames does not fade.
-int fadeLength(double sampleRate, double sliceSec);
+// Fade length in output samples. The attack is in seconds, and the fade is
+// at most half the slice. A slice under two frames does not fade.
+int fadeLength(double sampleRate, double sliceSec, double attackSec);
 
 // y(x) in 0..1. x is a sample position the caller already has.
 // The rise follows x. stop() keeps the gain at that x and the fall follows from there.

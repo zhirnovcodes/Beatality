@@ -1,5 +1,6 @@
 import type { EngineClient } from '../../hosts/web/client/EngineClient'
 import type { WebViewModel } from '../../viewmodels/web/WebViewModel'
+import type { SampleBufferPresenter } from './SampleBufferPresenter'
 
 function isAbort(error: unknown): boolean {
     return typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
@@ -10,6 +11,7 @@ export class WebPresenter {
     constructor(
         private readonly model: WebViewModel,
         private readonly client: EngineClient,
+        readonly sampleBuffer: SampleBufferPresenter,
     ) {
         model.bind({
             playOrStop: () => void this.perform(() => this.playOrStop()),
@@ -19,6 +21,7 @@ export class WebPresenter {
             setBpm: (bpm) => void this.perform(() => this.client.setBpm(bpm)),
             setLoop: (beats) => void this.perform(() => this.client.setLoop(beats)),
             setSlice: (exponent) => void this.perform(() => this.client.setSlice(exponent)),
+            setAttack: (ms) => void this.perform(() => this.client.setAttack(ms)),
         })
         client.onSnapshot = (snapshot) => {
             model.show({ names: snapshot.names, playing: snapshot.playing, sliceExp: snapshot.sliceExp })
