@@ -2,7 +2,8 @@
 
 #include "PluginEditor.h"
 
-#include "Engine.h"
+#include "BinaryData.h"
+#include "SliceEngine.h"
 
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_audio_formats/juce_audio_formats.h>
@@ -80,12 +81,45 @@ Stereo resampleStereo(const float* left, const float* right, int frames, double 
     return out;
 }
 
+AppendPayload* payloadFromReader(juce::AudioFormatReader& reader, double rate, std::uint32_t id) {
+    if (reader.lengthInSamples <= 0 || reader.lengthInSamples > 0x7fffffff) {
+        return nullptr;
+    }
+    const int frames = static_cast<int>(reader.lengthInSamples);
+    juce::AudioBuffer<float> decoded(std::max(1, static_cast<int>(reader.numChannels)), frames);
+    if (!reader.read(&decoded, 0, frames, 0, true, true)) {
+        return nullptr;
+    }
+    const float* left = decoded.getReadPointer(0);
+    const float* right = reader.numChannels > 1 ? decoded.getReadPointer(1) : left;
+    auto* payload = new AppendPayload;
+    payload->id = id;
+    payload->sourceRate = reader.sampleRate;
+    payload->sourceFrames = frames;
+    payload->sourceLeft = new float[static_cast<std::size_t>(frames)];
+    payload->sourceRight = new float[static_cast<std::size_t>(frames)];
+    std::copy(left, left + frames, payload->sourceLeft);
+    std::copy(right, right + frames, payload->sourceRight);
+    if (rate > 0.0) {
+        auto device = resampleStereo(payload->sourceLeft, payload->sourceRight, frames, payload->sourceRate, rate);
+        payload->deviceFrames = device.frames;
+        payload->deviceLeft = device.left.release();
+        payload->deviceRight = device.right.release();
+    }
+    return payload;
+}
+
 class CommandQueue {
 public:
     struct Slot {
-        enum class Kind { Play, Stop, Randomize, RemoveFirst, Append };
-        Kind kind = Kind::Play;
+        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, Track };
+        Kind kind = Kind::Randomize;
         AppendPayload* append = nullptr;
+        int index = 0;
+        int number = 0;
+        double first = 0;
+        double second = 0;
+        bool flag = false;
     };
 
     bool push(Slot slot) {
@@ -136,6 +170,9 @@ struct SourceTrack {
     int frames = 0;
     std::unique_ptr<float[]> left;
     std::unique_ptr<float[]> right;
+    double start = 0;
+    double length = 1;
+    bool loop = false;
 };
 
 struct DeviceAudio {
@@ -153,25 +190,28 @@ struct Processor::Impl {
     }
 
     void createEngine() {
-        engine = std::make_unique<bt::Engine>(rate, seed);
+        engine = std::make_unique<bt::SliceEngine>(rate, seed);
         trackCount = 0;
-        chosen = -1;
+        playTrack = -1;
         playing = false;
     }
 
     void publish() {
-        view.store(packView(trackCount, chosen, playing), std::memory_order_release);
+        view.store(packView(trackCount, playTrack, playing), std::memory_order_release);
     }
 
     void remember() {
         if (engine == nullptr) {
             return;
         }
-        bt::Snapshot snapshot;
+        bt::SliceSnapshot snapshot;
         engine->fillSnapshot(snapshot);
         trackCount = snapshot.count;
-        chosen = snapshot.index;
+        playTrack = snapshot.playTrack;
         playing = snapshot.playing;
+        bpm = snapshot.bpm;
+        loopBeats = snapshot.loopBeats;
+        sliceExp = snapshot.sliceExp;
         for (int i = 0; i < snapshot.releasedCount; ++i) {
             const std::uint32_t id = snapshot.released[i];
             std::erase_if(devices, [id](const DeviceAudio& device) { return device.id == id; });
@@ -179,14 +219,11 @@ struct Processor::Impl {
         publish();
     }
 
-    void apply(bt::Command::Type type) {
-        if (engine == nullptr) {
-            return;
-        }
-        bt::Command command;
-        command.type = type;
-        engine->apply(command);
-        remember();
+    void restoreGrid() {
+        engine->setBpm(bpm);
+        engine->setLoop(loopBeats);
+        engine->setSlice(sliceExp);
+        engine->setAttack(attackMs);
     }
 
     void applyAppend(AppendPayload* payload) {
@@ -208,7 +245,7 @@ struct Processor::Impl {
             payload->deviceRight = device.right.release();
         }
 
-        if (engine == nullptr || sources.size() >= static_cast<std::size_t>(bt::Session::kMaxTracks) ||
+        if (engine == nullptr || sources.size() >= static_cast<std::size_t>(bt::SliceEngine::kMaxTracks) ||
             payload->deviceLeft == nullptr || payload->deviceFrames <= 0) {
             freePayload(payload);
             return;
@@ -223,47 +260,120 @@ struct Processor::Impl {
         payload->deviceRight = nullptr;
         delete payload;
 
-        bt::Command command;
-        command.type = bt::Command::Type::Append;
-        command.buffer.id = device.id;
-        command.buffer.left = device.left.get();
-        command.buffer.right = device.right.get();
-        command.buffer.frames = device.frames;
-        if (!engine->apply(command)) {
-            return;
-        }
+        const bt::SampleBuffer buffer{device.id, device.left.get(), device.right.get(), device.frames};
+        engine->append(buffer);
         sources.push_back(std::move(source));
         devices.push_back(std::move(device));
         remember();
     }
 
-    void applyRemove() {
-        if (sources.empty()) {
+    void applyRemove(int index) {
+        if (index < 0 || index >= static_cast<int>(sources.size())) {
             return;
         }
-        sources.erase(sources.begin());
-        apply(bt::Command::Type::RemoveFirst);
+        sources.erase(sources.begin() + index);
+        if (engine != nullptr) {
+            engine->remove(index);
+            remember();
+        }
+    }
+
+    void applyClear() {
+        sources.clear();
+        if (engine == nullptr) {
+            return;
+        }
+        engine->clear();
+        remember();
+    }
+
+    void applyRandomize() {
+        if (captureRandomize) {
+            randomizeRequested = true;
+        }
+        if (engine == nullptr || engine->count() == 0) {
+            return;
+        }
+        engine->randomize();
+        remember();
+    }
+
+    void applyBpm(double value) {
+        if (engine == nullptr) {
+            bpm = value;
+            return;
+        }
+        engine->setBpm(value);
+        remember();
+    }
+
+    void applyLoop(int beats) {
+        if (engine == nullptr) {
+            loopBeats = beats;
+            return;
+        }
+        engine->setLoop(beats);
+        remember();
+    }
+
+    void applySlice(int exponent) {
+        if (engine == nullptr) {
+            sliceExp = exponent;
+            return;
+        }
+        engine->setSlice(exponent);
+        remember();
+    }
+
+    void applyAttack(int ms) {
+        attackMs = ms;
+        if (engine == nullptr) {
+            return;
+        }
+        engine->setAttack(ms);
+        remember();
+    }
+
+    void applyTrack(int index, double start, double length, bool loop) {
+        if (index >= 0 && index < static_cast<int>(sources.size())) {
+            sources[static_cast<std::size_t>(index)].start = start;
+            sources[static_cast<std::size_t>(index)].length = length;
+            sources[static_cast<std::size_t>(index)].loop = loop;
+        }
+        if (engine == nullptr) {
+            return;
+        }
+        engine->setTrack(index, start, length, loop);
     }
 
     void applySlot(CommandQueue::Slot slot) {
         switch (slot.kind) {
-        case CommandQueue::Slot::Kind::Play:
-            apply(bt::Command::Type::Play);
-            break;
-        case CommandQueue::Slot::Kind::Stop:
-            apply(bt::Command::Type::Stop);
-            break;
         case CommandQueue::Slot::Kind::Randomize:
-            if (captureRandomize) {
-                randomizeRequested = true;
-            }
-            apply(bt::Command::Type::Randomize);
+            applyRandomize();
             break;
-        case CommandQueue::Slot::Kind::RemoveFirst:
-            applyRemove();
+        case CommandQueue::Slot::Kind::Remove:
+            applyRemove(slot.index);
             break;
         case CommandQueue::Slot::Kind::Append:
             applyAppend(slot.append);
+            break;
+        case CommandQueue::Slot::Kind::Clear:
+            applyClear();
+            break;
+        case CommandQueue::Slot::Kind::Bpm:
+            applyBpm(slot.first);
+            break;
+        case CommandQueue::Slot::Kind::Loop:
+            applyLoop(slot.number);
+            break;
+        case CommandQueue::Slot::Kind::Slice:
+            applySlice(slot.number);
+            break;
+        case CommandQueue::Slot::Kind::Attack:
+            applyAttack(slot.number);
+            break;
+        case CommandQueue::Slot::Kind::Track:
+            applyTrack(slot.index, slot.first, slot.second, slot.flag);
             break;
         }
     }
@@ -272,39 +382,34 @@ struct Processor::Impl {
         queue.drain([this](CommandQueue::Slot slot) { applySlot(slot); });
     }
 
-    void playIfGateHeld() {
-        if (gateOpen && !playing && chosen >= 0 && trackCount > 0) {
-            apply(bt::Command::Type::Play);
-        }
-    }
-
-    void openGate() {
-        gateOpen = true;
-        if (trackCount <= 0) {
+    void startPlayhead() {
+        if (engine == nullptr || engine->count() == 0) {
             return;
         }
-        if (chosen < 0) {
-            apply(bt::Command::Type::Randomize);
-        }
-        apply(bt::Command::Type::Play);
+        engine->play();
+        remember();
     }
 
-    void closeGate() {
-        gateOpen = false;
-        apply(bt::Command::Type::Stop);
+    void endPlayhead() {
+        if (engine == nullptr) {
+            return;
+        }
+        engine->stop();
+        remember();
     }
 
     void handleMidi(const juce::MidiMessage& message) {
         if (message.isAllNotesOff() || message.isAllSoundOff()) {
+            const int held = heldNotes;
             heldNotes = 0;
-            if (gateOpen) {
-                closeGate();
+            if (held > 0) {
+                endPlayhead();
             }
             return;
         }
         if (message.isNoteOn()) {
             if (heldNotes == 0) {
-                openGate();
+                startPlayhead();
             }
             ++heldNotes;
             return;
@@ -312,7 +417,7 @@ struct Processor::Impl {
         if (message.isNoteOff() && heldNotes > 0) {
             --heldNotes;
             if (heldNotes == 0) {
-                closeGate();
+                endPlayhead();
             }
         }
     }
@@ -339,12 +444,14 @@ struct Processor::Impl {
         devices.clear();
         if (!(rate > 0.0)) {
             trackCount = 0;
-            chosen = -1;
+            playTrack = -1;
             playing = false;
             publish();
             return;
         }
         createEngine();
+        restoreGrid();
+        int index = 0;
         for (const SourceTrack& source : sources) {
             auto resampled = resampleStereo(source.left.get(), source.right.get(), source.frames, source.rate, rate);
             if (resampled.frames <= 0) {
@@ -355,24 +462,22 @@ struct Processor::Impl {
             device.frames = resampled.frames;
             device.left = std::move(resampled.left);
             device.right = std::move(resampled.right);
-            bt::Command command;
-            command.type = bt::Command::Type::Append;
-            command.buffer.id = device.id;
-            command.buffer.left = device.left.get();
-            command.buffer.right = device.right.get();
-            command.buffer.frames = device.frames;
-            if (!engine->apply(command)) {
-                continue;
-            }
+            const bt::SampleBuffer buffer{device.id, device.left.get(), device.right.get(), device.frames};
+            engine->append(buffer);
+            engine->setTrack(index, source.start, source.length, source.loop);
             devices.push_back(std::move(device));
+            ++index;
         }
         remember();
-        // A new engine has no chosen sample. A held note, or a randomize that
-        // arrived with this rebuild, picks one and a held note starts it.
-        if (trackCount > 0 && (pick || (gateOpen && chosen < 0))) {
-            apply(bt::Command::Type::Randomize);
+        // The new engine has an empty sequence. A randomize that arrived with
+        // this rebuild builds one. A note that is still held starts the playhead.
+        if (pick && trackCount > 0) {
+            engine->randomize();
         }
-        playIfGateHeld();
+        if (heldNotes > 0 && trackCount > 0) {
+            engine->play();
+        }
+        remember();
     }
 
     std::atomic<std::uint32_t>& view;
@@ -380,18 +485,21 @@ struct Processor::Impl {
     CommandQueue queue;
     std::vector<SourceTrack> sources;
     std::vector<DeviceAudio> devices;
-    std::unique_ptr<bt::Engine> engine;
+    std::unique_ptr<bt::SliceEngine> engine;
     double rate = 0;
     std::atomic<double> publishedRate{0.0};
     std::atomic<std::uint32_t> nextId{1};
     std::uint64_t seed = static_cast<std::uint64_t>(juce::Random::getSystemRandom().nextInt64());
     int trackCount = 0;
-    int chosen = -1;
+    int playTrack = -1;
     bool playing = false;
-    bool gateOpen = false;
     int heldNotes = 0;
     bool captureRandomize = false;
     bool randomizeRequested = false;
+    double bpm = 120;
+    int loopBeats = 8;
+    int sliceExp = 0;
+    int attackMs = bt::SliceEngine::kAttackMinMs;
 };
 
 Processor::Processor()
@@ -429,7 +537,6 @@ void Processor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&
     while (impl->queue.pop(slot)) {
         impl->applySlot(slot);
     }
-    impl->playIfGateHeld();
 
     int position = 0;
     for (const auto metadata : midi) {
@@ -472,31 +579,14 @@ void Processor::appendFiles(const juce::Array<juce::File>& files) {
             continue;
         }
         std::unique_ptr<juce::AudioFormatReader> reader(impl->formats.createReaderFor(file));
-        if (reader == nullptr || reader->lengthInSamples <= 0 || reader->lengthInSamples > 0x7fffffff) {
+        if (reader == nullptr) {
             skipped = true;
             continue;
         }
-        const int frames = static_cast<int>(reader->lengthInSamples);
-        juce::AudioBuffer<float> decoded(std::max(1, static_cast<int>(reader->numChannels)), frames);
-        if (!reader->read(&decoded, 0, frames, 0, true, true)) {
+        auto* payload = payloadFromReader(*reader, rate, impl->nextId.fetch_add(1, std::memory_order_relaxed));
+        if (payload == nullptr) {
             skipped = true;
             continue;
-        }
-        const float* left = decoded.getReadPointer(0);
-        const float* right = reader->numChannels > 1 ? decoded.getReadPointer(1) : left;
-        auto* payload = new AppendPayload;
-        payload->id = impl->nextId.fetch_add(1, std::memory_order_relaxed);
-        payload->sourceRate = reader->sampleRate;
-        payload->sourceFrames = frames;
-        payload->sourceLeft = new float[static_cast<std::size_t>(frames)];
-        payload->sourceRight = new float[static_cast<std::size_t>(frames)];
-        std::copy(left, left + frames, payload->sourceLeft);
-        std::copy(right, right + frames, payload->sourceRight);
-        if (rate > 0.0) {
-            auto device = resampleStereo(payload->sourceLeft, payload->sourceRight, frames, payload->sourceRate, rate);
-            payload->deviceFrames = device.frames;
-            payload->deviceLeft = device.left.release();
-            payload->deviceRight = device.right.release();
         }
         CommandQueue::Slot slot;
         slot.kind = CommandQueue::Slot::Kind::Append;
@@ -509,36 +599,28 @@ void Processor::appendFiles(const juce::Array<juce::File>& files) {
         ++added;
     }
     if (added > 0) {
-        CommandQueue::Slot randomize;
-        randomize.kind = CommandQueue::Slot::Kind::Randomize;
-        if (!impl->queue.push(randomize)) {
-            error = "Could not randomize after adding.";
-            return;
-        }
         error.clear();
     } else if (skipped) {
         error = "Could not read those files.";
     }
 }
 
-void Processor::removeFirstTrack() {
-    if (names.isEmpty()) {
+void Processor::removeTrack(int index) {
+    if (index < 0 || index >= names.size()) {
         return;
     }
     CommandQueue::Slot remove;
-    remove.kind = CommandQueue::Slot::Kind::RemoveFirst;
+    remove.kind = CommandQueue::Slot::Kind::Remove;
+    remove.index = index;
     if (!impl->queue.push(remove)) {
         return;
     }
-    names.remove(0);
+    names.remove(index);
     error.clear();
-    if (!names.isEmpty()) {
-        CommandQueue::Slot randomize;
-        randomize.kind = CommandQueue::Slot::Kind::Randomize;
-        if (!impl->queue.push(randomize)) {
-            error = "Could not randomize after removing.";
-        }
-    }
+}
+
+void Processor::removeFirstTrack() {
+    removeTrack(0);
 }
 
 void Processor::randomizeTracks() {
@@ -555,7 +637,7 @@ int Processor::numTracks() const {
 }
 
 bool Processor::canAppend() const {
-    return names.size() < bt::Session::kMaxTracks;
+    return names.size() < bt::SliceEngine::kMaxTracks;
 }
 
 juce::String Processor::trackName(int index) const {
@@ -565,8 +647,121 @@ juce::String Processor::trackName(int index) const {
     return names[index];
 }
 
-int Processor::chosenIndex() const {
+int Processor::playTrack() const {
     return unpackIndex(view.load(std::memory_order_acquire));
+}
+
+void Processor::setBpm(double bpm) {
+    if (!(bpm > 0.0) || !std::isfinite(bpm)) {
+        return;
+    }
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::Bpm;
+    slot.first = bpm;
+    impl->queue.push(slot);
+}
+
+void Processor::setLoop(int beats) {
+    if (beats < bt::SliceGrid::kMinLoop || beats > bt::SliceGrid::kMaxLoop) {
+        return;
+    }
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::Loop;
+    slot.number = beats;
+    impl->queue.push(slot);
+}
+
+void Processor::setSlice(int exponent) {
+    if (exponent < bt::SliceGrid::kExpMin || exponent > bt::SliceGrid::kExpMax) {
+        return;
+    }
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::Slice;
+    slot.number = exponent;
+    impl->queue.push(slot);
+}
+
+void Processor::setAttack(int ms) {
+    if (ms < bt::SliceEngine::kAttackMinMs || ms > bt::SliceEngine::kAttackMaxMs) {
+        return;
+    }
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::Attack;
+    slot.number = ms;
+    impl->queue.push(slot);
+}
+
+void Processor::setTrack(int index, double start, double length, bool loop) {
+    if (index < 0 || index >= names.size() || !std::isfinite(start) || !std::isfinite(length)) {
+        return;
+    }
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::Track;
+    slot.index = index;
+    slot.first = start;
+    slot.second = length;
+    slot.flag = loop;
+    impl->queue.push(slot);
+}
+
+bool Processor::loadBank() {
+    const double rate = impl->publishedRate.load(std::memory_order_relaxed);
+    struct Item {
+        AppendPayload* payload = nullptr;
+        juce::String name;
+    };
+    std::vector<Item> items;
+    for (int i = 0; i < BinaryData::namedResourceListSize && static_cast<int>(items.size()) < bt::SliceEngine::kMaxTracks; ++i) {
+        int bytes = 0;
+        const char* data = BinaryData::getNamedResource(BinaryData::namedResourceList[i], bytes);
+        const char* filename = BinaryData::originalFilenames[i];
+        if (data == nullptr || bytes <= 0 || filename == nullptr) {
+            continue;
+        }
+        auto stream = std::make_unique<juce::MemoryInputStream>(data, static_cast<std::size_t>(bytes), false);
+        std::unique_ptr<juce::AudioFormatReader> reader(impl->formats.createReaderFor(std::move(stream)));
+        if (reader == nullptr) {
+            continue;
+        }
+        auto* payload = payloadFromReader(*reader, rate, impl->nextId.fetch_add(1, std::memory_order_relaxed));
+        if (payload == nullptr) {
+            continue;
+        }
+        items.push_back(Item{payload, filename});
+    }
+    if (items.empty()) {
+        error = "Could not read the Demo bank.";
+        return false;
+    }
+
+    CommandQueue::Slot clear;
+    clear.kind = CommandQueue::Slot::Kind::Clear;
+    if (!impl->queue.push(clear)) {
+        for (const Item& item : items) {
+            freePayload(item.payload);
+        }
+        error = "Could not load the Demo bank.";
+        return false;
+    }
+
+    juce::StringArray loaded;
+    for (const Item& item : items) {
+        CommandQueue::Slot slot;
+        slot.kind = CommandQueue::Slot::Kind::Append;
+        slot.append = item.payload;
+        if (!impl->queue.push(slot)) {
+            freePayload(item.payload);
+            continue;
+        }
+        loaded.add(item.name);
+    }
+    names = loaded;
+    if (names.isEmpty()) {
+        error = "Could not load the Demo bank.";
+        return false;
+    }
+    error.clear();
+    return true;
 }
 
 juce::String Processor::errorText() const {

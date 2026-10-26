@@ -20,6 +20,14 @@ SampleBuffer SampleBank::remove(int index) {
     return removed;
 }
 
+void SampleBank::clear() {
+    for (int i = 0; i < count_; ++i) {
+        buffers_[i] = {};
+        plays_[i] = {};
+    }
+    count_ = 0;
+}
+
 void SampleBank::setPlay(int index, const TrackPlay& play) { plays_[index] = play; }
 
 const TrackPlay* SampleBank::findPlay(std::uint32_t id) const {

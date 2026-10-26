@@ -38,7 +38,9 @@ public:
 
     PlayheadPosition positionAt(double playheadBeats) const;
 
-    // max(1, round(duration / slice)). The caller supplies the buffer's duration.
+    // How many slices the duration holds. A remainder under 1% of a slice is
+    // dropped; anything longer counts as a slice. At least one. The caller
+    // supplies the buffer's duration.
     int trackSlices(double durationSec) const;
 
     // playhead lined up on that track. A short track wraps. Past the file is silence.

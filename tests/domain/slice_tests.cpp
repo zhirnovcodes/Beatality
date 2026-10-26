@@ -94,10 +94,12 @@ void testPlayheadIsNotStored() {
 
 void testTrackRead() {
     const bt::SliceGrid grid;
-    CHECK(grid.trackSlices(1.2) == 2);
+    CHECK(grid.trackSlices(1.2) == 3);
     CHECK(grid.trackSlices(1.3) == 3);
     CHECK(grid.trackSlices(0.1) == 1);
     CHECK(grid.trackSlices(0.75) == 2);
+    CHECK(grid.trackSlices(grid.sliceSec() * 2.005) == 2);
+    CHECK(grid.trackSlices(grid.sliceSec() * 2.02) == 3);
 
     // Slot 5, a quarter beat in. A 1 second track is two slices, so it wraps.
     CHECK(near(grid.trackRead(5.25, 5, 1.0), 0.625));

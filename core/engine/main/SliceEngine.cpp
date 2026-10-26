@@ -120,6 +120,56 @@ void SliceEngine::remove(int index) {
     handoff(from);
 }
 
+void SliceEngine::clear() {
+    SampleBuffer from{};
+    const bool live = (playing_ || play_.fadingOut()) && !sequence_.empty() && bank_.count() > 0;
+    if (live) {
+        const int slice = sliceFrames();
+        const int at = heard();
+        if (slice > 0 && at < grid_.slotCount() * slice) {
+            from = bufferForSlot(at / slice);
+            remember(from);
+        }
+    }
+
+    const bool keep = from.valid();
+    for (int i = 0; i < bank_.count(); ++i) {
+        const std::uint32_t id = bank_.at(i).id;
+        if (keep && id == from.id) {
+            continue;
+        }
+        released_[releasedCount_++] = id;
+    }
+    bank_.clear();
+    sequence_.clear();
+
+    if (keep) {
+        if (pendingHeld_ && pending_ != from.id) {
+            released_[releasedCount_++] = pending_;
+        }
+        pending_ = from.id;
+        pendingHeld_ = true;
+        if (!play_.fadingOut()) {
+            play_.stop(clock_ - playAt_);
+        }
+        outgoingPosition_ = heard();
+        outgoing_ = play_;
+        outgoingAt_ = playAt_;
+        outgoingBuffer_ = from;
+        playing_ = false;
+        position_ = 0;
+        return;
+    }
+
+    if (playing_) {
+        stop();
+    }
+    if (pendingHeld_ && !outgoing_.fadingOut()) {
+        released_[releasedCount_++] = pending_;
+        pendingHeld_ = false;
+    }
+}
+
 void SliceEngine::setBpm(double bpm) {
     const double beats = static_cast<double>(position_) / framesPerBeat();
     grid_.setBpm(bpm);
@@ -281,6 +331,12 @@ void SliceEngine::advance() {
         if (outgoing_.y(clock_ - outgoingAt_) == 0.0f) {
             outgoing_ = Curve();
             outgoing_.setLength(fadeFrames());
+            // The clock already moved, so the mix read the previous sample and
+            // will not see this zero itself.
+            if (pendingHeld_) {
+                released_[releasedCount_++] = pending_;
+                pendingHeld_ = false;
+            }
         }
     }
     if (stopping && play_.y(clock_ - playAt_) == 0.0f) {

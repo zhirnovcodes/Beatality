@@ -229,7 +229,7 @@ export class SampleBufferPresenter {
 
         const sliceSec = (picture.sliceBeats * 60) / picture.bpm
         const usableSec = durationSec * (1 - picture.start)
-        const maxSlices = Math.max(1, Math.round(usableSec / sliceSec))
+        const maxSlices = slicesIn(usableSec, sliceSec)
         // Length 0 keeps one slice. Length 1 uses every slice the track can hold.
         const length = Math.min(1, Math.max(0, picture.length))
         const sliceCount = Math.round(length * (maxSlices - 1)) + 1
@@ -249,6 +249,12 @@ export class SampleBufferPresenter {
             highlightWidth: inSlot ? gridWidth : 0,
         }
     }
+}
+
+// Matches SliceGrid::trackSlices. A remainder under 1% of a slice is dropped.
+function slicesIn(durationSec: number, sliceSec: number): number {
+    const count = Math.floor(durationSec / sliceSec + 0.99)
+    return count < 1 ? 1 : count
 }
 
 interface Placed {

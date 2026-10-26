@@ -27,7 +27,7 @@ export class SampleBufferView {
     private readonly highlight: HTMLElement
     private readonly grid: HTMLElement
     private readonly frame: HTMLElement
-    private readonly fade: HTMLElement
+    private readonly name: HTMLElement
     private readonly strip: HTMLElement
     private readonly knob: HTMLInputElement
     private readonly lengthSlider: HTMLInputElement
@@ -73,11 +73,10 @@ export class SampleBufferView {
         this.frame = document.createElement('div')
         this.frame.className = 'sample-buffer-frame'
 
-        this.fade = document.createElement('div')
-        this.fade.className = 'sample-buffer-fade'
-        this.fade.style.width = `${SampleBufferView.offsetWidth}px`
+        this.name = document.createElement('div')
+        this.name.className = 'sample-buffer-name'
 
-        this.strip.append(this.paper, this.canvas, this.highlight, this.grid, this.frame, this.fade)
+        this.strip.append(this.paper, this.canvas, this.highlight, this.grid, this.frame, this.name)
 
         const controls = document.createElement('div')
         controls.className = 'sample-buffer-controls'
@@ -123,6 +122,10 @@ export class SampleBufferView {
         controls.append(startLabel, lengthLabel, loopLabel)
         root.append(this.strip, controls)
         host.append(root)
+    }
+
+    setName(name: string): void {
+        this.name.textContent = name
     }
 
     applyNumbers(settings: SampleBufferNumbers): void {
@@ -239,20 +242,18 @@ export class SampleBufferView {
 
         ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
         ctx.save()
-        ctx.beginPath()
-        ctx.rect(0, 0, width, height)
-        ctx.clip()
-
         const origin = SampleBufferView.offsetWidth
         const frameRight = origin + settings.loopWidth
-        // File time 0 sits at imageStart. The loop origin is the frame's left edge.
-        const lead = origin - settings.imageStart
-        this.drawSource(ctx, image, settings.imageWidth, 0, Math.max(0, lead), settings.imageStart, height)
+        ctx.beginPath()
+        ctx.rect(origin, 0, settings.loopWidth, height)
+        ctx.clip()
 
-        const audioAfter = Math.max(0, settings.imageWidth - Math.max(0, lead))
+        // File time 0 sits at imageStart, left of the frame. That lead stays unpainted.
+        const lead = Math.max(0, origin - settings.imageStart)
+        const audioAfter = Math.max(0, settings.imageWidth - lead)
         const drawWidth = Math.min(Math.max(0, settings.contentWidth), audioAfter)
         const paintTile = (destX: number) => {
-            this.drawSource(ctx, image, settings.imageWidth, Math.max(0, lead), drawWidth, destX, height)
+            this.drawSource(ctx, image, settings.imageWidth, lead, drawWidth, destX, height)
         }
         if (settings.loop && settings.contentWidth > 0) {
             const tiles = Math.ceil(settings.loopWidth / settings.contentWidth) + 1

@@ -105,7 +105,9 @@ export class WebPresenter {
         title.append(label, remove)
         const host = document.createElement('div')
         element.append(title, host)
-        const presenter = new SampleBufferPresenter(new SampleBufferView(host))
+        const view = new SampleBufferView(host)
+        view.setName(name)
+        const presenter = new SampleBufferPresenter(view)
         presenter.onEdit = (start, length, loop) => {
             const index = this.indexOf(samples)
             if (index >= 0) {

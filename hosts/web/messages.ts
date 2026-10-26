@@ -30,6 +30,10 @@ export interface RemoveMessage {
     index: number
 }
 
+export interface ClearMessage {
+    type: 'clear'
+}
+
 export interface BpmMessage {
     type: 'bpm'
     bpm: number
@@ -68,6 +72,7 @@ export type HostMessage =
     | AppendMessage
     | CommandMessage
     | RemoveMessage
+    | ClearMessage
     | BpmMessage
     | LoopMessage
     | SliceMessage

@@ -117,34 +117,27 @@ export class EngineClient {
             return 0
         }
         await this.start()
-        const decoded: { name: string; frames: number; planar: Float32Array; wave: Float32Array; sampleRate: number }[] = []
-        for (const file of files) {
-            if (this.registry.count + decoded.length >= TrackRegistry.capacity) {
-                break
-            }
-            const audio = await this.decoder!.decode(file)
-            if (!audio) {
-                continue
-            }
-            const planar = toPlanarStereo(audio)
-            decoded.push({
-                name: file.name,
-                frames: audio.length,
-                planar,
-                wave: louderChannel(planar, audio.length),
-                sampleRate: audio.sampleRate,
-            })
+        const decoded = await this.decodeFiles(files, TrackRegistry.capacity - this.registry.count)
+        this.sendDecoded(decoded)
+        this.emitList()
+        return decoded.length
+    }
+
+    // Stops, and once the files have decoded, replaces the bank with them.
+    // A file that does not decode is skipped. If none decode, the bank stays.
+    // Returns how many were added. Playback stays stopped.
+    async replace(files: readonly File[]): Promise<number> {
+        await this.stop()
+        if (files.length === 0) {
+            return 0
         }
-        for (const item of decoded) {
-            const id = this.registry.add(item.name, { samples: item.wave, sampleRate: item.sampleRate })
-            if (id === null || !this.node) {
-                break
-            }
-            this.node.port.postMessage(
-                { type: 'append', id, frames: item.frames, planar: item.planar },
-                [item.planar.buffer],
-            )
+        const decoded = await this.decodeFiles(files, TrackRegistry.capacity)
+        if (decoded.length === 0) {
+            return 0
         }
+        this.registry.clear()
+        this.node?.port.postMessage({ type: 'clear' })
+        this.sendDecoded(decoded)
         this.emitList()
         return decoded.length
     }
@@ -213,6 +206,41 @@ export class EngineClient {
         this.node?.port.postMessage({ type: 'command', command })
     }
 
+    private async decodeFiles(files: readonly File[], room: number): Promise<DecodedTrack[]> {
+        const decoded: DecodedTrack[] = []
+        for (const file of files) {
+            if (decoded.length >= room) {
+                break
+            }
+            const audio = await this.decoder!.decode(file)
+            if (!audio) {
+                continue
+            }
+            const planar = toPlanarStereo(audio)
+            decoded.push({
+                name: file.name,
+                frames: audio.length,
+                planar,
+                wave: louderChannel(planar, audio.length),
+                sampleRate: audio.sampleRate,
+            })
+        }
+        return decoded
+    }
+
+    private sendDecoded(decoded: readonly DecodedTrack[]) {
+        for (const item of decoded) {
+            const id = this.registry.add(item.name, { samples: item.wave, sampleRate: item.sampleRate })
+            if (id === null || !this.node) {
+                break
+            }
+            this.node.port.postMessage(
+                { type: 'append', id, frames: item.frames, planar: item.planar },
+                [item.planar.buffer],
+            )
+        }
+    }
+
     // Names change on this thread, before the audio thread has answered.
     // Playing follows the list. The slice stays until a real snapshot reports it.
     private emitList() {
@@ -240,6 +268,14 @@ export class EngineClient {
         // surface as an unhandled rejection once startup has already settled.
         this.ready.catch(() => {})
     }
+}
+
+interface DecodedTrack {
+    name: string
+    frames: number
+    planar: Float32Array
+    wave: Float32Array
+    sampleRate: number
 }
 
 // One sample per frame: whichever channel is louder. The view draws this, not the planar copy sent to the engine.

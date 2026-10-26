@@ -19,7 +19,8 @@ struct SliceSnapshot {
     double bpm = 120.0;
     int playSlot = -1;
     int playTrack = -1;
-    std::uint32_t released[SampleBank::kCapacity]{};
+    // One extra slot: a fade can still be holding a buffer that has left the bank.
+    std::uint32_t released[SampleBank::kCapacity + 1]{};
     int releasedCount = 0;
 };
 
@@ -40,6 +41,7 @@ public:
     void randomize();
     void append(const SampleBuffer& buffer);
     void remove(int index);
+    void clear(); // bank empty; a live fade keeps its buffer until silence
 
     void setBpm(double bpm);
     void setLoop(int beats);
@@ -98,7 +100,7 @@ private:
     std::uint32_t pending_ = 0;
     bool pendingHeld_ = false;
 
-    std::uint32_t released_[kMaxTracks]{};
+    std::uint32_t released_[kMaxTracks + 1]{};
     int releasedCount_ = 0;
 };
 

@@ -29,25 +29,10 @@ target_include_directories(beatality_slices PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/c
 target_link_libraries(beatality_slices PUBLIC beatality_domain)
 beatality_core_flags(beatality_slices)
 
-add_library(beatality_engine_common
-    core/engine/common/Ramp.cpp
-)
-target_include_directories(beatality_engine_common PUBLIC
+add_library(beatality_engine_common INTERFACE)
+target_include_directories(beatality_engine_common INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/core/engine/common
 )
-beatality_core_flags(beatality_engine_common)
-
-add_library(beatality_engine
-    core/engine/legacy/SampleBank.cpp
-    core/engine/legacy/Voice.cpp
-    core/engine/legacy/Engine.cpp
-)
-target_include_directories(beatality_engine PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/engine/legacy
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/contract
-)
-target_link_libraries(beatality_engine PUBLIC beatality_domain beatality_engine_common)
-beatality_core_flags(beatality_engine)
 
 add_executable(domain_tests tests/domain/session_tests.cpp)
 target_link_libraries(domain_tests PRIVATE beatality_domain)
@@ -74,7 +59,7 @@ beatality_core_flags(pair_tests)
 
 if(EMSCRIPTEN)
     # Standalone module for the AudioWorklet: instantiated directly, no Emscripten JS glue.
-    # The web page plays the slice engine. The plugin below stays on the 0.0.1 engine.
+    # The web page and the plugin both play the slice engine.
     add_executable(beatality hosts/web/boundary/engine_api.cpp)
     target_link_libraries(beatality PRIVATE beatality_slice_engine)
     beatality_core_flags(beatality)
@@ -85,7 +70,7 @@ if(EMSCRIPTEN)
         -sSTANDALONE_WASM
         -sALLOW_MEMORY_GROWTH
         -sFILESYSTEM=0
-        -sEXPORTED_FUNCTIONS=_bt_alloc,_bt_free,_bt_create,_bt_destroy,_bt_append,_bt_command,_bt_remove,_bt_set_bpm,_bt_set_loop,_bt_set_slice,_bt_set_attack,_bt_set_track,_bt_render,_bt_snapshot,_bt_snapshot_count,_bt_snapshot_playing,_bt_snapshot_slice_exp,_bt_snapshot_loop,_bt_snapshot_bpm,_bt_snapshot_play_slot,_bt_snapshot_play_track,_bt_snapshot_released_count,_bt_snapshot_released_id
+        -sEXPORTED_FUNCTIONS=_bt_alloc,_bt_free,_bt_create,_bt_destroy,_bt_append,_bt_command,_bt_remove,_bt_clear,_bt_set_bpm,_bt_set_loop,_bt_set_slice,_bt_set_attack,_bt_set_track,_bt_render,_bt_snapshot,_bt_snapshot_count,_bt_snapshot_playing,_bt_snapshot_slice_exp,_bt_snapshot_loop,_bt_snapshot_bpm,_bt_snapshot_play_slot,_bt_snapshot_play_track,_bt_snapshot_released_count,_bt_snapshot_released_id
     )
 else()
     set(BEATALITY_JUCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/JUCE)
@@ -116,6 +101,12 @@ else()
                 hosts/plugin/PluginProcessor.cpp
                 hosts/plugin/PluginEditor.cpp
         )
+        juce_add_binary_data(BeatalityBank
+            SOURCES
+                apps/web-widget/public/packs/demo/178381__snapper4298__115bpm-boom-zap-breakbeat.wav
+                apps/web-widget/public/packs/demo/685110__snapper4298__115bpm_let-the-bass-kick-loop_808.wav
+                apps/web-widget/public/packs/demo/797799__snapper4298__break-beat-115-bpm.wav
+        )
         target_compile_definitions(Beatality
             PUBLIC
                 JUCE_WEB_BROWSER=0
@@ -125,7 +116,8 @@ else()
         )
         target_link_libraries(Beatality
             PRIVATE
-                beatality_engine
+                beatality_slice_engine
+                BeatalityBank
                 juce::juce_audio_utils
                 juce::juce_audio_formats
             PUBLIC

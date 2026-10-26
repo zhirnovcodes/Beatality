@@ -343,6 +343,78 @@ void testTrackWindowIsWhatPlays() {
     CHECK(near(after[199], 0.5));
 }
 
+void testClearWhileStoppedReleasesEveryTrack() {
+    std::vector<float> first(8, 0.2f);
+    std::vector<float> second(8, 0.4f);
+    bt::SliceEngine engine(10000, 1);
+    engine.append(bufferOf(1, first));
+    engine.append(bufferOf(2, second));
+    engine.clear();
+    CHECK(engine.count() == 0);
+
+    bt::SliceSnapshot snapshot;
+    engine.fillSnapshot(snapshot);
+    CHECK(snapshot.count == 0);
+    CHECK(!snapshot.playing);
+    CHECK(snapshot.releasedCount == 2);
+    CHECK(snapshot.released[0] == 1);
+    CHECK(snapshot.released[1] == 2);
+
+    engine.fillSnapshot(snapshot);
+    CHECK(snapshot.releasedCount == 0);
+}
+
+void testClearWhilePlayingFadesTheHeardTrack() {
+    constexpr int kRate = 10000;
+    std::vector<float> trackA(8000, 0.5f);
+    std::vector<float> trackB(8000, 0.25f);
+    bt::SliceEngine engine(kRate, 1);
+    engine.append(bufferOf(11, trackA));
+    engine.append(bufferOf(22, trackB));
+    engine.play();
+
+    std::vector<float> open(8);
+    std::vector<float> openR(8);
+    engine.render(open.data(), openR.data(), 8);
+
+    bt::SliceSnapshot before;
+    engine.fillSnapshot(before);
+    CHECK(before.playing);
+    CHECK(before.playTrack == 0 || before.playTrack == 1);
+    const std::uint32_t kept = before.playTrack == 0 ? 11 : 22;
+    const std::uint32_t dropped = before.playTrack == 0 ? 22 : 11;
+    const float level = before.playTrack == 0 ? 0.5f : 0.25f;
+
+    engine.stop();
+    engine.clear();
+    CHECK(engine.count() == 0);
+
+    bt::SliceSnapshot cleared;
+    engine.fillSnapshot(cleared);
+    CHECK(!cleared.playing);
+    CHECK(cleared.releasedCount == 1);
+    CHECK(cleared.released[0] == dropped);
+
+    std::vector<float> tail(40);
+    std::vector<float> tailR(40);
+    engine.render(tail.data(), tailR.data(), 40);
+    CHECK(near(tail[0], level * 0.4f));
+    CHECK(tail[39] == 0.0f);
+
+    bt::SliceSnapshot done;
+    engine.fillSnapshot(done);
+    CHECK(done.releasedCount == 1);
+    CHECK(done.released[0] == kept);
+
+    std::vector<float> again(8000, 0.8f);
+    engine.append(bufferOf(33, again));
+    engine.play();
+    std::vector<float> restarted(40);
+    std::vector<float> restartedR(40);
+    engine.render(restarted.data(), restartedR.data(), 40);
+    CHECK(near(restarted[30], 0.8f));
+}
+
 } // namespace
 
 int main() {
@@ -357,6 +429,8 @@ int main() {
     testStopFallsFromTheCurrentGain();
     testPlayAndStopReturnToTheStart();
     testTrackWindowIsWhatPlays();
+    testClearWhileStoppedReleasesEveryTrack();
+    testClearWhilePlayingFadesTheHeardTrack();
 
     if (g_failed != 0) {
         std::printf("%d check(s) failed\n", g_failed);

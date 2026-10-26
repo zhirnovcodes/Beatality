@@ -6,8 +6,7 @@
 .sample-buffer-paper,
 .sample-buffer-highlight,
 .sample-buffer-grid,
-.sample-buffer-frame,
-.sample-buffer-fade {
+.sample-buffer-frame {
     position: absolute;
     top: 0;
     height: 100%;
@@ -44,11 +43,26 @@
     pointer-events: none;
 }
 
-.sample-buffer-fade {
-    left: 0;
-    z-index: 5;
-    background: linear-gradient(to right, #fff, transparent);
+.sample-buffer-name {
+    display: none;
+    position: absolute;
+    z-index: 6;
+    top: 4px;
+    left: 24px;
+    max-width: calc(100% - 32px);
+    box-sizing: border-box;
+    padding: 2px 6px;
+    overflow: hidden;
+    border: 1px solid #000;
+    background: #fff;
+    font: 13px/1.2 system-ui, sans-serif;
+    white-space: nowrap;
+    text-overflow: ellipsis;
     pointer-events: none;
+}
+
+.sample-buffer:hover .sample-buffer-name:not(:empty) {
+    display: block;
 }
 
 .sample-buffer-controls {

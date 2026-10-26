@@ -1,5 +1,5 @@
 // Functions the browser calls on the compiled core. Plain C ABI, no Emscripten JS glue.
-// This is the web engine. The plugin keeps the 0.0.1 core.
+// This is the web engine. The plugin calls the same slice engine directly.
 
 #include "SliceEngine.h"
 
@@ -81,6 +81,13 @@ BT_EXPORT void bt_remove(Instance* instance, int index) {
         return;
     }
     instance->engine.remove(index);
+}
+
+BT_EXPORT void bt_clear(Instance* instance) {
+    if (instance == nullptr) {
+        return;
+    }
+    instance->engine.clear();
 }
 
 BT_EXPORT void bt_set_bpm(Instance* instance, double bpm) {

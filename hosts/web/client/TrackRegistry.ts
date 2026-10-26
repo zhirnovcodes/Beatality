@@ -37,4 +37,9 @@ export class TrackRegistry {
         this.names.splice(index, 1)
         this.waves.splice(index, 1)
     }
+
+    clear(): void {
+        this.names = []
+        this.waves = []
+    }
 }

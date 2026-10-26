@@ -70,11 +70,11 @@ PlayheadPosition SliceGrid::positionAt(double playheadBeats) const {
 }
 
 int SliceGrid::trackSlices(double durationSec) const {
-    const double n = std::round(durationSec / sliceSec());
-    if (n < 1.0) {
+    const double count = std::floor(durationSec / sliceSec() + 0.99);
+    if (count < 1.0) {
         return 1;
     }
-    return static_cast<int>(n);
+    return static_cast<int>(count);
 }
 
 double SliceGrid::trackRead(double playheadBeats, int slot, double durationSec) const {

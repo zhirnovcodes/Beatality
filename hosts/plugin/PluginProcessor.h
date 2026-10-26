@@ -36,15 +36,23 @@ public:
 
     bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
 
-    // Message thread.
+    // Message thread. These queue work. They do not move the playhead.
     void appendFiles(const juce::Array<juce::File>& files);
+    void removeTrack(int index);
     void removeFirstTrack();
     void randomizeTracks();
+    void setBpm(double bpm);
+    void setLoop(int beats);
+    void setSlice(int exponent);
+    void setAttack(int ms);
+    void setTrack(int index, double start, double length, bool loop);
+    // Replaces the track list with the stored Demo bank. Does not move the playhead.
+    bool loadBank();
 
     int numTracks() const;
     bool canAppend() const;
     juce::String trackName(int index) const;
-    int chosenIndex() const;
+    int playTrack() const;
     juce::String errorText() const;
 
 private:

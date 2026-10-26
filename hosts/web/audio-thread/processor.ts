@@ -16,6 +16,7 @@ interface Core {
     bt_append: (engine: number, id: number, planar: number, frames: number) => number
     bt_command: (engine: number, type: number) => void
     bt_remove: (engine: number, index: number) => void
+    bt_clear: (engine: number) => void
     bt_set_bpm: (engine: number, bpm: number) => void
     bt_set_loop: (engine: number, beats: number) => void
     bt_set_slice: (engine: number, exponent: number) => void
@@ -57,6 +58,10 @@ interface RemoveMessage {
     index: number
 }
 
+interface ClearMessage {
+    type: 'clear'
+}
+
 interface BpmMessage {
     type: 'bpm'
     bpm: number
@@ -95,6 +100,7 @@ type HostMessage =
     | AppendMessage
     | CommandMessage
     | RemoveMessage
+    | ClearMessage
     | BpmMessage
     | LoopMessage
     | SliceMessage
@@ -232,6 +238,9 @@ class BeatalityProcessor extends AudioWorkletProcessor {
             this.postSnapshot(0)
         } else if (message.type === 'remove') {
             this.core!.bt_remove(this.engine, message.index)
+            this.postSnapshot(0)
+        } else if (message.type === 'clear') {
+            this.core!.bt_clear(this.engine)
             this.postSnapshot(0)
         } else if (message.type === 'bpm') {
             this.core!.bt_set_bpm(this.engine, message.bpm)

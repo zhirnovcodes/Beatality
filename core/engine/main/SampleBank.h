@@ -20,6 +20,7 @@ public:
 
     void append(const SampleBuffer& buffer);
     SampleBuffer remove(int index);   // shifts the later slots down
+    void clear();
     void setPlay(int index, const TrackPlay& play);
 
     int count() const { return count_; }
