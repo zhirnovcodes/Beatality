@@ -3,6 +3,7 @@
 #include "PluginEditor.h"
 
 #include "BinaryData.h"
+#include "NoteGate.h"
 #include "SliceEngine.h"
 
 #include <juce_audio_basics/juce_audio_basics.h>
@@ -398,27 +399,27 @@ struct Processor::Impl {
         remember();
     }
 
+    void applyGate(bt::Gate signal) {
+        if (signal == bt::Gate::Start) {
+            startPlayhead();
+            return;
+        }
+        if (signal == bt::Gate::Stop) {
+            endPlayhead();
+        }
+    }
+
     void handleMidi(const juce::MidiMessage& message) {
         if (message.isAllNotesOff() || message.isAllSoundOff()) {
-            const int held = heldNotes;
-            heldNotes = 0;
-            if (held > 0) {
-                endPlayhead();
-            }
+            applyGate(gate.allOff());
             return;
         }
         if (message.isNoteOn()) {
-            if (heldNotes == 0) {
-                startPlayhead();
-            }
-            ++heldNotes;
+            applyGate(gate.noteOn());
             return;
         }
-        if (message.isNoteOff() && heldNotes > 0) {
-            --heldNotes;
-            if (heldNotes == 0) {
-                endPlayhead();
-            }
+        if (message.isNoteOff()) {
+            applyGate(gate.noteOff());
         }
     }
 
@@ -474,7 +475,7 @@ struct Processor::Impl {
         if (pick && trackCount > 0) {
             engine->randomize();
         }
-        if (heldNotes > 0 && trackCount > 0) {
+        if (gate.held() > 0 && trackCount > 0) {
             engine->play();
         }
         remember();
@@ -493,7 +494,7 @@ struct Processor::Impl {
     int trackCount = 0;
     int playTrack = -1;
     bool playing = false;
-    int heldNotes = 0;
+    bt::NoteGate gate;
     bool captureRandomize = false;
     bool randomizeRequested = false;
     double bpm = 120;

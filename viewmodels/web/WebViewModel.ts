@@ -3,7 +3,8 @@ export interface TrackRow {
 }
 
 export interface ViewActions {
-    playOrStop: () => void
+    midi: (status: number, note: number, velocity: number) => void
+    loadPack: () => Promise<void>
     append: (files: File[]) => void
     remove: (index: number) => void
     randomize: () => void
@@ -76,10 +77,6 @@ export class WebViewModel {
         return this.tracks.length > 0
     }
 
-    get playLabel(): string {
-        return this.playing ? 'Stop' : 'Play'
-    }
-
     get sliceChoices(): SliceChoice[] {
         const choices: SliceChoice[] = []
         for (let exponent = expMin; exponent <= expMax; exponent++) {
@@ -90,8 +87,12 @@ export class WebViewModel {
         return choices
     }
 
-    playOrStop() {
-        this.actions?.playOrStop()
+    midi(status: number, note: number, velocity: number) {
+        this.actions?.midi(status, note, velocity)
+    }
+
+    loadPack(): Promise<void> {
+        return this.actions?.loadPack() ?? Promise.resolve()
     }
 
     append(files: File[]) {

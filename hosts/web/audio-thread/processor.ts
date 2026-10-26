@@ -1,11 +1,7 @@
-// Audio thread. Command numbers match hosts/web/messages.ts.
+// Audio thread. MIDI status numbers match hosts/web/messages.ts.
 // Served as one script, so this file imports nothing.
 
 declare const sampleRate: number
-
-const Play = 0
-const Stop = 1
-const Randomize = 2
 
 interface Core {
     memory: WebAssembly.Memory
@@ -14,7 +10,8 @@ interface Core {
     bt_free: (ptr: number) => void
     bt_create: (sampleRate: number, seed: number) => number
     bt_append: (engine: number, id: number, planar: number, frames: number) => number
-    bt_command: (engine: number, type: number) => void
+    bt_midi: (engine: number, status: number, note: number, velocity: number) => void
+    bt_randomize: (engine: number) => void
     bt_remove: (engine: number, index: number) => void
     bt_clear: (engine: number) => void
     bt_set_bpm: (engine: number, bpm: number) => void
@@ -48,9 +45,23 @@ interface AppendMessage {
     planar: Float32Array
 }
 
-interface CommandMessage {
-    type: 'command'
-    command: number
+interface RandomizeMessage {
+    type: 'randomize'
+}
+
+interface MidiMessage {
+    type: 'midi'
+    frame: number
+    status: number
+    note: number
+    velocity: number
+}
+
+interface QueuedMidi {
+    frame: number
+    status: number
+    note: number
+    velocity: number
 }
 
 interface RemoveMessage {
@@ -98,7 +109,8 @@ interface FreeMessage {
 type HostMessage =
     | InitMessage
     | AppendMessage
-    | CommandMessage
+    | RandomizeMessage
+    | MidiMessage
     | RemoveMessage
     | ClearMessage
     | BpmMessage
@@ -137,6 +149,7 @@ class BeatalityProcessor extends AudioWorkletProcessor {
     private blocksLeft = 1
     private blocksPerSnapshot = 1
     private waiting: HostMessage[] = []
+    private midi: QueuedMidi[] = []
 
     constructor() {
         super()
@@ -160,7 +173,37 @@ class BeatalityProcessor extends AudioWorkletProcessor {
 
         this.ensureRenderBuffers(frames)
         const core = this.core
-        core.bt_render(this.engine, this.leftPtr, this.rightPtr, frames)
+        const midi = this.midi.length > 0 ? this.midi : null
+        if (midi) {
+            this.midi = []
+            if (midi.length > 1) {
+                midi.sort((a, b) => a.frame - b.frame)
+            }
+        }
+        let position = 0
+        if (midi) {
+            for (const event of midi) {
+                let at = event.frame
+                if (at < position) {
+                    at = position
+                } else if (at > frames) {
+                    at = frames
+                }
+                if (at > position) {
+                    core.bt_render(
+                        this.engine,
+                        this.leftPtr + position * 4,
+                        this.rightPtr + position * 4,
+                        at - position,
+                    )
+                }
+                position = at
+                core.bt_midi(this.engine, event.status, event.note, event.velocity)
+            }
+        }
+        if (position < frames) {
+            core.bt_render(this.engine, this.leftPtr + position * 4, this.rightPtr + position * 4, frames - position)
+        }
         const { left, right } = this.outputViews(frames)
         channels[0].set(left)
         if (channels.length > 1) {
@@ -180,8 +223,10 @@ class BeatalityProcessor extends AudioWorkletProcessor {
             peak = Math.max(peak, Math.abs(sampleL), Math.abs(sampleR))
         }
         if (--this.blocksLeft <= 0) {
-            this.postSnapshot(peak)
             this.blocksLeft = this.blocksPerSnapshot
+            this.postSnapshot(peak)
+        } else if (midi) {
+            this.postSnapshot(peak)
         }
         return true
     }
@@ -230,12 +275,16 @@ class BeatalityProcessor extends AudioWorkletProcessor {
     private handle(message: HostMessage) {
         if (message.type === 'append') {
             this.append(message)
-        } else if (message.type === 'command') {
-            if (message.command < Play || message.command > Randomize) {
-                return
-            }
-            this.core!.bt_command(this.engine, message.command)
+        } else if (message.type === 'randomize') {
+            this.core!.bt_randomize(this.engine)
             this.postSnapshot(0)
+        } else if (message.type === 'midi') {
+            this.midi.push({
+                frame: message.frame,
+                status: message.status,
+                note: message.note,
+                velocity: message.velocity,
+            })
         } else if (message.type === 'remove') {
             this.core!.bt_remove(this.engine, message.index)
             this.postSnapshot(0)

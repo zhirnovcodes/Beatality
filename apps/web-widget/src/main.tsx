@@ -1,5 +1,6 @@
 import { render } from 'preact'
 import { EngineClient } from '../../../hosts/web/client/EngineClient'
+import { MidiStatus } from '../../../hosts/web/messages'
 import { WebPresenter } from '../../../presenters/web/WebPresenter'
 import { WebViewModel } from '../../../viewmodels/web/WebViewModel'
 import { Widget } from './Widget'
@@ -19,7 +20,7 @@ const client = new EngineClient({
 })
 const bank = document.createElement('div')
 bank.className = 'sample-bank'
-new WebPresenter(model, client, bank)
+new WebPresenter(model, client, bank, loadDemo)
 
 const app = document.querySelector('#app')
 if (!app) {
@@ -27,30 +28,37 @@ if (!app) {
 }
 render(<Widget model={model} bank={bank} />, app)
 
-const loadPack = document.querySelector('#load-pack')
-if (!(loadPack instanceof HTMLButtonElement)) {
-    throw new Error('missing #load-pack')
+const previewNote = 36
+const previewVelocity = 1
+
+const preview = document.querySelector('#preview')
+if (!(preview instanceof HTMLButtonElement)) {
+    throw new Error('missing #preview')
 }
 
-loadPack.addEventListener('click', () => {
-    const unlocking = client.start()
-    void (async () => {
-        loadPack.disabled = true
-        try {
-            await client.stop()
-            const files = await Promise.all(demoPack.map(fetchPackFile))
-            await unlocking
-            const loaded = await client.replace(files)
-            if (loaded === 0) {
-                model.fail('could not load Demo')
-            }
-        } catch (error) {
-            model.fail(error instanceof Error ? error.message : String(error))
-        } finally {
-            loadPack.disabled = false
-        }
-    })()
+let previewHeld = false
+const showPreview = () => {
+    preview.textContent = previewHeld ? 'Stop' : 'Play'
+    preview.disabled = !previewHeld && !model.hasTracks
+}
+model.subscribe(showPreview)
+showPreview()
+
+preview.addEventListener('click', () => {
+    previewHeld = !previewHeld
+    showPreview()
+    void client.midi(previewHeld ? MidiStatus.On : MidiStatus.Off, previewNote, previewVelocity)
 })
+
+async function loadDemo(): Promise<void> {
+    const unlocking = client.start()
+    const files = await Promise.all(demoPack.map(fetchPackFile))
+    await unlocking
+    const loaded = await client.replace(files)
+    if (loaded === 0) {
+        model.fail('could not load Demo')
+    }
+}
 
 async function fetchPackFile(url: string): Promise<File> {
     const response = await fetch(url)

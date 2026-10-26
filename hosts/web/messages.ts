@@ -1,10 +1,11 @@
 // Messages between the page and the AudioWorklet. The processor repeats the
-// command numbers and the message shapes so that it can be served as one script.
+// status numbers and the message shapes so that it can be served as one script.
 
-export const Command = {
-    Play: 0,
-    Stop: 1,
-    Randomize: 2,
+// Note-off, note-on, and all-notes-off. The same numbers are in engine_api.cpp.
+export const MidiStatus = {
+    Off: 0,
+    On: 1,
+    AllOff: 2,
 } as const
 
 export interface InitMessage {
@@ -20,9 +21,16 @@ export interface AppendMessage {
     planar: Float32Array
 }
 
-export interface CommandMessage {
-    type: 'command'
-    command: number
+export interface RandomizeMessage {
+    type: 'randomize'
+}
+
+export interface MidiMessage {
+    type: 'midi'
+    frame: number
+    status: number
+    note: number
+    velocity: number
 }
 
 export interface RemoveMessage {
@@ -70,7 +78,8 @@ export interface FreeMessage {
 export type HostMessage =
     | InitMessage
     | AppendMessage
-    | CommandMessage
+    | RandomizeMessage
+    | MidiMessage
     | RemoveMessage
     | ClearMessage
     | BpmMessage

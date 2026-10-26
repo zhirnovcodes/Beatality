@@ -23,9 +23,11 @@ export class WebPresenter {
         private readonly model: WebViewModel,
         private readonly client: EngineClient,
         private readonly bank: HTMLElement,
+        loadPack: () => Promise<void>,
     ) {
         model.bind({
-            playOrStop: () => void this.perform(() => this.playOrStop()),
+            midi: (status, note, velocity) => void this.perform(() => this.client.midi(status, note, velocity)),
+            loadPack: () => this.perform(loadPack),
             append: (files) => void this.perform(() => this.append(files)),
             remove: (index) => void this.perform(() => this.remove(index)),
             randomize: () => void this.perform(() => this.randomize()),
@@ -140,17 +142,6 @@ export class WebPresenter {
             const heard = this.playSlot >= 0 && index === this.playTrack
             row.presenter.setPlayhead(heard ? this.playSlot * sliceBeats : -1)
         }
-    }
-
-    private async playOrStop() {
-        if (!this.model.hasTracks) {
-            return
-        }
-        if (this.model.playing) {
-            await this.client.stop()
-            return
-        }
-        await this.client.play()
     }
 
     private async append(files: File[]) {

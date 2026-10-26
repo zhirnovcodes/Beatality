@@ -1,4 +1,4 @@
-import { Command, type WorkletMessage } from '../messages'
+import type { WorkletMessage } from '../messages'
 
 function isAbort(error: unknown): boolean {
     return typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
@@ -60,19 +60,14 @@ export class EngineClient {
         return this.starting
     }
 
-    async play(): Promise<void> {
+    async midi(status: number, note: number, velocity: number): Promise<void> {
         await this.start()
-        this.send(Command.Play)
-    }
-
-    async stop(): Promise<void> {
-        await this.start()
-        this.send(Command.Stop)
+        this.node?.port.postMessage({ type: 'midi', frame: 0, status, note, velocity })
     }
 
     async randomize(): Promise<void> {
         await this.start()
-        this.send(Command.Randomize)
+        this.node?.port.postMessage({ type: 'randomize' })
     }
 
     async removeAt(index: number): Promise<void> {
@@ -123,14 +118,14 @@ export class EngineClient {
         return decoded.length
     }
 
-    // Stops, and once the files have decoded, replaces the bank with them.
+    // Once the files have decoded, replaces the bank with them.
     // A file that does not decode is skipped. If none decode, the bank stays.
-    // Returns how many were added. Playback stays stopped.
+    // Returns how many were added. clear() fades a live voice.
     async replace(files: readonly File[]): Promise<number> {
-        await this.stop()
         if (files.length === 0) {
             return 0
         }
+        await this.start()
         const decoded = await this.decodeFiles(files, TrackRegistry.capacity)
         if (decoded.length === 0) {
             return 0
@@ -200,10 +195,6 @@ export class EngineClient {
         }
         this.latest = snapshot
         this.onSnapshot?.(snapshot)
-    }
-
-    private send(command: number) {
-        this.node?.port.postMessage({ type: 'command', command })
     }
 
     private async decodeFiles(files: readonly File[], room: number): Promise<DecodedTrack[]> {

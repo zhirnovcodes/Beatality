@@ -61,6 +61,7 @@ if(EMSCRIPTEN)
     # Standalone module for the AudioWorklet: instantiated directly, no Emscripten JS glue.
     # The web page and the plugin both play the slice engine.
     add_executable(beatality hosts/web/boundary/engine_api.cpp)
+    target_include_directories(beatality PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hosts/common)
     target_link_libraries(beatality PRIVATE beatality_slice_engine)
     beatality_core_flags(beatality)
     set_target_properties(beatality PROPERTIES SUFFIX ".wasm")
@@ -70,7 +71,7 @@ if(EMSCRIPTEN)
         -sSTANDALONE_WASM
         -sALLOW_MEMORY_GROWTH
         -sFILESYSTEM=0
-        -sEXPORTED_FUNCTIONS=_bt_alloc,_bt_free,_bt_create,_bt_destroy,_bt_append,_bt_command,_bt_remove,_bt_clear,_bt_set_bpm,_bt_set_loop,_bt_set_slice,_bt_set_attack,_bt_set_track,_bt_render,_bt_snapshot,_bt_snapshot_count,_bt_snapshot_playing,_bt_snapshot_slice_exp,_bt_snapshot_loop,_bt_snapshot_bpm,_bt_snapshot_play_slot,_bt_snapshot_play_track,_bt_snapshot_released_count,_bt_snapshot_released_id
+        -sEXPORTED_FUNCTIONS=_bt_alloc,_bt_free,_bt_create,_bt_destroy,_bt_append,_bt_midi,_bt_randomize,_bt_remove,_bt_clear,_bt_set_bpm,_bt_set_loop,_bt_set_slice,_bt_set_attack,_bt_set_track,_bt_render,_bt_snapshot,_bt_snapshot_count,_bt_snapshot_playing,_bt_snapshot_slice_exp,_bt_snapshot_loop,_bt_snapshot_bpm,_bt_snapshot_play_slot,_bt_snapshot_play_track,_bt_snapshot_released_count,_bt_snapshot_released_id
     )
 else()
     set(BEATALITY_JUCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/JUCE)
@@ -101,6 +102,7 @@ else()
                 hosts/plugin/PluginProcessor.cpp
                 hosts/plugin/PluginEditor.cpp
         )
+        target_include_directories(Beatality PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hosts/common)
         juce_add_binary_data(BeatalityBank
             SOURCES
                 apps/web-widget/public/packs/demo/178381__snapper4298__115bpm-boom-zap-breakbeat.wav

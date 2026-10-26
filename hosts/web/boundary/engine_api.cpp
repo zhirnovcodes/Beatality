@@ -1,6 +1,7 @@
 // Functions the browser calls on the compiled core. Plain C ABI, no Emscripten JS glue.
 // This is the web engine. The plugin calls the same slice engine directly.
 
+#include "NoteGate.h"
 #include "SliceEngine.h"
 
 #include <cstdint>
@@ -9,17 +10,30 @@
 
 namespace {
 
-// Play, Stop, and Randomize. The same numbers are in hosts/web/messages.ts.
-constexpr int kPlay = 0;
-constexpr int kStop = 1;
-constexpr int kRandomize = 2;
+// Note-off, note-on, and all-notes-off. The same numbers are in hosts/web/messages.ts.
+constexpr int kNoteOff = 0;
+constexpr int kNoteOn = 1;
+constexpr int kAllOff = 2;
 
 struct Instance {
     bt::SliceEngine engine;
     bt::SliceSnapshot snapshot;
+    bt::NoteGate gate;
 
     Instance(double sampleRate, std::uint64_t seed) : engine(sampleRate, seed) {}
 };
+
+void applyGate(Instance& instance, bt::Gate signal) {
+    if (signal == bt::Gate::Start) {
+        if (instance.engine.count() > 0) {
+            instance.engine.play();
+        }
+        return;
+    }
+    if (signal == bt::Gate::Stop) {
+        instance.engine.stop();
+    }
+}
 
 } // namespace
 
@@ -62,18 +76,25 @@ BT_EXPORT int bt_append(Instance* instance, std::uint32_t id, const float* plana
     return 1;
 }
 
-// `type` is Play, Stop, or Randomize.
-BT_EXPORT void bt_command(Instance* instance, int type) {
+// status is note-off, note-on, or all-off. Note and velocity travel with the event. The gate ignores them.
+BT_EXPORT void bt_midi(Instance* instance, int status, int, int) {
     if (instance == nullptr) {
         return;
     }
-    if (type == kPlay) {
-        instance->engine.play();
-    } else if (type == kStop) {
-        instance->engine.stop();
-    } else if (type == kRandomize) {
-        instance->engine.randomize();
+    if (status == kNoteOn) {
+        applyGate(*instance, instance->gate.noteOn());
+    } else if (status == kNoteOff) {
+        applyGate(*instance, instance->gate.noteOff());
+    } else if (status == kAllOff) {
+        applyGate(*instance, instance->gate.allOff());
     }
+}
+
+BT_EXPORT void bt_randomize(Instance* instance) {
+    if (instance == nullptr) {
+        return;
+    }
+    instance->engine.randomize();
 }
 
 BT_EXPORT void bt_remove(Instance* instance, int index) {

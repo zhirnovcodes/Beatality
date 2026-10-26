@@ -4,6 +4,7 @@ import './sampleBufferView.css'
 
 export function Widget({ model, bank }: { model: WebViewModel; bank: HTMLElement }) {
     const [, setTick] = useState(0)
+    const [loadingPack, setLoadingPack] = useState(false)
     useEffect(() => model.subscribe(() => setTick((tick) => tick + 1)), [model])
 
     // The input sits inside its label. A click on the input would bubble to the
@@ -52,6 +53,11 @@ export function Widget({ model, bank }: { model: WebViewModel; bank: HTMLElement
         input.value = String(model.attackMs)
     }
 
+    const onLoadPack = () => {
+        setLoadingPack(true)
+        void model.loadPack().finally(() => setLoadingPack(false))
+    }
+
     const placeBank = (node: HTMLDivElement | null) => {
         if (node && bank.parentElement !== node) {
             node.replaceChildren(bank)
@@ -62,8 +68,8 @@ export function Widget({ model, bank }: { model: WebViewModel; bank: HTMLElement
         <main>
             <h1>Beatality</h1>
             <div ref={placeBank} />
-            <button id="transport" type="button" disabled={!model.hasTracks} onClick={() => model.playOrStop()}>
-                {model.playLabel}
+            <button id="load-pack" type="button" disabled={loadingPack} onClick={onLoadPack}>
+                Load bank
             </button>
             <label>
                 Append

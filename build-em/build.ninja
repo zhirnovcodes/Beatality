@@ -131,96 +131,6 @@ build libbeatality_slices.a: CXX_STATIC_LIBRARY_LINKER__beatality_slices_Release
   TARGET_SUPPORT_DIR = CMakeFiles\beatality_slices.dir
 
 # =============================================================================
-# Object build statements for STATIC_LIBRARY target beatality_engine_common
-
-
-#############################################
-# Order-only phony target for beatality_engine_common
-
-build cmake_object_order_depends_target_beatality_engine_common: phony || .
-
-build CMakeFiles/beatality_engine_common.dir/core/engine/common/Ramp.cpp.o: CXX_COMPILER__beatality_engine_common_unscanned_Release C$:/Work/Beatality/core/engine/common/Ramp.cpp || cmake_object_order_depends_target_beatality_engine_common
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\beatality_engine_common.dir\core\engine\common\Ramp.cpp.o.d
-  FLAGS = -O3 -DNDEBUG -std=c++20 -fno-exceptions -fno-rtti
-  INCLUDES = -IC:/Work/Beatality/core/engine/common
-  OBJECT_DIR = CMakeFiles\beatality_engine_common.dir
-  OBJECT_FILE_DIR = CMakeFiles\beatality_engine_common.dir\core\engine\common
-  TARGET_SUPPORT_DIR = CMakeFiles\beatality_engine_common.dir
-
-
-# =============================================================================
-# Link build statements for STATIC_LIBRARY target beatality_engine_common
-
-
-#############################################
-# Link the static library libbeatality_engine_common.a
-
-build libbeatality_engine_common.a: CXX_STATIC_LIBRARY_LINKER__beatality_engine_common_Release CMakeFiles/beatality_engine_common.dir/core/engine/common/Ramp.cpp.o
-  CONFIG = Release
-  LANGUAGE_COMPILE_FLAGS = -O3 -DNDEBUG
-  OBJECT_DIR = CMakeFiles\beatality_engine_common.dir
-  POST_BUILD = cd .
-  PRE_LINK = cd .
-  TARGET_FILE = libbeatality_engine_common.a
-  TARGET_PDB = beatality_engine_common.a.dbg
-  TARGET_SUPPORT_DIR = CMakeFiles\beatality_engine_common.dir
-
-# =============================================================================
-# Object build statements for STATIC_LIBRARY target beatality_engine
-
-
-#############################################
-# Order-only phony target for beatality_engine
-
-build cmake_object_order_depends_target_beatality_engine: phony || cmake_object_order_depends_target_beatality_domain cmake_object_order_depends_target_beatality_engine_common
-
-build CMakeFiles/beatality_engine.dir/core/engine/legacy/SampleBank.cpp.o: CXX_COMPILER__beatality_engine_unscanned_Release C$:/Work/Beatality/core/engine/legacy/SampleBank.cpp || cmake_object_order_depends_target_beatality_engine
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\beatality_engine.dir\core\engine\legacy\SampleBank.cpp.o.d
-  FLAGS = -O3 -DNDEBUG -std=c++20 -fno-exceptions -fno-rtti
-  INCLUDES = -IC:/Work/Beatality/core/engine/legacy -IC:/Work/Beatality/core/contract -IC:/Work/Beatality/core/domain -IC:/Work/Beatality/core/engine/common
-  OBJECT_DIR = CMakeFiles\beatality_engine.dir
-  OBJECT_FILE_DIR = CMakeFiles\beatality_engine.dir\core\engine\legacy
-  TARGET_SUPPORT_DIR = CMakeFiles\beatality_engine.dir
-
-build CMakeFiles/beatality_engine.dir/core/engine/legacy/Voice.cpp.o: CXX_COMPILER__beatality_engine_unscanned_Release C$:/Work/Beatality/core/engine/legacy/Voice.cpp || cmake_object_order_depends_target_beatality_engine
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\beatality_engine.dir\core\engine\legacy\Voice.cpp.o.d
-  FLAGS = -O3 -DNDEBUG -std=c++20 -fno-exceptions -fno-rtti
-  INCLUDES = -IC:/Work/Beatality/core/engine/legacy -IC:/Work/Beatality/core/contract -IC:/Work/Beatality/core/domain -IC:/Work/Beatality/core/engine/common
-  OBJECT_DIR = CMakeFiles\beatality_engine.dir
-  OBJECT_FILE_DIR = CMakeFiles\beatality_engine.dir\core\engine\legacy
-  TARGET_SUPPORT_DIR = CMakeFiles\beatality_engine.dir
-
-build CMakeFiles/beatality_engine.dir/core/engine/legacy/Engine.cpp.o: CXX_COMPILER__beatality_engine_unscanned_Release C$:/Work/Beatality/core/engine/legacy/Engine.cpp || cmake_object_order_depends_target_beatality_engine
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\beatality_engine.dir\core\engine\legacy\Engine.cpp.o.d
-  FLAGS = -O3 -DNDEBUG -std=c++20 -fno-exceptions -fno-rtti
-  INCLUDES = -IC:/Work/Beatality/core/engine/legacy -IC:/Work/Beatality/core/contract -IC:/Work/Beatality/core/domain -IC:/Work/Beatality/core/engine/common
-  OBJECT_DIR = CMakeFiles\beatality_engine.dir
-  OBJECT_FILE_DIR = CMakeFiles\beatality_engine.dir\core\engine\legacy
-  TARGET_SUPPORT_DIR = CMakeFiles\beatality_engine.dir
-
-
-# =============================================================================
-# Link build statements for STATIC_LIBRARY target beatality_engine
-
-
-#############################################
-# Link the static library libbeatality_engine.a
-
-build libbeatality_engine.a: CXX_STATIC_LIBRARY_LINKER__beatality_engine_Release CMakeFiles/beatality_engine.dir/core/engine/legacy/SampleBank.cpp.o CMakeFiles/beatality_engine.dir/core/engine/legacy/Voice.cpp.o CMakeFiles/beatality_engine.dir/core/engine/legacy/Engine.cpp.o || libbeatality_domain.a libbeatality_engine_common.a
-  CONFIG = Release
-  LANGUAGE_COMPILE_FLAGS = -O3 -DNDEBUG
-  OBJECT_DIR = CMakeFiles\beatality_engine.dir
-  POST_BUILD = cd .
-  PRE_LINK = cd .
-  TARGET_FILE = libbeatality_engine.a
-  TARGET_PDB = beatality_engine.a.dbg
-  TARGET_SUPPORT_DIR = CMakeFiles\beatality_engine.dir
-
-# =============================================================================
 # Object build statements for EXECUTABLE target domain_tests
 
 
@@ -301,7 +211,7 @@ build slice_tests.js: CXX_EXECUTABLE_LINKER__slice_tests_Release CMakeFiles/slic
 #############################################
 # Order-only phony target for beatality_slice_engine
 
-build cmake_object_order_depends_target_beatality_slice_engine: phony || cmake_object_order_depends_target_beatality_domain cmake_object_order_depends_target_beatality_engine_common cmake_object_order_depends_target_beatality_slices
+build cmake_object_order_depends_target_beatality_slice_engine: phony || cmake_object_order_depends_target_beatality_domain cmake_object_order_depends_target_beatality_slices
 
 build CMakeFiles/beatality_slice_engine.dir/core/engine/main/Curve.cpp.o: CXX_COMPILER__beatality_slice_engine_unscanned_Release C$:/Work/Beatality/core/engine/main/Curve.cpp || cmake_object_order_depends_target_beatality_slice_engine
   CONFIG = Release
@@ -338,7 +248,7 @@ build CMakeFiles/beatality_slice_engine.dir/core/engine/main/SliceEngine.cpp.o: 
 #############################################
 # Link the static library libbeatality_slice_engine.a
 
-build libbeatality_slice_engine.a: CXX_STATIC_LIBRARY_LINKER__beatality_slice_engine_Release CMakeFiles/beatality_slice_engine.dir/core/engine/main/Curve.cpp.o CMakeFiles/beatality_slice_engine.dir/core/engine/main/SampleBank.cpp.o CMakeFiles/beatality_slice_engine.dir/core/engine/main/SliceEngine.cpp.o || libbeatality_domain.a libbeatality_engine_common.a libbeatality_slices.a
+build libbeatality_slice_engine.a: CXX_STATIC_LIBRARY_LINKER__beatality_slice_engine_Release CMakeFiles/beatality_slice_engine.dir/core/engine/main/Curve.cpp.o CMakeFiles/beatality_slice_engine.dir/core/engine/main/SampleBank.cpp.o CMakeFiles/beatality_slice_engine.dir/core/engine/main/SliceEngine.cpp.o || libbeatality_domain.a libbeatality_slices.a
   CONFIG = Release
   LANGUAGE_COMPILE_FLAGS = -O3 -DNDEBUG
   OBJECT_DIR = CMakeFiles\beatality_slice_engine.dir
@@ -355,7 +265,7 @@ build libbeatality_slice_engine.a: CXX_STATIC_LIBRARY_LINKER__beatality_slice_en
 #############################################
 # Order-only phony target for pair_tests
 
-build cmake_object_order_depends_target_pair_tests: phony || cmake_object_order_depends_target_beatality_domain cmake_object_order_depends_target_beatality_engine_common cmake_object_order_depends_target_beatality_slice_engine cmake_object_order_depends_target_beatality_slices
+build cmake_object_order_depends_target_pair_tests: phony || cmake_object_order_depends_target_beatality_domain cmake_object_order_depends_target_beatality_slice_engine cmake_object_order_depends_target_beatality_slices
 
 build CMakeFiles/pair_tests.dir/tests/engine/pair_tests.cpp.o: CXX_COMPILER__pair_tests_unscanned_Release C$:/Work/Beatality/tests/engine/pair_tests.cpp || cmake_object_order_depends_target_pair_tests
   CONFIG = Release
@@ -374,10 +284,10 @@ build CMakeFiles/pair_tests.dir/tests/engine/pair_tests.cpp.o: CXX_COMPILER__pai
 #############################################
 # Link the executable pair_tests.js
 
-build pair_tests.js: CXX_EXECUTABLE_LINKER__pair_tests_Release CMakeFiles/pair_tests.dir/tests/engine/pair_tests.cpp.o | libbeatality_slice_engine.a libbeatality_slices.a libbeatality_domain.a libbeatality_engine_common.a || libbeatality_domain.a libbeatality_engine_common.a libbeatality_slice_engine.a libbeatality_slices.a
+build pair_tests.js: CXX_EXECUTABLE_LINKER__pair_tests_Release CMakeFiles/pair_tests.dir/tests/engine/pair_tests.cpp.o | libbeatality_slice_engine.a libbeatality_slices.a libbeatality_domain.a || libbeatality_domain.a libbeatality_slice_engine.a libbeatality_slices.a
   CONFIG = Release
   FLAGS = -O3 -DNDEBUG
-  LINK_LIBRARIES = libbeatality_slice_engine.a  libbeatality_slices.a  libbeatality_domain.a  libbeatality_engine_common.a
+  LINK_LIBRARIES = libbeatality_slice_engine.a  libbeatality_slices.a  libbeatality_domain.a
   OBJECT_DIR = CMakeFiles\pair_tests.dir
   POST_BUILD = cd .
   PRE_LINK = cd .
@@ -392,13 +302,13 @@ build pair_tests.js: CXX_EXECUTABLE_LINKER__pair_tests_Release CMakeFiles/pair_t
 #############################################
 # Order-only phony target for beatality
 
-build cmake_object_order_depends_target_beatality: phony || cmake_object_order_depends_target_beatality_domain cmake_object_order_depends_target_beatality_engine_common cmake_object_order_depends_target_beatality_slice_engine cmake_object_order_depends_target_beatality_slices
+build cmake_object_order_depends_target_beatality: phony || cmake_object_order_depends_target_beatality_domain cmake_object_order_depends_target_beatality_slice_engine cmake_object_order_depends_target_beatality_slices
 
 build CMakeFiles/beatality.dir/hosts/web/boundary/engine_api.cpp.o: CXX_COMPILER__beatality_unscanned_Release C$:/Work/Beatality/hosts/web/boundary/engine_api.cpp || cmake_object_order_depends_target_beatality
   CONFIG = Release
   DEP_FILE = CMakeFiles\beatality.dir\hosts\web\boundary\engine_api.cpp.o.d
   FLAGS = -O3 -DNDEBUG -std=c++20 -fno-exceptions -fno-rtti
-  INCLUDES = -IC:/Work/Beatality/core/engine/main -IC:/Work/Beatality/core/domain -IC:/Work/Beatality/core/engine/common
+  INCLUDES = -IC:/Work/Beatality/hosts/common -IC:/Work/Beatality/core/engine/main -IC:/Work/Beatality/core/domain -IC:/Work/Beatality/core/engine/common
   OBJECT_DIR = CMakeFiles\beatality.dir
   OBJECT_FILE_DIR = CMakeFiles\beatality.dir\hosts\web\boundary
   TARGET_SUPPORT_DIR = CMakeFiles\beatality.dir
@@ -411,11 +321,11 @@ build CMakeFiles/beatality.dir/hosts/web/boundary/engine_api.cpp.o: CXX_COMPILER
 #############################################
 # Link the executable beatality.wasm
 
-build beatality.wasm: CXX_EXECUTABLE_LINKER__beatality_Release CMakeFiles/beatality.dir/hosts/web/boundary/engine_api.cpp.o | libbeatality_slice_engine.a libbeatality_slices.a libbeatality_domain.a libbeatality_engine_common.a || libbeatality_domain.a libbeatality_engine_common.a libbeatality_slice_engine.a libbeatality_slices.a
+build beatality.wasm: CXX_EXECUTABLE_LINKER__beatality_Release CMakeFiles/beatality.dir/hosts/web/boundary/engine_api.cpp.o | libbeatality_slice_engine.a libbeatality_slices.a libbeatality_domain.a || libbeatality_domain.a libbeatality_slice_engine.a libbeatality_slices.a
   CONFIG = Release
   FLAGS = -O3 -DNDEBUG
-  LINK_FLAGS = -O2 --no-entry -sSTANDALONE_WASM -sALLOW_MEMORY_GROWTH -sFILESYSTEM=0 -sEXPORTED_FUNCTIONS=_bt_alloc,_bt_free,_bt_create,_bt_destroy,_bt_append,_bt_command,_bt_remove,_bt_clear,_bt_set_bpm,_bt_set_loop,_bt_set_slice,_bt_set_attack,_bt_set_track,_bt_render,_bt_snapshot,_bt_snapshot_count,_bt_snapshot_playing,_bt_snapshot_slice_exp,_bt_snapshot_loop,_bt_snapshot_bpm,_bt_snapshot_play_slot,_bt_snapshot_play_track,_bt_snapshot_released_count,_bt_snapshot_released_id
-  LINK_LIBRARIES = libbeatality_slice_engine.a  libbeatality_slices.a  libbeatality_domain.a  libbeatality_engine_common.a
+  LINK_FLAGS = -O2 --no-entry -sSTANDALONE_WASM -sALLOW_MEMORY_GROWTH -sFILESYSTEM=0 -sEXPORTED_FUNCTIONS=_bt_alloc,_bt_free,_bt_create,_bt_destroy,_bt_append,_bt_midi,_bt_randomize,_bt_remove,_bt_clear,_bt_set_bpm,_bt_set_loop,_bt_set_slice,_bt_set_attack,_bt_set_track,_bt_render,_bt_snapshot,_bt_snapshot_count,_bt_snapshot_playing,_bt_snapshot_slice_exp,_bt_snapshot_loop,_bt_snapshot_bpm,_bt_snapshot_play_slot,_bt_snapshot_play_track,_bt_snapshot_released_count,_bt_snapshot_released_id
+  LINK_LIBRARIES = libbeatality_slice_engine.a  libbeatality_slices.a  libbeatality_domain.a
   OBJECT_DIR = CMakeFiles\beatality.dir
   POST_BUILD = cd .
   PRE_LINK = cd .
@@ -454,10 +364,6 @@ build beatality: phony beatality.wasm
 
 build beatality_domain: phony libbeatality_domain.a
 
-build beatality_engine: phony libbeatality_engine.a
-
-build beatality_engine_common: phony libbeatality_engine_common.a
-
 build beatality_slice_engine: phony libbeatality_slice_engine.a
 
 build beatality_slices: phony libbeatality_slices.a
@@ -476,7 +382,7 @@ build slice_tests: phony slice_tests.js
 #############################################
 # Folder: C:/Work/Beatality/build-em
 
-build all: phony libbeatality_domain.a libbeatality_slices.a libbeatality_engine_common.a libbeatality_engine.a domain_tests.js slice_tests.js libbeatality_slice_engine.a pair_tests.js beatality.wasm
+build all: phony libbeatality_domain.a libbeatality_slices.a domain_tests.js slice_tests.js libbeatality_slice_engine.a pair_tests.js beatality.wasm
 
 # =============================================================================
 # Built-in targets
