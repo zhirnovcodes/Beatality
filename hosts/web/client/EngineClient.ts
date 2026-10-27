@@ -218,11 +218,13 @@ export class EngineClient {
                 continue
             }
             const planar = toPlanarStereo(audio)
+            const channels = channelCopies(planar, audio.length)
             decoded.push({
                 name: file.name,
                 frames: audio.length,
                 planar,
-                wave: louderChannel(planar, audio.length),
+                left: channels.left,
+                right: channels.right,
                 sampleRate: audio.sampleRate,
             })
         }
@@ -231,7 +233,11 @@ export class EngineClient {
 
     private sendDecoded(decoded: readonly DecodedTrack[]) {
         for (const item of decoded) {
-            const id = this.registry.add(item.name, { samples: item.wave, sampleRate: item.sampleRate })
+            const id = this.registry.add(item.name, {
+                samples: item.left,
+                right: item.right,
+                sampleRate: item.sampleRate,
+            })
             if (id === null || !this.node) {
                 break
             }
@@ -276,17 +282,16 @@ interface DecodedTrack {
     name: string
     frames: number
     planar: Float32Array
-    wave: Float32Array
+    left: Float32Array
+    right: Float32Array
     sampleRate: number
 }
 
-// One sample per frame: whichever channel is louder. The view draws this, not the planar copy sent to the engine.
-function louderChannel(planar: Float32Array, frames: number): Float32Array {
-    const mono = new Float32Array(frames)
-    for (let frame = 0; frame < frames; frame++) {
-        const left = planar[frame]
-        const right = planar[frames + frame]
-        mono[frame] = Math.abs(left) >= Math.abs(right) ? left : right
+// Copies both channels. The planar buffer is transferred to the audio thread;
+// the image keeps reading these copies.
+function channelCopies(planar: Float32Array, frames: number): { left: Float32Array; right: Float32Array } {
+    return {
+        left: new Float32Array(planar.subarray(0, frames)),
+        right: new Float32Array(planar.subarray(frames, frames * 2)),
     }
-    return mono
 }

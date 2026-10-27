@@ -1,5 +1,7 @@
+// Left and right, one sample per frame. `samples` is the left channel.
 export interface TrackWave {
     samples: Float32Array
+    right: Float32Array
     sampleRate: number
 }
 

@@ -71,13 +71,18 @@ export class WebPresenter {
     }
 
     private followSample() {
-        const waves: { samples: Float32Array; sampleRate: number; name: string }[] = []
+        const waves: { samples: Float32Array; right: Float32Array; sampleRate: number; name: string }[] = []
         for (let index = 0; index < this.model.tracks.length; index++) {
             const wave = this.client.registry.wave(index)
             if (!wave) {
                 continue
             }
-            waves.push({ samples: wave.samples, sampleRate: wave.sampleRate, name: this.model.tracks[index].name })
+            waves.push({
+                samples: wave.samples,
+                right: wave.right,
+                sampleRate: wave.sampleRate,
+                name: this.model.tracks[index].name,
+            })
         }
         const kept = new Set(waves.map((wave) => wave.samples))
         this.rows = this.rows.filter((row) => {
@@ -99,6 +104,7 @@ export class WebPresenter {
             }
             row.presenter.follow({
                 samples: wave.samples,
+                right: wave.right,
                 sampleRate: wave.sampleRate,
                 bpm: this.model.bpm,
                 loopBeats: this.model.loopBeats,

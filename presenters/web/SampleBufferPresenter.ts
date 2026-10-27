@@ -3,6 +3,7 @@ import { VolumeDiagram } from '../../views/web/volumeDiagram'
 
 export interface SamplePicture {
     samples: Float32Array
+    right?: Float32Array
     sampleRate: number
     bpm: number
     loopBeats: number
@@ -15,6 +16,7 @@ export interface SamplePicture {
 
 export interface SampleFollow {
     samples: Float32Array
+    right?: Float32Array
     sampleRate: number
     bpm: number
     loopBeats: number
@@ -77,6 +79,7 @@ export class SampleBufferPresenter {
         if (!this.picture || !sameAudio) {
             this.picture = {
                 samples: input.samples,
+                right: input.right,
                 sampleRate: input.sampleRate,
                 bpm: input.bpm,
                 loopBeats: input.loopBeats,
@@ -194,7 +197,7 @@ export class SampleBufferPresenter {
         const ratio = window.devicePixelRatio || 1
         const deviceWidth = Math.max(1, Math.round(imageWidth * ratio))
         const columns = Math.min(deviceWidth, VolumeDiagram.maxDevicePixels)
-        const peaks = VolumeDiagram.columns(picture.samples, columns)
+        const peaks = VolumeDiagram.columns(picture.samples, picture.right ?? null, columns)
         const image = await VolumeDiagram.image(peaks, imageWidth, SampleBufferView.stripHeight, ratio)
         if (token !== this.buildToken) {
             image.close()

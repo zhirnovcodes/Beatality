@@ -30,7 +30,7 @@ int unpackIndex(std::uint32_t packed) {
 
 constexpr int kPeakColumns = 512;
 
-// Loudest sample in each column. The louder channel wins, matching the web waveform.
+// Average of each channel's loudest sample in the column, matching the web waveform.
 std::vector<float> peakColumns(const float* left, const float* right, int frames) {
     const int columns = frames > 0 && frames < kPeakColumns ? frames : (frames > 0 ? kPeakColumns : 0);
     std::vector<float> peaks(static_cast<std::size_t>(columns), 0.0f);
@@ -49,13 +49,19 @@ std::vector<float> peakColumns(const float* left, const float* right, int frames
         if (end > frames) {
             end = frames;
         }
-        float peak = 0.0f;
+        float leftPeak = 0.0f;
+        float rightPeak = 0.0f;
         for (int frame = start; frame < end; ++frame) {
-            const float leftAmp = std::abs(left[frame]);
-            const float rightAmp = right != nullptr ? std::abs(right[frame]) : leftAmp;
-            peak = std::max(peak, std::max(leftAmp, rightAmp));
+            leftPeak = std::max(leftPeak, std::abs(left[frame]));
+            if (right != nullptr) {
+                rightPeak = std::max(rightPeak, std::abs(right[frame]));
+            }
         }
-        peaks[static_cast<std::size_t>(column)] = peak > 1.0f ? 1.0f : peak;
+        if (right == nullptr) {
+            rightPeak = leftPeak;
+        }
+        const float average = (leftPeak + rightPeak) * 0.5f;
+        peaks[static_cast<std::size_t>(column)] = average > 1.0f ? 1.0f : average;
     }
     return peaks;
 }

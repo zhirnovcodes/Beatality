@@ -74,7 +74,7 @@ void SampleBufferView::paint(juce::Graphics& graphics, juce::Rectangle<int> boun
 
     const int columns = static_cast<int>(picture.peaks.size());
     if (columns > 0 && imageWidth > 0.0 && drawWidth > 0.0) {
-        graphics.setColour(juce::Colour(0xff111111));
+        graphics.setColour(juce::Colour(0xffc1fd31));
         const float mid = static_cast<float>(bounds.getY()) + static_cast<float>(bounds.getHeight()) * 0.5f;
         const float half = static_cast<float>(bounds.getHeight()) * 0.5f;
         for (int x = frame.getX(); x < frame.getRight(); ++x) {
@@ -94,10 +94,7 @@ void SampleBufferView::paint(juce::Graphics& graphics, juce::Rectangle<int> boun
             if (column < 0 || column >= columns) {
                 continue;
             }
-            const float bar = picture.peaks[static_cast<std::size_t>(column)] * half;
-            if (bar <= 0.0f) {
-                continue;
-            }
+            const float bar = std::max(picture.peaks[static_cast<std::size_t>(column)] * half, 0.5f);
             graphics.fillRect(static_cast<float>(x), mid - bar, 1.0f, bar * 2.0f);
         }
     }
