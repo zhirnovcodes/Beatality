@@ -18,20 +18,27 @@ const client = new EngineClient({
     wasmUrl,
     processorUrl: '/beatality-processor.js',
 })
-const buffer = document.createElement('div')
-buffer.style.width = '100%'
-buffer.style.height = '100%'
-buffer.style.overflow = 'hidden'
-const controls = document.createElement('fieldset')
-controls.disabled = true
-const list = document.createElement('ul')
-const presenter = new WebPresenter(model, client, buffer, controls, list, loadDemo)
+const grid = document.createElement('div')
+grid.className = 'sample-grid'
+grid.id = 'sample-grid'
+grid.setAttribute('role', 'listbox')
+grid.setAttribute('aria-label', 'Samples')
+const presenter = new WebPresenter(model, client, grid, loadDemo)
 
 const app = document.querySelector('#app')
 if (!app) {
     throw new Error('missing #app')
 }
-render(<Widget model={model} buffer={buffer} controls={controls} list={list} chosen={() => presenter.chosen()} />, app)
+render(
+    <Widget
+        model={model}
+        grid={grid}
+        bindPanel={(panel) => presenter.bindPanel(panel)}
+        listenSelection={(listener) => presenter.listenSelection(listener)}
+        chosen={() => presenter.chosen()}
+    />,
+    app,
+)
 
 const previewNote = 36
 const previewVelocity = 1

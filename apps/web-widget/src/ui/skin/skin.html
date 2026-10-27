@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Beatality skin</title>
+<!-- Stacks the four part images from ../shapes/ (window under case). Styles in skin.css. -->
+<link rel="stylesheet" href="skin.css">
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #2a2c30; }
+</style>
+</head>
+<body>
+<div class="beatality-skin">
+  <section class="part top" aria-label="Main controls">
+    <div class="window"></div>
+    <div class="content">
+      <!-- BPM display -->
+      <div class="bpm-caption" aria-hidden="true"></div>
+      <div class="bpm-lcd" aria-hidden="true"></div>
+      <div class="bpm-field">
+        <input type="text" id="bpm" value="120" inputmode="numeric" maxlength="3" spellcheck="false" aria-label="BPM">
+      </div>
+      <button type="button" class="bpm-btn plus" aria-label="BPM up">+</button>
+      <button type="button" class="bpm-btn minus" aria-label="BPM down">-</button>
+
+      <!-- playhead position (read-only): dotted band + bevelled head, 0..1; set #playhead.value and fire "input" to move it -->
+      <div class="seek" role="meter" aria-label="Playhead position" aria-valuemin="0" aria-valuemax="1">
+        <div class="band"></div><div class="head"></div>
+        <input type="range" id="playhead" min="0" max="1" step="0.001" value="0" disabled tabindex="-1" aria-label="Playhead position">
+      </div>
+
+      <!-- Loop / Slice / Attack: one caption bar, three sliders under it; values filled in by skin.js -->
+      <div class="slider-captions" aria-hidden="true">
+        <span data-for="loop">LOOP: <b class="value"></b></span>
+        <span data-for="slice">SLICES: <b class="value"></b></span>
+        <span data-for="attack">ATTACK: <b class="value"></b> <i class="unit">MS</i></span>
+      </div>
+      <div class="slider loop">
+        <div class="track"></div><div class="ticks dim"></div><div class="ticks lit"></div><div class="thumb"></div>
+        <input type="range" id="loop" min="1" max="32" step="1" value="4" aria-label="Loop">
+      </div>
+      <div class="slider slice">
+        <div class="track"></div><div class="ticks dim"></div><div class="ticks lit"></div><div class="thumb"></div>
+        <input type="range" id="slice" min="-4" max="4" step="1" value="0" aria-label="Slices">
+      </div>
+      <div class="slider attack">
+        <div class="track"></div><div class="ticks dim"></div><div class="ticks lit"></div><div class="thumb"></div>
+        <input type="range" id="attack" min="2" max="16" step="1" value="2" aria-label="Attack (ms)">
+      </div>
+    </div>
+    <div class="case"></div>
+    <div class="controls">
+      <button type="button" class="randomize" id="randomize">Randomize</button>
+    </div>
+  </section>
+  <section class="part bottom" aria-label="Samples">
+    <div class="window"></div>
+    <div class="content">
+      <!-- sample list: scroll area cut to the screen shape -->
+      <div class="viewport" id="sample-viewport" tabindex="0">
+        <div class="scroll-content">
+          <!-- sample buffer grid: rows built by skin.js (demo: 16 rows, Loop 4 beats, Slices 1 → 4 columns) -->
+          <div class="sample-grid" id="sample-grid" role="listbox" aria-label="Samples" data-rows="16"></div>
+        </div>
+      </div>
+    </div>
+    <div class="case"></div>
+    <div class="controls">
+      <div class="scrollbar" data-scroll="sample-viewport" role="scrollbar" aria-controls="sample-viewport" aria-orientation="vertical">
+        <div class="thumb"></div>
+      </div>
+      <button type="button" class="scroll-arrow up" aria-label="Scroll up"></button>
+      <button type="button" class="scroll-arrow down" aria-label="Scroll down"></button>
+
+      <!-- four round buttons; labels are engraved in the case -->
+      <button type="button" class="round-btn append" id="append">Append</button>
+      <button type="button" class="round-btn remove" id="remove">Remove</button>
+      <button type="button" class="round-btn load" id="load-bank">Load</button>
+      <button type="button" class="round-btn clear" id="clear">Clear</button>
+
+      <!-- selected sample: one convex screen with Start, Length and Loop -->
+      <fieldset class="sample-panel" id="selected-sample">
+        <div class="row start"><span class="name">START</span>
+          <div class="slider"><div class="track"></div><div class="thumb"></div>
+            <input type="range" id="start" min="0" max="1" step="0.001" value="0" aria-label="Start"></div></div>
+        <div class="row length"><span class="name">LENGTH</span>
+          <div class="slider"><div class="track"></div><div class="thumb"></div>
+            <input type="range" id="length" min="0" max="1" step="0.001" value="1" aria-label="Length"></div></div>
+        <div class="loop-col"><span class="name">LOOP</span>
+          <input type="checkbox" class="toggle" id="track-loop" aria-label="Loop"></div>
+      </fieldset>
+    </div>
+  </section>
+</div>
+<script src="skin.js"></script>
+</body>
+</html>

@@ -42,30 +42,43 @@ export class SampleBufferPresenter {
     onEdit: ((start: number, length: number, loop: boolean) => void) | null = null
 
     constructor(private readonly view: SampleBufferView) {
-        view.onKnobChange = (value) => {
-            if (!this.picture) {
-                return
-            }
-            this.picture.start = value
-            this.publish()
-            this.edited()
+        view.onKnobChange = (value) => this.editStart(value)
+        view.onLengthChange = (value) => this.editLength(value)
+        view.onLoopChange = (loop) => this.editLoop(loop)
+    }
+
+    read(): { start: number; length: number; loop: boolean } | null {
+        if (!this.picture) {
+            return null
         }
-        view.onLengthChange = (value) => {
-            if (!this.picture) {
-                return
-            }
-            this.picture.length = value
-            this.publish()
-            this.edited()
+        return { start: this.picture.start, length: this.picture.length, loop: this.picture.loop }
+    }
+
+    editStart(value: number) {
+        if (!this.picture) {
+            return
         }
-        view.onLoopChange = (loop) => {
-            if (!this.picture) {
-                return
-            }
-            this.picture.loop = loop
-            this.publish()
-            this.edited()
+        this.picture.start = value
+        this.publish()
+        this.edited()
+    }
+
+    editLength(value: number) {
+        if (!this.picture) {
+            return
         }
+        this.picture.length = value
+        this.publish()
+        this.edited()
+    }
+
+    editLoop(loop: boolean) {
+        if (!this.picture) {
+            return
+        }
+        this.picture.loop = loop
+        this.publish()
+        this.edited()
     }
 
     show(input: SamplePicture): void {
@@ -198,7 +211,7 @@ export class SampleBufferPresenter {
         const deviceWidth = Math.max(1, Math.round(imageWidth * ratio))
         const columns = Math.min(deviceWidth, VolumeDiagram.maxDevicePixels)
         const peaks = VolumeDiagram.columns(picture.samples, picture.right ?? null, columns)
-        const image = await VolumeDiagram.image(peaks, imageWidth, SampleBufferView.stripHeight, ratio)
+        const image = await VolumeDiagram.image(peaks, imageWidth, this.view.frameHeight, ratio)
         if (token !== this.buildToken) {
             image.close()
             return
@@ -232,7 +245,7 @@ export class SampleBufferPresenter {
         const pxPerBeat = loopWidth / picture.loopBeats
         const durationSec = picture.samples.length / picture.sampleRate
         const imageWidth = durationSec * (picture.bpm / 60) * pxPerBeat
-        const imageStart = SampleBufferView.offsetWidth - picture.start * imageWidth
+        const imageStart = this.view.frameOffset - picture.start * imageWidth
 
         const sliceSec = (picture.sliceBeats * 60) / picture.bpm
         const usableSec = durationSec * (1 - picture.start)
@@ -252,7 +265,7 @@ export class SampleBufferPresenter {
             contentWidth,
             gridWidth,
             loopWidth,
-            highlightX: SampleBufferView.offsetWidth + (inSlot ? slot : 0) * gridWidth,
+            highlightX: this.view.frameOffset + (inSlot ? slot : 0) * gridWidth,
             highlightWidth: inSlot ? gridWidth : 0,
         }
     }

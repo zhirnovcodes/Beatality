@@ -6,27 +6,44 @@ import { SampleBufferView } from '../../views/web/SampleBufferView'
 interface SampleRow {
     samples: Float32Array
     presenter: SampleBufferPresenter
-    element: HTMLElement
-    strip: HTMLElement
-    controls: HTMLElement
+    spectrum: HTMLElement
 }
 
 function isAbort(error: unknown): boolean {
     return typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
 }
 
+function placeThumb(input: HTMLInputElement) {
+    const slider = input.closest('.slider')
+    if (!(slider instanceof HTMLElement)) {
+        return
+    }
+    const min = Number(input.min)
+    const max = Number(input.max)
+    const value = Number(input.value)
+    const pos = max > min ? (value - min) / (max - min) : 0
+    slider.style.setProperty('--pos', String(pos))
+}
+
+// Skin sample row. The grid is 424px wide and each row is 28px tall.
+const skinRow = { width: 424, height: 28, offset: 0, chrome: false }
+
 // Turns control actions into client calls, and snapshots into the view model.
 export class WebPresenter {
     private playSlot = -1
     private playTrack = -1
     private selected = -1
+    private builtColumns = -1
     private rows: SampleRow[] = []
+    private panelBound = false
+    private startInput: HTMLInputElement | null = null
+    private lengthInput: HTMLInputElement | null = null
+    private loopInput: HTMLInputElement | null = null
+    private selectionListener: (index: number) => void = () => {}
 
     constructor(
         private readonly model: WebViewModel,
         private readonly client: EngineClient,
-        private readonly buffer: HTMLElement,
-        private readonly controls: HTMLFieldSetElement,
         private readonly list: HTMLElement,
         loadPack: () => Promise<void>,
     ) {
@@ -63,11 +80,43 @@ export class WebPresenter {
         return this.selected
     }
 
+    listenSelection(listener: (index: number) => void) {
+        this.selectionListener = listener
+        listener(this.selected)
+    }
+
+    bindPanel(panel: HTMLFieldSetElement) {
+        if (this.panelBound) {
+            return
+        }
+        const start = panel.querySelector('#start')
+        const length = panel.querySelector('#length')
+        const loop = panel.querySelector('#track-loop')
+        if (!(start instanceof HTMLInputElement) || !(length instanceof HTMLInputElement) || !(loop instanceof HTMLInputElement)) {
+            throw new Error('missing sample panel')
+        }
+        this.panelBound = true
+        this.startInput = start
+        this.lengthInput = length
+        this.loopInput = loop
+        start.addEventListener('input', () => {
+            this.rowAt(this.selected)?.presenter.editStart(Number(start.value))
+            placeThumb(start)
+        })
+        length.addEventListener('input', () => {
+            this.rowAt(this.selected)?.presenter.editLength(Number(length.value))
+            placeThumb(length)
+        })
+        loop.addEventListener('change', () => {
+            this.rowAt(this.selected)?.presenter.editLoop(loop.checked)
+        })
+        this.syncPanel()
+    }
+
     private sync() {
         this.followSample()
         this.markPlaying()
         this.paintList()
-        this.mount()
     }
 
     private followSample() {
@@ -90,16 +139,14 @@ export class WebPresenter {
                 return true
             }
             row.presenter.clear()
-            row.strip.remove()
-            row.controls.remove()
-            row.element.remove()
+            row.spectrum.remove()
             return false
         })
         const sliceBeats = 2 ** this.model.sliceExp
         for (const wave of waves) {
             let row = this.rows.find((item) => item.samples === wave.samples)
             if (!row) {
-                row = this.createRow(wave.name, wave.samples)
+                row = this.createRow(wave.samples)
                 this.rows.push(row)
             }
             row.presenter.follow({
@@ -113,19 +160,14 @@ export class WebPresenter {
         }
         if (this.selected >= this.model.tracks.length) {
             this.selected = -1
+            this.selectionListener(-1)
         }
     }
 
-    private createRow(name: string, samples: Float32Array): SampleRow {
-        const host = document.createElement('div')
-        const view = new SampleBufferView(host)
-        view.setName(name)
-        const element = host.querySelector('.sample-buffer')
-        const strip = host.querySelector('.sample-buffer-strip')
-        const controls = host.querySelector('.sample-buffer-controls')
-        if (!(element instanceof HTMLElement) || !(strip instanceof HTMLElement) || !(controls instanceof HTMLElement)) {
-            throw new Error('missing sample buffer')
-        }
+    private createRow(samples: Float32Array): SampleRow {
+        const spectrum = document.createElement('div')
+        spectrum.className = 'spectrum'
+        const view = new SampleBufferView(spectrum, skinRow)
         const presenter = new SampleBufferPresenter(view)
         presenter.onEdit = (start, length, loop) => {
             const index = this.indexOf(samples)
@@ -133,7 +175,7 @@ export class WebPresenter {
                 void this.client.setTrack(index, start, length, loop)
             }
         }
-        return { samples, presenter, element, strip, controls }
+        return { samples, presenter, spectrum }
     }
 
     private indexOf(samples: Float32Array): number {
@@ -153,93 +195,122 @@ export class WebPresenter {
         return this.rows.find((row) => row.samples === wave.samples) ?? null
     }
 
-    // The strip in the top slot. The selected row, or the first track before a click.
-    private headerRow(): number {
-        if (this.selected >= 0 && this.selected < this.model.tracks.length) {
-            return this.selected
+    private columns(): number {
+        const sliceBeats = 2 ** this.model.sliceExp
+        return Math.max(1, Math.round(this.model.loopBeats / sliceBeats))
+    }
+
+    private namesMatch(): boolean {
+        const tracks = this.model.tracks
+        if (this.list.childElementCount !== tracks.length) {
+            return false
         }
-        return this.model.tracks.length > 0 ? 0 : -1
+        const items = this.list.children
+        for (let index = 0; index < tracks.length; index++) {
+            if (items[index].getAttribute('data-name') !== tracks[index].name) {
+                return false
+            }
+        }
+        return true
     }
 
     private paintList() {
+        const cols = this.columns()
+        if (!this.namesMatch()) {
+            this.rebuildRows(cols)
+        } else if (this.builtColumns !== cols) {
+            this.retile(cols)
+            this.builtColumns = cols
+        }
+        this.markCells(cols)
+        this.syncPanel()
+    }
+
+    private rebuildRows(cols: number) {
         const tracks = this.model.tracks
-        let same = this.list.childElementCount === tracks.length
-        if (same) {
-            const items = this.list.children
-            for (let index = 0; index < tracks.length; index++) {
-                if (items[index].getAttribute('data-name') !== tracks[index].name) {
-                    same = false
-                    break
-                }
+        const rows: HTMLElement[] = []
+        for (let index = 0; index < tracks.length; index++) {
+            const row = document.createElement('div')
+            row.className = 'row'
+            row.setAttribute('role', 'option')
+            row.setAttribute('data-name', tracks[index].name)
+            row.title = tracks[index].name
+            const data = this.rowAt(index)
+            if (data) {
+                row.append(data.spectrum)
+                data.presenter.refit()
             }
-        }
-        if (!same) {
-            this.list.replaceChildren()
-            for (let index = 0; index < tracks.length; index++) {
-                const item = document.createElement('li')
-                item.setAttribute('role', 'option')
-                item.setAttribute('data-name', tracks[index].name)
-                const label = document.createElement('div')
-                label.className = 'track-name'
-                label.textContent = tracks[index].name
-                item.append(label)
-                item.addEventListener('click', () => {
-                    this.selected = index
-                    this.paintList()
-                    this.mount()
-                })
-                this.list.append(item)
+            for (let column = 0; column < cols; column++) {
+                const cell = document.createElement('div')
+                cell.className = 'cell'
+                row.append(cell)
             }
+            row.addEventListener('click', () => this.choose(index))
+            rows.push(row)
         }
+        this.list.replaceChildren(...rows)
+        this.builtColumns = cols
+    }
+
+    private retile(cols: number) {
         const items = this.list.children
         for (let index = 0; index < items.length; index++) {
-            const item = items[index]
-            item.setAttribute('aria-selected', index === this.selected ? 'true' : 'false')
-            if (index === this.playTrack) {
-                item.setAttribute('data-heard', '')
-            } else {
-                item.removeAttribute('data-heard')
+            const row = items[index]
+            row.querySelectorAll('.cell').forEach((cell) => cell.remove())
+            for (let column = 0; column < cols; column++) {
+                const cell = document.createElement('div')
+                cell.className = 'cell'
+                row.append(cell)
             }
         }
     }
 
-    // Every track keeps its picture. The chosen one sits in the top slot; the rest stay on their rows.
-    private mount() {
-        const shown = this.headerRow()
+    private choose(index: number) {
+        this.selected = index
+        this.markCells(this.columns())
+        this.syncPanel()
+        this.selectionListener(index)
+    }
+
+    private markCells(cols: number) {
         const items = this.list.children
-        for (let index = 0; index < this.model.tracks.length; index++) {
-            const row = this.rowAt(index)
-            if (!row || index === shown) {
-                continue
+        for (let index = 0; index < items.length; index++) {
+            const row = items[index]
+            row.setAttribute('aria-selected', index === this.selected ? 'true' : 'false')
+            const playingCol = index === this.playTrack && this.playSlot >= 0 && this.playSlot < cols ? this.playSlot : -1
+            const cells = row.querySelectorAll('.cell')
+            for (let column = 0; column < cells.length; column++) {
+                cells[column].classList.toggle('playing', column === playingCol)
             }
-            const item = items[index]
-            if (!item || row.strip.parentElement === item) {
-                continue
-            }
-            item.append(row.strip)
-            row.presenter.refit()
         }
-        const shownRow = shown >= 0 ? this.rowAt(shown) : null
-        if (shownRow) {
-            if (shownRow.strip.parentElement !== this.buffer) {
-                this.buffer.replaceChildren(shownRow.strip)
-                shownRow.presenter.refit()
-            }
-        } else if (this.buffer.childElementCount > 0) {
-            this.buffer.replaceChildren()
+    }
+
+    private syncPanel() {
+        const start = this.startInput
+        const length = this.lengthInput
+        const loop = this.loopInput
+        if (!start || !length || !loop) {
+            return
         }
-        const selected = this.selected >= 0 ? this.rowAt(this.selected) : null
-        if (selected) {
-            if (selected.controls.parentElement !== this.controls) {
-                this.controls.replaceChildren(selected.controls)
-            }
-            this.controls.disabled = false
-        } else {
-            if (this.controls.childElementCount > 0) {
-                this.controls.replaceChildren()
-            }
-            this.controls.disabled = true
+        const picture = this.selected >= 0 ? this.rowAt(this.selected)?.presenter.read() : null
+        if (!picture) {
+            return
         }
+        this.writeRange(start, picture.start)
+        this.writeRange(length, picture.length)
+        if (document.activeElement !== loop && loop.checked !== picture.loop) {
+            loop.checked = picture.loop
+        }
+    }
+
+    private writeRange(input: HTMLInputElement, value: number) {
+        if (document.activeElement === input) {
+            return
+        }
+        if (Math.abs(Number(input.value) - value) > 0.0005) {
+            input.value = String(value)
+        }
+        placeThumb(input)
     }
 
     private markPlaying() {
@@ -270,6 +341,7 @@ export class WebPresenter {
             return
         }
         this.selected = -1
+        this.selectionListener(-1)
         await this.client.clear()
     }
 

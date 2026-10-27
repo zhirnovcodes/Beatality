@@ -1,0 +1,308 @@
+/* Beatality skin: four stacked layers from assets/ui/shapes/, made by tools/build_parts.py.
+   Images are at base size (496 wide); see CHANGES.md. */
+.beatality-skin {
+  position: relative;
+  width: 496px;
+  height: 467px;
+  user-select: none;
+}
+.beatality-skin .part {
+  position: absolute;
+  left: 0;
+  width: 496px;
+}
+.beatality-skin .part.top    { top: 0;     height: 210px; }
+.beatality-skin .part.bottom { top: 210px; height: 257px; }
+
+/* window layer (glass / screen) below, metal case above it */
+.beatality-skin .part > .window,
+.beatality-skin .part > .case {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+.beatality-skin .top    > .window { background-image: url("../shapes/top_glass.png"); }
+.beatality-skin .top    > .case   { background-image: url("../shapes/top_case.png"); }
+.beatality-skin .bottom > .window { background-image: url("../shapes/bottom_screen.png"); }
+.beatality-skin .bottom > .case   { background-image: url("../shapes/bottom_case.png"); }
+
+/* controls go between the window and the case, so the case's shadow falls on them */
+.beatality-skin .part > .content { position: absolute; inset: 0; }
+.beatality-skin .part > .case    { pointer-events: none; }
+
+/* ---------- Lower part: sample list screen ---------- */
+
+/* Viewport: a scroll area cut to the screen's shape (bottom-screen in shapes.svg).
+   Box = screen bounds inside the bottom part: x 13..471, y 26..192. */
+.beatality-skin .bottom .viewport {
+  position: absolute;
+  left: 13px;
+  top: 26px;
+  width: 458px;
+  height: 166px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  clip-path: path("M5.0,0.0 L150.0,-0.1 C157.0,0.0 161.0,1.0 167.0,4.5 C172.0,7.5 176.0,10.0 182.0,10.0 L283.0,10.0 C290.0,10.0 294.0,8.0 300.0,5.0 C305.0,2.0 307.0,0.0 313.0,0.0 L443.0,0.0 C452.0,0.0 457.0,6.0 457.2,16.0 L457.2,160.0 C457.3,163.5 455.0,165.4 451.6,165.2 L5.0,165.1 C2.0,165.4 0.0,163.5 0.0,160.5 L0.0,5.0 C0.0,2.0 2.0,0.0 5.0,0.0 Z");
+  scrollbar-width: none;            /* the skin draws its own scroll bar */
+}
+.beatality-skin .bottom .viewport::-webkit-scrollbar { display: none; }
+
+/* Sample buffer grid: fixed width (424 px), centred in the scroll area. One row per sample; the number of rows sets
+   the scroll height. Row = 28 px, 4 px between rows; cells have no space between them. Columns = Loop / Slice length
+   (set by skin.js from #loop and #slice). Each row carries an empty .spectrum slot for the image the engine draws. */
+.beatality-skin .bottom .scroll-content { padding: 14px 0 10px; }
+.beatality-skin .sample-grid { width: 424px; margin: 0 auto; display: flex; flex-direction: column; gap: 4px; }
+.beatality-skin .sample-grid .row { position: relative; display: flex; height: 28px; cursor: pointer; }
+.beatality-skin .sample-grid .row > .spectrum { position: absolute; inset: 0; pointer-events: none; }
+.beatality-skin .sample-grid .cell {
+  position: relative; flex: 1 1 0; min-width: 0;
+  image-rendering: pixelated;
+  background:
+    url("../shapes/cell_edge_top.png")    0 0    / 4px 2px repeat-x,
+    url("../shapes/cell_edge_left.png")   0 0    / 2px 4px repeat-y,
+    url("../shapes/cell_edge_bottom.png") 0 100% / 4px 2px repeat-x,
+    url("../shapes/cell_dots.png")        2px 4px / 4px 4px repeat;
+}
+.beatality-skin .sample-grid .cell:last-child { box-shadow: inset -2px 0 0 rgba(0, 0, 0, 0.35); }
+/* currently playing slice: lime-yellow over the cell */
+.beatality-skin .sample-grid .cell.playing::after {
+  content: ""; position: absolute; inset: 0; background: rgba(218, 253, 2, 0.46);
+}
+/* selected sample: grey over the whole row */
+.beatality-skin .sample-grid .row[aria-selected="true"]::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: rgba(30, 30, 30, 0.3);   /* the mock-up's 50 % grey bar, as it comes out on the screen: about 27 % darker */
+}
+
+/* Scroll bar on the metal, right of the screen, like the reference.
+   It sits above the case layer, so it is drawn on top of the metal. */
+.beatality-skin .part > .controls { position: absolute; inset: 0; pointer-events: none; }
+.beatality-skin .part > .controls > * { pointer-events: auto; }
+
+.beatality-skin .scrollbar {
+  position: absolute;
+  left: 477px;
+  top: 26px;
+  width: 12px;
+  height: 148px;
+  background: url("../shapes/scroll_track.png") 0 0 / 100% 100% no-repeat;
+  touch-action: none;
+}
+.beatality-skin .scrollbar .thumb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 12px;
+  height: 30px;
+  background: url("../shapes/scroll_thumb.png") 0 0 / 100% 100% no-repeat;
+  cursor: grab;
+}
+.beatality-skin .scrollbar .thumb.dragging { cursor: grabbing; }
+
+.beatality-skin .scroll-arrow {
+  position: absolute;
+  left: 477px;
+  width: 12px;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  background: 0 0 / 100% 100% no-repeat;
+  cursor: pointer;
+}
+.beatality-skin .scroll-arrow.up   { top: 177px; background-image: url("../shapes/scroll_up.png"); }
+.beatality-skin .scroll-arrow.down { top: 185px; background-image: url("../shapes/scroll_down.png"); }
+.beatality-skin .scroll-arrow:active { filter: brightness(0.8); }
+
+/* ---------- Upper part: Randomize button ---------- */
+
+/* On the metal under the glass's bottom-left, in the place of the reference's transport row.
+   Outline = top-randomize in shapes.svg; clip-path makes only that shape clickable.
+   The recess round it is part of top_case.png. */
+.beatality-skin .randomize {
+  position: absolute;
+  left: 14px;
+  top: 162px;
+  width: 260px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  background: url("../shapes/randomize.png") 0 0 / 100% 100% no-repeat;
+  clip-path: path("M8.0,2.8 L218.3,5.7 C225.5,5.8 235.4,11.0 240.0,16.5 L256.0,35.7 C258.0,38.1 257.0,40.0 253.5,40.0 L56.0,37.0 C26.0,36.5 5.0,20.0 3.0,10.0 C2.3,6.5 5.3,2.8 8.0,2.8 Z");
+  cursor: pointer;
+  font-size: 0;                     /* label is in the image; text stays for screen readers */
+}
+.beatality-skin .randomize:active,
+.beatality-skin .randomize.pressed { background-image: url("../shapes/randomize_down.png"); }
+.beatality-skin .randomize:disabled { cursor: default; filter: saturate(0) brightness(0.85); }
+.beatality-skin .randomize:focus-visible { filter: brightness(1.08); outline: none; }
+
+/* ---------- Upper part: BPM display (like the reference's time display, top-left of the glass) ----------
+   caption bar "SAMPLES BPM" (bpm_caption.png, dark, runs under the case on the left),
+   dot-grid background (bpm_lcd.png), value field #bpm in 7-segment digits with unlit "000" behind it,
+   two raised buttons (- and +, no glyphs) left of the digits. */
+@font-face { font-family: "DSEG7 Classic"; src: url("DSEG7Classic-Bold.woff2") format("woff2"); font-weight: 700; }
+@font-face { font-family: "Silkscreen"; src: url("silkscreen-latin-400-normal.woff2") format("woff2"); font-weight: 400; }
+@font-face { font-family: "Silkscreen"; src: url("silkscreen-latin-700-normal.woff2") format("woff2"); font-weight: 700; }
+
+.beatality-skin .bpm-caption {
+  position: absolute; left: 0; top: 44px; width: 132px; height: 17px;
+  background: url("../shapes/bpm_caption.png") 0 0 / 100% 100% no-repeat;
+}
+.beatality-skin .bpm-lcd {
+  position: absolute; left: 14px; top: 61px; width: 118px; height: 52px;
+  background: url("../shapes/bpm_lcd.png") 0 0 / 100% 100% no-repeat;
+}
+.beatality-skin .bpm-field { position: absolute; left: 46px; top: 64px; width: 82px; height: 38px; }
+.beatality-skin .bpm-field::before {
+  content: "000";
+  position: absolute; inset: 0;
+  font: 700 31px/38px "DSEG7 Classic", monospace; text-align: right;
+  color: rgba(20, 70, 0, 0.16);
+  pointer-events: none;
+}
+.beatality-skin .bpm-field input {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  margin: 0; padding: 0; border: 0; border-radius: 0; outline: none;
+  background: transparent; box-shadow: none; appearance: none;
+  font: 700 31px/38px "DSEG7 Classic", monospace; text-align: right;
+  color: #0b1d02; caret-color: #0b1d02;
+}
+.beatality-skin .bpm-field input:focus { outline: none; box-shadow: none; }
+.beatality-skin .bpm-field input::selection { background: rgba(11, 29, 2, 0.25); }
+
+/* raised buttons: body 18 x 9, bevelled; image adds 4 px round it for the shadow */
+.beatality-skin .bpm-btn {
+  position: absolute; left: 18px; width: 26px; height: 17px;
+  padding: 0; border: 0; font-size: 0; cursor: pointer;
+  background: url("../shapes/bpm_btn.png") 0 0 / 100% 100% no-repeat;
+}
+.beatality-skin .bpm-btn.plus  { top: 66px; }
+.beatality-skin .bpm-btn.minus { top: 80px; }
+.beatality-skin .bpm-btn:active { background-image: url("../shapes/bpm_btn_pressed.png"); }
+
+/* ---------- Upper part: Loop / Slice / Attack, right of the BPM display ----------
+   One convex glass bar (slider_captions.png) level with the BPM caption holds the three captions:
+   "LOOP: 8", "SLICES: 1", "ATTACK: 2 MS". The three sliders sit in a row right under it, one under each caption.
+   Sliders: the reference's volume slider in pixel art (1 art px = 2 CSS px): groove, ticks lit up to the thumb, yellow thumb.
+   A transparent range input on top does the dragging; skin.js sets --pos (0..1) and the caption value. */
+@font-face { font-family: "Orbitron"; src: url("Orbitron-Bold.ttf") format("truetype"); font-weight: 700; }
+
+/* captions continue the BPM caption strip: same dark bar (slider_caption_bg.png, x 197 .. 496, right end under the case),
+   1 px gap between BPM | LOOP | SLICES | ATTACK, same font as the BPM caption (Orbitron Bold 9.5 px, lime, glow).
+   Segments: LOOP 197–284, SLICES 285–372, ATTACK 373–496; each caption centred over its slider. */
+.beatality-skin .slider-captions {
+  position: absolute; left: 133px; top: 44px; width: 363px; height: 17px;
+  background: url("../shapes/slider_caption_bg.png") 0 0 / 100% 100% no-repeat;
+  font: 700 9.5px/17px "Orbitron", sans-serif; letter-spacing: 1.14px; white-space: nowrap;
+  color: #c4ff34; text-shadow: 0 0 2px rgba(196, 255, 52, 0.45);
+}
+.beatality-skin .slider-captions > span { position: absolute; top: 0; transform: translateX(-50%); }
+.beatality-skin .slider-captions > [data-for="loop"]   { left: 57px; }    /* 190 in the top part */
+.beatality-skin .slider-captions > [data-for="slice"]  { left: 171px; }   /* 304 */
+.beatality-skin .slider-captions > [data-for="attack"] { left: 285px; }   /* 418 */
+.beatality-skin .slider-captions .value { font-weight: 700; }
+.beatality-skin .slider-captions .unit  { font-style: normal; color: #7fa82a; }
+
+.beatality-skin .slider { --pos: 0; position: absolute; top: 64px; width: 104px; height: 30px; }
+.beatality-skin .slider.loop   { left: 138px; }
+.beatality-skin .slider.slice  { left: 252px; }
+.beatality-skin .slider.attack { left: 366px; }
+
+.beatality-skin .slider > .track,
+.beatality-skin .slider > .ticks,
+.beatality-skin .slider > .thumb {
+  position: absolute; background: 0 0 / 100% 100% no-repeat;
+  image-rendering: pixelated; pointer-events: none;
+}
+.beatality-skin .slider > .track { left: 0; top: 6px; width: 104px; height: 8px; background-image: url("../shapes/slider_track.png"); }
+.beatality-skin .slider > .ticks { left: 0; top: 16px; width: 104px; height: 12px; }
+.beatality-skin .slider > .ticks.dim { background-image: url("../shapes/slider_ticks_dim.png"); }
+.beatality-skin .slider > .ticks.lit {
+  background-image: url("../shapes/slider_ticks.png");
+  clip-path: inset(0 calc(104px - (3px + var(--pos) * 98px) - 3px) 0 0);
+}
+.beatality-skin .slider > .thumb {
+  top: 0; width: 18px; height: 12px;
+  left: calc(3px + var(--pos) * 98px - 9px);
+  background-image: url("../shapes/slider_thumb.png");
+}
+.beatality-skin .slider > input[type="range"] {
+  position: absolute; left: -6px; top: -2px; width: 116px; height: 32px;
+  margin: 0; opacity: 0; cursor: pointer;
+}
+
+/* ---------- Lower part: controls under the sample screen ----------
+   Left: four round buttons (Append, Remove, Load, Clear) like the reference's ADD / SUB / SEL / OPT;
+   their labels are engraved in bottom_case.png, and the recess round each button is cut into it too.
+   Right: one convex green screen (bottom_panel.png) with START and LENGTH sliders (same pixel design as
+   Loop / Slices, no ticks under them) and the LOOP toggle (pixel-art square with a check mark). */
+.beatality-skin .round-btn {
+  position: absolute; top: 201px; width: 24px; height: 24px;
+  padding: 0; border: 0; border-radius: 50%; font-size: 0; cursor: pointer;
+  background: 0 0 / 100% 100% no-repeat;
+}
+.beatality-skin .round-btn.append { left: 14px;  background-image: url("../shapes/btn_append.png"); }
+.beatality-skin .round-btn.remove { left: 60px;  background-image: url("../shapes/btn_remove.png"); }
+.beatality-skin .round-btn.load   { left: 106px; background-image: url("../shapes/btn_load.png"); }
+.beatality-skin .round-btn.clear  { left: 152px; background-image: url("../shapes/btn_clear.png"); }
+.beatality-skin .round-btn.append:active { background-image: url("../shapes/btn_append_pressed.png"); }
+.beatality-skin .round-btn.remove:active { background-image: url("../shapes/btn_remove_pressed.png"); }
+.beatality-skin .round-btn.load:active   { background-image: url("../shapes/btn_load_pressed.png"); }
+.beatality-skin .round-btn.clear:active  { background-image: url("../shapes/btn_clear_pressed.png"); }
+.beatality-skin .round-btn:disabled { cursor: default; filter: saturate(0) brightness(0.85); }
+
+.beatality-skin .sample-panel {
+  position: absolute; left: 196px; top: 198px; width: 274px; height: 52px;
+  margin: 0; padding: 0; border: 0; min-width: 0;
+  background: url("../shapes/bottom_panel.png") 0 0 / 100% 100% no-repeat;
+  font: 400 16px/1 "Silkscreen", monospace; color: #0b1d02; -webkit-font-smoothing: none;
+}
+/* left column: START, LENGTH under it; right column: LOOP caption, toggle under it */
+.beatality-skin .sample-panel .row { position: absolute; height: 18px; }
+.beatality-skin .sample-panel .row.start  { left: 10px; top: 6px;  width: 204px; }
+.beatality-skin .sample-panel .row.length { left: 10px; top: 28px; width: 204px; }
+/* START / LENGTH / LOOP captions: same style as the LOOP / SLICES / ATTACK captions — Orbitron Bold 9.5 px, lime with glow,
+   on a dark rectangle (#031A00, light catch on the top edge, darker bottom edge) */
+.beatality-skin .sample-panel .name {
+  position: absolute; height: 14px; padding: 0 5px; box-sizing: border-box;
+  font: 700 9.5px/14px "Orbitron", sans-serif; letter-spacing: 1.14px; white-space: nowrap;
+  color: #c4ff34; text-shadow: 0 0 2px rgba(196, 255, 52, 0.45);
+  background: linear-gradient(#0a3404 0, #031a00 2.5px, #031a00 calc(100% - 2.5px), #021300 100%);
+}
+.beatality-skin .sample-panel .row > .name { left: 0; top: 2px; width: 60px; }
+.beatality-skin .sample-panel .loop-col { position: absolute; left: 222px; top: 6px; width: 46px; height: 40px; }
+.beatality-skin .sample-panel .loop-col > .name { left: 0; right: 0; top: 2px; text-align: center; }
+
+.beatality-skin .sample-panel .slider { top: 2px; left: 76px; width: 128px; height: 14px; }
+.beatality-skin .sample-panel .slider > .track { top: 6px; width: 128px; background-image: url("../shapes/slider_track_long.png"); }
+.beatality-skin .sample-panel .slider > .thumb { top: 0; left: calc(3px + var(--pos) * 122px - 9px); }
+.beatality-skin .sample-panel .slider > input[type="range"] { left: -6px; top: -2px; width: 140px; height: 18px; }
+
+.beatality-skin .sample-panel .toggle {
+  position: absolute; left: 16px; top: 22px; width: 14px; height: 14px;
+  margin: 0; appearance: none; cursor: pointer; image-rendering: pixelated;
+  background: url("../shapes/loop_toggle.png") 0 0 / 100% 100% no-repeat;
+}
+.beatality-skin .sample-panel .toggle:checked { background-image: url("../shapes/loop_toggle_on.png"); }
+.beatality-skin .sample-panel .toggle:focus-visible { outline: 1px dotted #0b1d02; outline-offset: 1px; }
+
+/* ---------- Upper part: playhead position (like the reference's seek bar) ----------
+   Dotted band across the whole glass (seek_band.png, 496 x 14 at y 120; its ends run under the case),
+   bevelled 3D head with 3 dots (seek_head.png: body 46 x 13 + 3 px for the shadow). Value 0..1 (#playhead).
+   The head travels over the visible glass: body left edge from x 14 to x 436. */
+.beatality-skin .seek { --pos: 0; position: absolute; left: 0; top: 120px; width: 496px; height: 14px; }
+.beatality-skin .seek > .band {
+  position: absolute; inset: 0;
+  background: url("../shapes/seek_band.png") 0 0 / 100% 100% no-repeat; image-rendering: pixelated;
+}
+.beatality-skin .seek > .head {
+  position: absolute; top: -2px; width: 52px; height: 19px;
+  left: calc(14px - 3px + var(--pos) * 422px);
+  background: url("../shapes/seek_head.png") 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+}
+/* read-only: shows the playhead, cannot be dragged or focused (the input only carries the value) */
+.beatality-skin .seek > input[type="range"] { display: none; }

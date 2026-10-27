@@ -11,27 +11,41 @@ export interface SampleBufferNumbers {
     loopWidth: number
 }
 
+export interface SampleBufferOptions {
+    width?: number
+    height?: number
+    offset?: number
+    // The full strip draws its own frame and Start / Length / Loop inputs.
+    // The skin row only keeps the waveform.
+    chrome?: boolean
+}
+
 // The strip and its controls. Numbers and the bitmap are applied separately.
 export class SampleBufferView {
     static readonly offsetWidth = 20
     static readonly pluginWidth = 640
     static readonly stripHeight = 80
 
+    readonly frameWidth: number
+    readonly frameHeight: number
+    readonly frameOffset: number
+
     onKnobChange: (value: number) => void = () => {}
     onLengthChange: (value: number) => void = () => {}
     onLoopChange: (loop: boolean) => void = () => {}
 
+    private readonly chrome: boolean
     private readonly canvas: HTMLCanvasElement
     private readonly context: CanvasRenderingContext2D
-    private readonly paper: HTMLElement
-    private readonly highlight: HTMLElement
-    private readonly grid: HTMLElement
-    private readonly frame: HTMLElement
-    private readonly name: HTMLElement
     private readonly strip: HTMLElement
-    private readonly knob: HTMLInputElement
-    private readonly lengthSlider: HTMLInputElement
-    private readonly loopToggle: HTMLInputElement
+    private paper: HTMLElement | null = null
+    private highlight: HTMLElement | null = null
+    private grid: HTMLElement | null = null
+    private frame: HTMLElement | null = null
+    private name: HTMLElement | null = null
+    private knob: HTMLInputElement | null = null
+    private lengthSlider: HTMLInputElement | null = null
+    private loopToggle: HTMLInputElement | null = null
     private numbers: SampleBufferNumbers | null = null
     private image: ImageBitmap | null = null
     private gridKey = Number.NaN
@@ -44,39 +58,58 @@ export class SampleBufferView {
         loopWidth: number
     } | null = null
 
-    constructor(host: HTMLElement) {
+    constructor(host: HTMLElement, options: SampleBufferOptions = {}) {
+        this.frameWidth = options.width ?? SampleBufferView.pluginWidth
+        this.frameHeight = options.height ?? SampleBufferView.stripHeight
+        this.frameOffset = options.offset ?? SampleBufferView.offsetWidth
+        this.chrome = options.chrome ?? true
+
         const root = document.createElement('div')
         root.className = 'sample-buffer'
 
         this.strip = document.createElement('div')
         this.strip.className = 'sample-buffer-strip'
-        this.strip.style.width = `${SampleBufferView.pluginWidth}px`
-        this.strip.style.height = `${SampleBufferView.stripHeight}px`
+        this.strip.style.position = 'relative'
+        this.strip.style.overflow = 'hidden'
+        this.strip.style.width = `${this.frameWidth}px`
+        this.strip.style.height = `${this.frameHeight}px`
 
         this.paper = document.createElement('div')
         this.paper.className = 'sample-buffer-paper'
 
         this.canvas = document.createElement('canvas')
         this.canvas.className = 'sample-buffer-wave'
+        this.canvas.style.position = 'absolute'
+        this.canvas.style.left = '0'
+        this.canvas.style.top = '0'
         const context = this.canvas.getContext('2d')
         if (!context) {
             throw new Error('missing canvas context')
         }
         this.context = context
 
-        this.highlight = document.createElement('div')
-        this.highlight.className = 'sample-buffer-highlight'
+        if (this.chrome) {
+            this.highlight = document.createElement('div')
+            this.highlight.className = 'sample-buffer-highlight'
 
-        this.grid = document.createElement('div')
-        this.grid.className = 'sample-buffer-grid'
+            this.grid = document.createElement('div')
+            this.grid.className = 'sample-buffer-grid'
 
-        this.frame = document.createElement('div')
-        this.frame.className = 'sample-buffer-frame'
+            this.frame = document.createElement('div')
+            this.frame.className = 'sample-buffer-frame'
 
-        this.name = document.createElement('div')
-        this.name.className = 'sample-buffer-name'
+            this.name = document.createElement('div')
+            this.name.className = 'sample-buffer-name'
 
-        this.strip.append(this.paper, this.canvas, this.highlight, this.grid, this.frame, this.name)
+            this.strip.append(this.paper, this.canvas, this.highlight, this.grid, this.frame, this.name)
+        } else {
+            root.style.position = 'absolute'
+            root.style.inset = '0'
+            this.strip.append(this.canvas)
+            root.append(this.strip)
+            host.append(root)
+            return
+        }
 
         const controls = document.createElement('div')
         controls.className = 'sample-buffer-controls'
@@ -84,40 +117,43 @@ export class SampleBufferView {
         const startLabel = document.createElement('label')
         startLabel.textContent = 'Start'
         this.knob = document.createElement('input')
-        this.knob.className = 'sample-buffer-knob'
-        this.knob.type = 'range'
-        this.knob.min = '0'
-        this.knob.max = '1'
-        this.knob.step = '0.001'
-        this.knob.value = '0'
-        this.knob.addEventListener('input', () => {
-            this.onKnobChange(Number(this.knob.value))
+        const knob = this.knob
+        knob.className = 'sample-buffer-knob'
+        knob.type = 'range'
+        knob.min = '0'
+        knob.max = '1'
+        knob.step = '0.001'
+        knob.value = '0'
+        knob.addEventListener('input', () => {
+            this.onKnobChange(Number(knob.value))
         })
-        startLabel.append(this.knob)
+        startLabel.append(knob)
 
         const lengthLabel = document.createElement('label')
         lengthLabel.textContent = 'Length'
         this.lengthSlider = document.createElement('input')
-        this.lengthSlider.className = 'sample-buffer-length'
-        this.lengthSlider.type = 'range'
-        this.lengthSlider.min = '0'
-        this.lengthSlider.max = '1'
-        this.lengthSlider.step = '0.001'
-        this.lengthSlider.value = '1'
-        this.lengthSlider.addEventListener('input', () => {
-            this.onLengthChange(Number(this.lengthSlider.value))
+        const lengthSlider = this.lengthSlider
+        lengthSlider.className = 'sample-buffer-length'
+        lengthSlider.type = 'range'
+        lengthSlider.min = '0'
+        lengthSlider.max = '1'
+        lengthSlider.step = '0.001'
+        lengthSlider.value = '1'
+        lengthSlider.addEventListener('input', () => {
+            this.onLengthChange(Number(lengthSlider.value))
         })
-        lengthLabel.append(this.lengthSlider)
+        lengthLabel.append(lengthSlider)
 
         const loopLabel = document.createElement('label')
         loopLabel.append(document.createTextNode('Loop'))
         this.loopToggle = document.createElement('input')
-        this.loopToggle.className = 'sample-buffer-loop'
-        this.loopToggle.type = 'checkbox'
-        this.loopToggle.addEventListener('change', () => {
-            this.onLoopChange(this.loopToggle.checked)
+        const loopToggle = this.loopToggle
+        loopToggle.className = 'sample-buffer-loop'
+        loopToggle.type = 'checkbox'
+        loopToggle.addEventListener('change', () => {
+            this.onLoopChange(loopToggle.checked)
         })
-        loopLabel.append(this.loopToggle)
+        loopLabel.append(loopToggle)
 
         controls.append(startLabel, lengthLabel, loopLabel)
         root.append(this.strip, controls)
@@ -125,46 +161,53 @@ export class SampleBufferView {
     }
 
     setName(name: string): void {
-        this.name.textContent = name
+        if (this.name) {
+            this.name.textContent = name
+        }
     }
 
     // Width of the loop window. Uses the slot once the strip is on the page.
     loopSpan(): number {
         const width = this.strip.parentElement?.clientWidth ?? 0
-        const full = width > 0 ? width : SampleBufferView.pluginWidth
-        return Math.max(1, full - SampleBufferView.offsetWidth)
+        const full = width > 0 ? width : this.frameWidth
+        return Math.max(1, full - this.frameOffset)
     }
 
     applyNumbers(settings: SampleBufferNumbers): void {
         this.numbers = settings
-        const frameLeft = SampleBufferView.offsetWidth
+        const frameLeft = this.frameOffset
         const frameWidth = settings.loopWidth
         this.strip.style.width = `${frameLeft + frameWidth}px`
-        this.strip.style.height = `${SampleBufferView.stripHeight}px`
+        this.strip.style.height = `${this.frameHeight}px`
 
         for (const edge of [this.paper, this.grid, this.frame]) {
+            if (!edge) {
+                continue
+            }
             edge.style.left = `${frameLeft}px`
             edge.style.width = `${frameWidth}px`
         }
 
-        if (settings.highlightWidth > 0) {
-            this.highlight.style.display = 'block'
-            this.highlight.style.left = `${settings.highlightX}px`
-            this.highlight.style.width = `${settings.highlightWidth}px`
-        } else {
-            this.highlight.style.display = 'none'
+        if (this.highlight) {
+            if (settings.highlightWidth > 0) {
+                this.highlight.style.display = 'block'
+                this.highlight.style.left = `${settings.highlightX}px`
+                this.highlight.style.width = `${settings.highlightWidth}px`
+            } else {
+                this.highlight.style.display = 'none'
+            }
         }
 
         this.paintGrid(settings.gridWidth, frameWidth)
         this.paintWave()
 
-        if (Number(this.knob.value) !== settings.knob) {
+        if (this.knob && Number(this.knob.value) !== settings.knob) {
             this.knob.value = String(settings.knob)
         }
-        if (Number(this.lengthSlider.value) !== settings.length) {
+        if (this.lengthSlider && Number(this.lengthSlider.value) !== settings.length) {
             this.lengthSlider.value = String(settings.length)
         }
-        if (this.loopToggle.checked !== settings.loop) {
+        if (this.loopToggle && this.loopToggle.checked !== settings.loop) {
             this.loopToggle.checked = settings.loop
         }
     }
@@ -175,8 +218,12 @@ export class SampleBufferView {
     }
 
     private paintGrid(gridWidth: number, frameWidth: number): void {
+        const grid = this.grid
+        if (!grid) {
+            return
+        }
         if (!(gridWidth > 0)) {
-            this.grid.style.backgroundImage = 'none'
+            grid.style.backgroundImage = 'none'
             this.gridKey = Number.NaN
             return
         }
@@ -187,7 +234,7 @@ export class SampleBufferView {
         const ratio = window.devicePixelRatio || 1
         const tile = document.createElement('canvas')
         tile.width = Math.max(1, Math.round(gridWidth * ratio))
-        tile.height = Math.max(1, Math.round(SampleBufferView.stripHeight * ratio))
+        tile.height = Math.max(1, Math.round(this.frameHeight * ratio))
         const graphics = tile.getContext('2d')
         if (!graphics) {
             return
@@ -195,10 +242,10 @@ export class SampleBufferView {
         graphics.clearRect(0, 0, tile.width, tile.height)
         graphics.fillStyle = '#000'
         graphics.fillRect(0, 0, Math.max(1, Math.round(ratio)), tile.height)
-        this.grid.style.backgroundImage = `url(${tile.toDataURL()})`
-        this.grid.style.backgroundRepeat = 'repeat-x'
-        this.grid.style.backgroundSize = `${gridWidth}px ${SampleBufferView.stripHeight}px`
-        this.grid.style.width = `${frameWidth}px`
+        grid.style.backgroundImage = `url(${tile.toDataURL()})`
+        grid.style.backgroundRepeat = 'repeat-x'
+        grid.style.backgroundSize = `${gridWidth}px ${this.frameHeight}px`
+        grid.style.width = `${frameWidth}px`
     }
 
     private paintWave(): void {
@@ -229,8 +276,8 @@ export class SampleBufferView {
         }
 
         const ratio = window.devicePixelRatio || 1
-        const width = SampleBufferView.offsetWidth + settings.loopWidth
-        const height = SampleBufferView.stripHeight
+        const width = this.frameOffset + settings.loopWidth
+        const height = this.frameHeight
         const deviceWidth = Math.max(1, Math.round(width * ratio))
         const deviceHeight = Math.max(1, Math.round(height * ratio))
         if (this.canvas.width !== deviceWidth || this.canvas.height !== deviceHeight) {
@@ -249,7 +296,7 @@ export class SampleBufferView {
 
         ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
         ctx.save()
-        const origin = SampleBufferView.offsetWidth
+        const origin = this.frameOffset
         const frameRight = origin + settings.loopWidth
         ctx.beginPath()
         ctx.rect(origin, 0, settings.loopWidth, height)
