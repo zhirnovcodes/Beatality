@@ -35,6 +35,7 @@ export class WebPresenter {
             loadPack: () => this.perform(loadPack),
             append: (files) => void this.perform(() => this.append(files)),
             remove: (index) => void this.perform(() => this.remove(index)),
+            clear: () => void this.perform(() => this.clear()),
             randomize: () => void this.perform(() => this.randomize()),
             setBpm: (bpm) => void this.perform(() => this.client.setBpm(bpm)),
             setLoop: (beats) => void this.perform(() => this.client.setLoop(beats)),
@@ -44,7 +45,12 @@ export class WebPresenter {
         client.onSnapshot = (snapshot) => {
             this.playSlot = snapshot.playing ? snapshot.playSlot : -1
             this.playTrack = snapshot.playing ? snapshot.playTrack : -1
-            model.show({ names: snapshot.names, playing: snapshot.playing, sliceExp: snapshot.sliceExp })
+            model.show({
+                names: snapshot.names,
+                playing: snapshot.playing,
+                sliceExp: snapshot.sliceExp,
+                playhead: snapshot.playhead,
+            })
             this.markPlaying()
         }
         client.onError = (message) => model.fail(message)
@@ -251,6 +257,14 @@ export class WebPresenter {
             return
         }
         await this.client.removeAt(index)
+    }
+
+    private async clear() {
+        if (!this.model.hasTracks) {
+            return
+        }
+        this.selected = -1
+        await this.client.clear()
     }
 
     private async randomize() {

@@ -54,7 +54,10 @@ private:
     juce::ComboBox slice;
     juce::Label attackLabel{"", "Attack"};
     juce::Slider attack;
+    juce::Label playheadLabel{"", "Playhead"};
+    juce::Slider playhead;
     juce::TextButton loadBank{"Load bank"};
+    juce::TextButton clear{"Clear"};
     juce::TextButton append{"Append"};
     juce::TextButton remove{"Remove"};
     juce::TextButton randomize{"Randomize"};

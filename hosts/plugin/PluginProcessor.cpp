@@ -218,7 +218,8 @@ struct DeviceAudio {
 } // namespace
 
 struct Processor::Impl {
-    explicit Impl(std::atomic<std::uint32_t>& viewIn, std::atomic<int>& slotIn) : view(viewIn), slot(slotIn) {
+    explicit Impl(std::atomic<std::uint32_t>& viewIn, std::atomic<int>& slotIn, std::atomic<double>& headIn)
+        : view(viewIn), slot(slotIn), head(headIn) {
         formats.registerBasicFormats();
     }
 
@@ -228,11 +229,13 @@ struct Processor::Impl {
         playTrack = -1;
         playSlot = -1;
         playing = false;
+        playhead = 0;
     }
 
     void publish() {
         view.store(packView(trackCount, playTrack, playing), std::memory_order_release);
         slot.store(playing ? playSlot : -1, std::memory_order_release);
+        head.store(playhead, std::memory_order_release);
     }
 
     void remember() {
@@ -245,6 +248,7 @@ struct Processor::Impl {
         playTrack = snapshot.playTrack;
         playSlot = snapshot.playSlot;
         playing = snapshot.playing;
+        playhead = snapshot.playhead;
         bpm = snapshot.bpm;
         loopBeats = snapshot.loopBeats;
         sliceExp = snapshot.sliceExp;
@@ -482,6 +486,7 @@ struct Processor::Impl {
             trackCount = 0;
             playTrack = -1;
             playing = false;
+            playhead = 0;
             publish();
             return;
         }
@@ -518,6 +523,7 @@ struct Processor::Impl {
 
     std::atomic<std::uint32_t>& view;
     std::atomic<int>& slot;
+    std::atomic<double>& head;
     juce::AudioFormatManager formats;
     CommandQueue queue;
     std::vector<SourceTrack> sources;
@@ -531,6 +537,7 @@ struct Processor::Impl {
     int playTrack = -1;
     int playSlot = -1;
     bool playing = false;
+    double playhead = 0;
     bt::NoteGate gate;
     bool captureRandomize = false;
     bool randomizeRequested = false;
@@ -542,7 +549,7 @@ struct Processor::Impl {
 
 Processor::Processor()
     : juce::AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-      impl(std::make_unique<Impl>(view, slot)) {}
+      impl(std::make_unique<Impl>(view, slot, head)) {}
 
 Processor::~Processor() {
     impl->engine.reset();
@@ -699,6 +706,22 @@ int Processor::playTrack() const {
 
 int Processor::playSlot() const {
     return slot.load(std::memory_order_acquire);
+}
+
+double Processor::playhead() const {
+    return head.load(std::memory_order_acquire);
+}
+
+bool Processor::clearBank() {
+    CommandQueue::Slot clear;
+    clear.kind = CommandQueue::Slot::Kind::Clear;
+    if (!impl->queue.push(clear)) {
+        return false;
+    }
+    names.clear();
+    pictures.clear();
+    error.clear();
+    return true;
 }
 
 double Processor::trackRate(int index) const {

@@ -361,6 +361,8 @@ void SliceEngine::fillSnapshot(SliceSnapshot& out) {
     out.bpm = grid_.bpm();
     out.playSlot = -1;
     out.playTrack = -1;
+    const int loop = loopFrames();
+    out.playhead = playing_ && loop > 0 ? static_cast<double>(position_) / static_cast<double>(loop) : 0.0;
     const int slice = sliceFrames();
     const int musical = grid_.slotCount() * slice;
     if (playing_ && slice > 0 && position_ < musical && bank_.count() > 0 && !sequence_.empty()) {

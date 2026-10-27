@@ -49,6 +49,8 @@ public:
     void setTrack(int index, double start, double length, bool loop);
     // Replaces the track list with the stored Demo bank. Does not move the playhead.
     bool loadBank();
+    // Empties the current bank. A sounding voice fades out, and the playhead returns to 0.
+    bool clearBank();
 
     int numTracks() const;
     bool canAppend() const;
@@ -56,6 +58,8 @@ public:
     int playTrack() const;
     // Slot inside the loop while a note is held. -1 when nothing is sounding.
     int playSlot() const;
+    // 0 at the start of the loop, just under 1 at the end. 0 while stopped.
+    double playhead() const;
     double trackRate(int index) const;
     int trackFrames(int index) const;
     const std::vector<float>& trackPeaks(int index) const;
@@ -75,6 +79,7 @@ private:
     juce::String error;
     std::atomic<std::uint32_t> view{0};
     std::atomic<int> slot{-1};
+    std::atomic<double> head{0};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Processor)
 };

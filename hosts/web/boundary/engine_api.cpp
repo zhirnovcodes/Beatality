@@ -189,6 +189,10 @@ BT_EXPORT int bt_snapshot_play_track(const Instance* instance) {
     return instance != nullptr ? instance->snapshot.playTrack : -1;
 }
 
+BT_EXPORT double bt_snapshot_playhead(const Instance* instance) {
+    return instance != nullptr ? instance->snapshot.playhead : 0.0;
+}
+
 BT_EXPORT int bt_snapshot_released_count(const Instance* instance) {
     return instance != nullptr ? instance->snapshot.releasedCount : 0;
 }

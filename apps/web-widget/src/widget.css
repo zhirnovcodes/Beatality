@@ -134,6 +134,13 @@ body {
     width: 6rem;
 }
 
+#playhead {
+    flex: 1;
+    min-width: 0;
+    accent-color: #e10600;
+    pointer-events: none;
+}
+
 #actions {
     display: flex;
     flex-direction: row;
@@ -141,9 +148,20 @@ body {
     align-items: center;
 }
 
+.file-button {
+    min-width: 0;
+}
+
 .file-button input {
     display: block;
-    max-width: 12rem;
+    width: 6.75rem;
+    max-width: 100%;
+    font-size: 0;
+}
+
+.file-button input::file-selector-button,
+.file-button input::-webkit-file-upload-button {
+    font: 13px system-ui, sans-serif;
 }
 
 #error {

@@ -19,6 +19,8 @@ struct SliceSnapshot {
     double bpm = 120.0;
     int playSlot = -1;
     int playTrack = -1;
+    // 0 at the start of the loop, just under 1 at the end. 0 while stopped.
+    double playhead = 0;
     // One extra slot: a fade can still be holding a buffer that has left the bank.
     std::uint32_t released[SampleBank::kCapacity + 1]{};
     int releasedCount = 0;

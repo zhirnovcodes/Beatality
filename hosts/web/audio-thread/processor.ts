@@ -28,6 +28,7 @@ interface Core {
     bt_snapshot_bpm: (engine: number) => number
     bt_snapshot_play_slot: (engine: number) => number
     bt_snapshot_play_track: (engine: number) => number
+    bt_snapshot_playhead: (engine: number) => number
     bt_snapshot_released_count: (engine: number) => number
     bt_snapshot_released_id: (engine: number, index: number) => number
 }
@@ -396,6 +397,7 @@ class BeatalityProcessor extends AudioWorkletProcessor {
             bpm: core.bt_snapshot_bpm(this.engine),
             playSlot: core.bt_snapshot_play_slot(this.engine),
             playTrack: core.bt_snapshot_play_track(this.engine),
+            playhead: core.bt_snapshot_playhead(this.engine),
             released,
             peak,
         })

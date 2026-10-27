@@ -343,6 +343,37 @@ void testTrackWindowIsWhatPlays() {
     CHECK(near(after[199], 0.5));
 }
 
+void testPlayheadIsTheFractionOfTheLoop() {
+    constexpr int kRate = 10000;
+    std::vector<float> samples(8000, 0.5f);
+    bt::SliceEngine engine(kRate, 1);
+    engine.append(bufferOf(1, samples));
+
+    bt::SliceSnapshot snapshot;
+    engine.fillSnapshot(snapshot);
+    CHECK(snapshot.playhead == 0.0);
+
+    engine.play();
+    engine.fillSnapshot(snapshot);
+    CHECK(snapshot.playing);
+    CHECK(snapshot.playhead == 0.0);
+
+    // 120 BPM and 8 beats is a 4 second loop: 40000 frames at this rate.
+    std::vector<float> left(10000);
+    std::vector<float> right(10000);
+    engine.render(left.data(), right.data(), 10000);
+    engine.fillSnapshot(snapshot);
+    CHECK(near(snapshot.playhead, 0.25));
+
+    engine.render(left.data(), right.data(), 30000);
+    engine.fillSnapshot(snapshot);
+    CHECK(snapshot.playhead == 0.0);
+
+    engine.stop();
+    engine.fillSnapshot(snapshot);
+    CHECK(snapshot.playhead == 0.0);
+}
+
 void testClearWhileStoppedReleasesEveryTrack() {
     std::vector<float> first(8, 0.2f);
     std::vector<float> second(8, 0.4f);
@@ -429,6 +460,7 @@ int main() {
     testStopFallsFromTheCurrentGain();
     testPlayAndStopReturnToTheStart();
     testTrackWindowIsWhatPlays();
+    testPlayheadIsTheFractionOfTheLoop();
     testClearWhileStoppedReleasesEveryTrack();
     testClearWhilePlayingFadesTheHeardTrack();
 

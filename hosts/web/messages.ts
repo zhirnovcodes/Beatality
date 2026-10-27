@@ -102,6 +102,8 @@ export interface SnapshotMessage {
     bpm: number
     playSlot: number
     playTrack: number
+    // 0 at the start of the loop, just under 1 at the end. 0 while stopped.
+    playhead: number
     released: number[]
     peak: number
 }

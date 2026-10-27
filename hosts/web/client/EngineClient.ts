@@ -16,6 +16,7 @@ export interface EngineSnapshot {
     bpm: number
     playSlot: number
     playTrack: number
+    playhead: number
     names: string[]
     peak: number
 }
@@ -105,6 +106,14 @@ export class EngineClient {
         this.node?.port.postMessage({ type: 'track', index, start, length, loop })
     }
 
+    // Empties the bank. A sounding voice fades out.
+    async clear(): Promise<void> {
+        await this.start()
+        this.registry.clear()
+        this.node?.port.postMessage({ type: 'clear' })
+        this.emitList()
+    }
+
     // Decodes every file and appends the ones that decode. Returns how many were
     // added. Does not pick a sample. An empty list leaves the engine untouched.
     async append(files: readonly File[]): Promise<number> {
@@ -190,6 +199,7 @@ export class EngineClient {
             bpm: message.bpm,
             playSlot: message.playSlot,
             playTrack: message.playTrack,
+            playhead: message.playhead,
             names: this.registry.list(),
             peak: message.peak,
         }
@@ -243,6 +253,7 @@ export class EngineClient {
             bpm: this.latest?.bpm ?? 120,
             playSlot: this.latest?.playSlot ?? -1,
             playTrack: this.latest?.playTrack ?? -1,
+            playhead: this.registry.count > 0 ? (this.latest?.playhead ?? 0) : 0,
             names: this.registry.list(),
             peak: this.latest?.peak ?? 0,
         }

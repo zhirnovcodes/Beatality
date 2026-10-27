@@ -128,10 +128,26 @@ export function Widget({
                         onChange={onAttack}
                     />
                 </label>
+                <label>
+                    Playhead
+                    <input
+                        id="playhead"
+                        type="range"
+                        min={0}
+                        max={1}
+                        step="any"
+                        value={model.playhead}
+                        tabIndex={-1}
+                        aria-readonly="true"
+                    />
+                </label>
             </div>
             <div id="actions">
                 <button id="load-pack" type="button" disabled={loadingPack} onClick={onLoadPack}>
                     Load bank
+                </button>
+                <button id="clear" type="button" disabled={!model.hasTracks} onClick={() => model.clear()}>
+                    Clear
                 </button>
                 <label className="file-button">
                     Append

@@ -7,6 +7,7 @@ export interface ViewActions {
     loadPack: () => Promise<void>
     append: (files: File[]) => void
     remove: (index: number) => void
+    clear: () => void
     randomize: () => void
     setBpm: (bpm: number) => void
     setLoop: (beats: number) => void
@@ -19,6 +20,8 @@ export interface ViewState {
     playing: boolean
     // Null keeps the slice the page already shows.
     sliceExp: number | null
+    // 0 at the start of the loop, just under 1 at the end.
+    playhead: number
 }
 
 export interface SliceChoice {
@@ -31,6 +34,13 @@ const expMax = 4
 
 function sliceBeats(exponent: number): number {
     return 2 ** exponent
+}
+
+function unit(value: number): number {
+    if (!(value >= 0)) {
+        return 0
+    }
+    return value > 1 ? 1 : value
 }
 
 function sliceLabel(exponent: number): string {
@@ -53,6 +63,7 @@ function fitSlice(exponent: number, loopBeats: number): number {
 export class WebViewModel {
     tracks: TrackRow[] = []
     playing = false
+    playhead = 0
     error = ''
     bpm = 120
     loopBeats = 8
@@ -103,6 +114,10 @@ export class WebViewModel {
 
     remove(index: number) {
         this.actions?.remove(index)
+    }
+
+    clear() {
+        this.actions?.clear()
     }
 
     randomize() {
@@ -162,15 +177,20 @@ export class WebViewModel {
     show(state: ViewState) {
         const tracks = state.names.map((name) => ({ name }))
         const sliceExp = fitSlice(state.sliceExp ?? this.sliceExp, this.loopBeats)
+        const playhead = unit(state.playhead)
         const sameTracks =
             tracks.length === this.tracks.length && tracks.every((track, i) => track.name === this.tracks[i].name)
-        if (sameTracks && this.playing === state.playing && this.sliceExp === sliceExp) {
+        const same = sameTracks && this.playing === state.playing && this.sliceExp === sliceExp
+        if (same && this.playhead === playhead) {
             return
         }
-        this.tracks = tracks
-        this.playing = state.playing
-        this.sliceExp = sliceExp
-        this.error = ''
+        if (!same) {
+            this.tracks = tracks
+            this.playing = state.playing
+            this.sliceExp = sliceExp
+            this.error = ''
+        }
+        this.playhead = playhead
         this.notify()
     }
 

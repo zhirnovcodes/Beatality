@@ -47,7 +47,7 @@ Editor::Editor(Processor& processorIn)
     addAndMakeVisible(sampleBuffer);
     addAndMakeVisible(list);
 
-    for (auto* label : {&startLabel, &lengthLabel, &bpmLabel, &loopLabel, &sliceLabel, &attackLabel}) {
+    for (auto* label : {&startLabel, &lengthLabel, &bpmLabel, &loopLabel, &sliceLabel, &attackLabel, &playheadLabel}) {
         addAndMakeVisible(label);
     }
     styleSlider(start, 3);
@@ -55,6 +55,12 @@ Editor::Editor(Processor& processorIn)
     styleSlider(bpm, 1);
     styleSlider(loopBeats, 0);
     styleSlider(attack, 0);
+    playhead.setSliderStyle(juce::Slider::LinearHorizontal);
+    playhead.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    playhead.setRange(0.0, 1.0, 0.0);
+    playhead.setInterceptsMouseClicks(false, false);
+    playhead.setColour(juce::Slider::thumbColourId, juce::Colours::red);
+    playhead.setColour(juce::Slider::trackColourId, juce::Colours::red);
     start.setRange(0.0, 1.0, 0.001);
     length.setRange(0.0, 1.0, 0.001);
     length.setValue(1.0, juce::dontSendNotification);
@@ -71,8 +77,10 @@ Editor::Editor(Processor& processorIn)
     addAndMakeVisible(loopBeats);
     addAndMakeVisible(slice);
     addAndMakeVisible(attack);
+    addAndMakeVisible(playhead);
 
     addAndMakeVisible(loadBank);
+    addAndMakeVisible(clear);
     addAndMakeVisible(append);
     addAndMakeVisible(remove);
     addAndMakeVisible(randomize);
@@ -184,6 +192,14 @@ Editor::Editor(Processor& processorIn)
         refresh();
     };
     randomize.onClick = [this] { processor.randomizeTracks(); };
+    clear.onClick = [this] {
+        if (!processor.clearBank()) {
+            return;
+        }
+        plays.clear();
+        shownRow = -1;
+        refresh();
+    };
     loadBank.onClick = [this] {
         if (!processor.loadBank()) {
             refresh();
@@ -215,20 +231,22 @@ void Editor::resized() {
     area.removeFromBottom(8);
 
     auto buttons = area.removeFromBottom(32);
-    randomize.setBounds(buttons.removeFromRight(110));
+    randomize.setBounds(buttons.removeFromRight(100));
     buttons.removeFromRight(8);
-    remove.setBounds(buttons.removeFromRight(90));
+    remove.setBounds(buttons.removeFromRight(84));
     buttons.removeFromRight(8);
-    append.setBounds(buttons.removeFromRight(90));
-    buttons.removeFromRight(8);
-    loadBank.setBounds(buttons.removeFromLeft(110));
+    append.setBounds(buttons.removeFromRight(84));
+    loadBank.setBounds(buttons.removeFromLeft(100));
+    buttons.removeFromLeft(8);
+    clear.setBounds(buttons.removeFromLeft(72));
 
-    auto place = [&area](juce::Label& label, juce::Component& control) {
+    auto place = [&area](juce::Label& label, juce::Component& control, int labelWidth = 64) {
         area.removeFromBottom(6);
         auto row = area.removeFromBottom(28);
-        label.setBounds(row.removeFromLeft(64));
+        label.setBounds(row.removeFromLeft(labelWidth));
         control.setBounds(row);
     };
+    place(playheadLabel, playhead, 76);
     place(attackLabel, attack);
     place(sliceLabel, slice);
     place(loopLabel, loopBeats);
@@ -304,7 +322,9 @@ void Editor::refresh() {
     showSelection();
     const bool hasTracks = processor.numTracks() > 0;
     remove.setEnabled(hasTracks);
+    clear.setEnabled(hasTracks);
     randomize.setEnabled(hasTracks);
+    playhead.setValue(processor.playhead(), juce::dontSendNotification);
     append.setEnabled(processor.canAppend());
     error.setText(processor.errorText(), juce::dontSendNotification);
     sampleBuffer.show(pictureFor(bufferRow()));
