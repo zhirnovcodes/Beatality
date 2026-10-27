@@ -101,6 +101,7 @@ else()
             PRIVATE
                 hosts/plugin/PluginProcessor.cpp
                 hosts/plugin/PluginEditor.cpp
+                hosts/plugin/SampleBufferView.cpp
         )
         target_include_directories(Beatality PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hosts/common)
         juce_add_binary_data(BeatalityBank

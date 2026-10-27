@@ -1,5 +1,7 @@
 #include "PluginEditor.h"
 
+#include <algorithm>
+
 namespace {
 
 int wholeBeats(int exponent) {
@@ -40,8 +42,9 @@ Editor::Editor(Processor& processorIn)
     error.setColour(juce::Label::textColourId, juce::Colours::indianred);
     addAndMakeVisible(error);
 
-    list.setRowHeight(24);
+    list.setRowHeight(22 + SampleBufferView::kHeight);
     list.setMultipleSelectionEnabled(false);
+    addAndMakeVisible(sampleBuffer);
     addAndMakeVisible(list);
 
     for (auto* label : {&startLabel, &lengthLabel, &bpmLabel, &loopLabel, &sliceLabel, &attackLabel}) {
@@ -240,7 +243,9 @@ void Editor::resized() {
     startLabel.setBounds(track.removeFromLeft(64));
     start.setBounds(track);
 
-    area.removeFromBottom(8);
+    area.removeFromTop(8);
+    sampleBuffer.setBounds(area.removeFromTop(80));
+    area.removeFromTop(8);
     list.setBounds(area);
 }
 
@@ -251,13 +256,21 @@ int Editor::getNumRows() {
 void Editor::paintListBoxItem(int row, juce::Graphics& graphics, int width, int height, bool selected) {
     const bool heard = row == processor.playTrack();
     const auto background = list.findColour(juce::ListBox::backgroundColourId);
-    graphics.fillAll(heard ? background.contrasting(0.25f) : background);
+    graphics.fillAll(background);
+    const int nameHeight = std::min(22, height);
+    if (heard) {
+        graphics.setColour(background.contrasting(0.25f));
+        graphics.fillRect(0, 0, width, nameHeight);
+    }
     if (selected) {
         graphics.setColour(list.findColour(juce::ListBox::textColourId));
         graphics.drawRect(0, 0, width, height, 1);
     }
     graphics.setColour(list.findColour(juce::ListBox::textColourId));
-    graphics.drawText(processor.trackName(row), 6, 0, width - 12, height, juce::Justification::centredLeft, true);
+    graphics.drawText(processor.trackName(row), 6, 0, width - 12, nameHeight, juce::Justification::centredLeft, true);
+    if (height > nameHeight) {
+        SampleBufferView::paint(graphics, juce::Rectangle<int>(0, nameHeight, width, height - nameHeight), pictureFor(row));
+    }
 }
 
 void Editor::selectedRowsChanged(int) {
@@ -294,6 +307,7 @@ void Editor::refresh() {
     randomize.setEnabled(hasTracks);
     append.setEnabled(processor.canAppend());
     error.setText(processor.errorText(), juce::dontSendNotification);
+    sampleBuffer.show(pictureFor(bufferRow()));
 }
 
 void Editor::adoptTracks() {
@@ -337,6 +351,38 @@ void Editor::refillSlice() {
     }
     slice.setSelectedId(sliceExp + 5, juce::dontSendNotification);
     writing = false;
+}
+
+int Editor::bufferRow() const {
+    const int selected = list.getSelectedRow();
+    if (selected >= 0 && selected < processor.numTracks()) {
+        return selected;
+    }
+    return processor.numTracks() > 0 ? 0 : -1;
+}
+
+SampleBufferView::Picture Editor::pictureFor(int row) const {
+    SampleBufferView::Picture picture;
+    if (row < 0 || row >= processor.numTracks()) {
+        return picture;
+    }
+    picture.hasTrack = true;
+    picture.peaks = processor.trackPeaks(row);
+    picture.rate = processor.trackRate(row);
+    picture.frames = processor.trackFrames(row);
+    if (row < static_cast<int>(plays.size())) {
+        const auto& play = plays[static_cast<std::size_t>(row)];
+        picture.start = play.start;
+        picture.length = play.length;
+        picture.loop = play.loop;
+    }
+    picture.bpm = sentBpm;
+    picture.loopBeats = loopSize;
+    picture.sliceExp = sliceExp;
+    if (row == processor.playTrack()) {
+        picture.playSlot = processor.playSlot();
+    }
+    return picture;
 }
 
 void Editor::commitTrack() {

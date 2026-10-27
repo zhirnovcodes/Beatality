@@ -125,6 +125,10 @@ export class SampleBufferPresenter {
         this.publish()
     }
 
+    refit(): void {
+        this.publish()
+    }
+
     setPlayhead(beats: number): void {
         if (!this.picture || this.picture.playheadBeats === beats) {
             return
@@ -221,7 +225,7 @@ export class SampleBufferPresenter {
     }
 
     private place(picture: SamplePicture): Placed {
-        const loopWidth = SampleBufferView.pluginWidth - SampleBufferView.offsetWidth
+        const loopWidth = this.view.loopSpan()
         const pxPerBeat = loopWidth / picture.loopBeats
         const durationSec = picture.samples.length / picture.sampleRate
         const imageWidth = durationSec * (picture.bpm / 60) * pxPerBeat

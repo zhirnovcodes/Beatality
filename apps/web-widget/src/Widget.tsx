@@ -2,7 +2,19 @@ import { useEffect, useState } from 'preact/hooks'
 import type { WebViewModel } from '../../../viewmodels/web/WebViewModel'
 import './sampleBufferView.css'
 
-export function Widget({ model, bank }: { model: WebViewModel; bank: HTMLElement }) {
+export function Widget({
+    model,
+    buffer,
+    controls,
+    list,
+    chosen,
+}: {
+    model: WebViewModel
+    buffer: HTMLElement
+    controls: HTMLElement
+    list: HTMLElement
+    chosen: () => number
+}) {
     const [, setTick] = useState(0)
     const [loadingPack, setLoadingPack] = useState(false)
     useEffect(() => model.subscribe(() => setTick((tick) => tick + 1)), [model])
@@ -22,7 +34,6 @@ export function Widget({ model, bank }: { model: WebViewModel; bank: HTMLElement
     const onFiles = (event: Event) => {
         const input = event.currentTarget as HTMLInputElement
         const files = Array.from(input.files ?? [])
-        // Dismissing the dialog reports an empty selection. Nothing was added.
         if (files.length === 0) {
             return
         }
@@ -58,72 +69,89 @@ export function Widget({ model, bank }: { model: WebViewModel; bank: HTMLElement
         void model.loadPack().finally(() => setLoadingPack(false))
     }
 
-    const placeBank = (node: HTMLDivElement | null) => {
-        if (node && bank.parentElement !== node) {
-            node.replaceChildren(bank)
+    const onRemove = () => {
+        if (!model.hasTracks) {
+            return
+        }
+        const index = chosen()
+        model.remove(index < 0 ? 0 : index)
+    }
+
+    const place = (node: HTMLElement) => (host: HTMLElement | null) => {
+        if (host && node.parentElement !== host) {
+            host.replaceChildren(node)
         }
     }
 
     return (
-        <main>
-            <h1>Beatality</h1>
-            <div ref={placeBank} />
-            <button id="load-pack" type="button" disabled={loadingPack} onClick={onLoadPack}>
-                Load bank
-            </button>
-            <label>
-                Append
-                <input
-                    type="file"
-                    accept=".wav,.mp3,audio/wav,audio/mpeg"
-                    multiple
-                    onClick={onPickClick}
-                    onCancel={onCancel}
-                    onChange={onFiles}
-                />
-            </label>
-            <button id="randomize" type="button" disabled={!model.hasTracks} onClick={() => model.randomize()}>
-                Randomize
-            </button>
-            <label>
-                BPM
-                <input id="bpm" type="number" step="any" defaultValue={model.bpm} onChange={onBpm} />
-            </label>
-            <label>
-                Loop
-                <input
-                    id="loop"
-                    type="number"
-                    min={1}
-                    max={32}
-                    step={1}
-                    defaultValue={model.loopBeats}
-                    onChange={onLoop}
-                />
-            </label>
-            <label>
-                Slice
-                <select id="slice" value={model.sliceExp} onChange={onSlice}>
-                    {model.sliceChoices.map((choice) => (
-                        <option key={choice.exponent} value={choice.exponent}>
-                            {choice.label}
-                        </option>
-                    ))}
-                </select>
-            </label>
-            <label>
-                Attack
-                <input
-                    id="attack"
-                    type="number"
-                    min={2}
-                    max={16}
-                    step={1}
-                    defaultValue={model.attackMs}
-                    onChange={onAttack}
-                />
-            </label>
-            {model.error ? <p>{model.error}</p> : null}
+        <main id="frame" className="instrument">
+            <div id="title">Beatality</div>
+            <div id="sample-buffer" ref={place(buffer)} />
+            <div id="track-list" role="listbox" ref={place(list)} />
+            <div id="selected-sample" ref={place(controls)} />
+            <div id="timing">
+                <label>
+                    BPM
+                    <input id="bpm" type="number" min={1} max={999} step={0.1} defaultValue={model.bpm} onChange={onBpm} />
+                </label>
+                <label>
+                    Loop
+                    <input
+                        id="loop"
+                        type="number"
+                        min={1}
+                        max={32}
+                        step={1}
+                        defaultValue={model.loopBeats}
+                        onChange={onLoop}
+                    />
+                </label>
+                <label>
+                    Slice
+                    <select id="slice" value={model.sliceExp} onChange={onSlice}>
+                        {model.sliceChoices.map((choice) => (
+                            <option key={choice.exponent} value={choice.exponent}>
+                                {choice.label}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+                <label>
+                    Attack
+                    <input
+                        id="attack"
+                        type="number"
+                        min={2}
+                        max={16}
+                        step={1}
+                        defaultValue={model.attackMs}
+                        onChange={onAttack}
+                    />
+                </label>
+            </div>
+            <div id="actions">
+                <button id="load-pack" type="button" disabled={loadingPack} onClick={onLoadPack}>
+                    Load bank
+                </button>
+                <label className="file-button">
+                    Append
+                    <input
+                        type="file"
+                        accept=".wav,.mp3,audio/wav,audio/mpeg"
+                        multiple
+                        onClick={onPickClick}
+                        onCancel={onCancel}
+                        onChange={onFiles}
+                    />
+                </label>
+                <button id="remove" type="button" disabled={!model.hasTracks} onClick={onRemove}>
+                    Remove
+                </button>
+                <button id="randomize" type="button" disabled={!model.hasTracks} onClick={() => model.randomize()}>
+                    Randomize
+                </button>
+            </div>
+            {model.error ? <p id="error">{model.error}</p> : <p id="error" />}
         </main>
     )
 }

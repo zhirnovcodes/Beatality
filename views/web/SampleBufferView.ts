@@ -128,6 +128,13 @@ export class SampleBufferView {
         this.name.textContent = name
     }
 
+    // Width of the loop window. Uses the slot once the strip is on the page.
+    loopSpan(): number {
+        const width = this.strip.parentElement?.clientWidth ?? 0
+        const full = width > 0 ? width : SampleBufferView.pluginWidth
+        return Math.max(1, full - SampleBufferView.offsetWidth)
+    }
+
     applyNumbers(settings: SampleBufferNumbers): void {
         this.numbers = settings
         const frameLeft = SampleBufferView.offsetWidth

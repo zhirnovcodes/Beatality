@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PluginProcessor.h"
+#include "SampleBufferView.h"
 
 #include <vector>
 
@@ -32,10 +33,13 @@ private:
     void showSelection();
     void refillSlice();
     void commitTrack();
+    int bufferRow() const;
+    SampleBufferView::Picture pictureFor(int row) const;
 
     Processor& processor;
     juce::Label title;
     juce::Label error;
+    SampleBufferView sampleBuffer;
     juce::ListBox list;
     juce::Label startLabel{"", "Start"};
     juce::Slider start;

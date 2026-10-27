@@ -28,6 +28,38 @@ int unpackIndex(std::uint32_t packed) {
     return static_cast<int>((packed >> 8) & 0xffu) - 1;
 }
 
+constexpr int kPeakColumns = 512;
+
+// Loudest sample in each column. The louder channel wins, matching the web waveform.
+std::vector<float> peakColumns(const float* left, const float* right, int frames) {
+    const int columns = frames > 0 && frames < kPeakColumns ? frames : (frames > 0 ? kPeakColumns : 0);
+    std::vector<float> peaks(static_cast<std::size_t>(columns), 0.0f);
+    if (left == nullptr || columns <= 0) {
+        return peaks;
+    }
+    for (int column = 0; column < columns; ++column) {
+        int start = static_cast<int>((static_cast<long long>(column) * frames) / columns);
+        int end = static_cast<int>((static_cast<long long>(column + 1) * frames) / columns);
+        if (end <= start) {
+            end = start + 1;
+        }
+        if (start >= frames) {
+            continue;
+        }
+        if (end > frames) {
+            end = frames;
+        }
+        float peak = 0.0f;
+        for (int frame = start; frame < end; ++frame) {
+            const float leftAmp = std::abs(left[frame]);
+            const float rightAmp = right != nullptr ? std::abs(right[frame]) : leftAmp;
+            peak = std::max(peak, std::max(leftAmp, rightAmp));
+        }
+        peaks[static_cast<std::size_t>(column)] = peak > 1.0f ? 1.0f : peak;
+    }
+    return peaks;
+}
+
 struct AppendPayload {
     std::uint32_t id = 0;
     double sourceRate = 0;
@@ -186,7 +218,7 @@ struct DeviceAudio {
 } // namespace
 
 struct Processor::Impl {
-    explicit Impl(std::atomic<std::uint32_t>& viewIn) : view(viewIn) {
+    explicit Impl(std::atomic<std::uint32_t>& viewIn, std::atomic<int>& slotIn) : view(viewIn), slot(slotIn) {
         formats.registerBasicFormats();
     }
 
@@ -194,11 +226,13 @@ struct Processor::Impl {
         engine = std::make_unique<bt::SliceEngine>(rate, seed);
         trackCount = 0;
         playTrack = -1;
+        playSlot = -1;
         playing = false;
     }
 
     void publish() {
         view.store(packView(trackCount, playTrack, playing), std::memory_order_release);
+        slot.store(playing ? playSlot : -1, std::memory_order_release);
     }
 
     void remember() {
@@ -209,6 +243,7 @@ struct Processor::Impl {
         engine->fillSnapshot(snapshot);
         trackCount = snapshot.count;
         playTrack = snapshot.playTrack;
+        playSlot = snapshot.playSlot;
         playing = snapshot.playing;
         bpm = snapshot.bpm;
         loopBeats = snapshot.loopBeats;
@@ -482,6 +517,7 @@ struct Processor::Impl {
     }
 
     std::atomic<std::uint32_t>& view;
+    std::atomic<int>& slot;
     juce::AudioFormatManager formats;
     CommandQueue queue;
     std::vector<SourceTrack> sources;
@@ -493,6 +529,7 @@ struct Processor::Impl {
     std::uint64_t seed = static_cast<std::uint64_t>(juce::Random::getSystemRandom().nextInt64());
     int trackCount = 0;
     int playTrack = -1;
+    int playSlot = -1;
     bool playing = false;
     bt::NoteGate gate;
     bool captureRandomize = false;
@@ -505,7 +542,7 @@ struct Processor::Impl {
 
 Processor::Processor()
     : juce::AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-      impl(std::make_unique<Impl>(view)) {}
+      impl(std::make_unique<Impl>(view, slot)) {}
 
 Processor::~Processor() {
     impl->engine.reset();
@@ -589,6 +626,10 @@ void Processor::appendFiles(const juce::Array<juce::File>& files) {
             skipped = true;
             continue;
         }
+        TrackPicture picture;
+        picture.rate = payload->sourceRate;
+        picture.frames = payload->sourceFrames;
+        picture.peaks = peakColumns(payload->sourceLeft, payload->sourceRight, payload->sourceFrames);
         CommandQueue::Slot slot;
         slot.kind = CommandQueue::Slot::Kind::Append;
         slot.append = payload;
@@ -597,6 +638,7 @@ void Processor::appendFiles(const juce::Array<juce::File>& files) {
             break;
         }
         names.add(file.getFileName());
+        pictures.push_back(std::move(picture));
         ++added;
     }
     if (added > 0) {
@@ -617,6 +659,9 @@ void Processor::removeTrack(int index) {
         return;
     }
     names.remove(index);
+    if (index >= 0 && index < static_cast<int>(pictures.size())) {
+        pictures.erase(pictures.begin() + static_cast<std::size_t>(index));
+    }
     error.clear();
 }
 
@@ -650,6 +695,32 @@ juce::String Processor::trackName(int index) const {
 
 int Processor::playTrack() const {
     return unpackIndex(view.load(std::memory_order_acquire));
+}
+
+int Processor::playSlot() const {
+    return slot.load(std::memory_order_acquire);
+}
+
+double Processor::trackRate(int index) const {
+    if (index < 0 || index >= static_cast<int>(pictures.size())) {
+        return 0;
+    }
+    return pictures[static_cast<std::size_t>(index)].rate;
+}
+
+int Processor::trackFrames(int index) const {
+    if (index < 0 || index >= static_cast<int>(pictures.size())) {
+        return 0;
+    }
+    return pictures[static_cast<std::size_t>(index)].frames;
+}
+
+const std::vector<float>& Processor::trackPeaks(int index) const {
+    static const std::vector<float> empty;
+    if (index < 0 || index >= static_cast<int>(pictures.size())) {
+        return empty;
+    }
+    return pictures[static_cast<std::size_t>(index)].peaks;
 }
 
 void Processor::setBpm(double bpm) {
@@ -746,7 +817,12 @@ bool Processor::loadBank() {
     }
 
     juce::StringArray loaded;
+    std::vector<TrackPicture> loadedPictures;
     for (const Item& item : items) {
+        TrackPicture picture;
+        picture.rate = item.payload->sourceRate;
+        picture.frames = item.payload->sourceFrames;
+        picture.peaks = peakColumns(item.payload->sourceLeft, item.payload->sourceRight, item.payload->sourceFrames);
         CommandQueue::Slot slot;
         slot.kind = CommandQueue::Slot::Kind::Append;
         slot.append = item.payload;
@@ -755,8 +831,10 @@ bool Processor::loadBank() {
             continue;
         }
         loaded.add(item.name);
+        loadedPictures.push_back(std::move(picture));
     }
     names = loaded;
+    pictures = std::move(loadedPictures);
     if (names.isEmpty()) {
         error = "Could not load the Demo bank.";
         return false;

@@ -18,15 +18,20 @@ const client = new EngineClient({
     wasmUrl,
     processorUrl: '/beatality-processor.js',
 })
-const bank = document.createElement('div')
-bank.className = 'sample-bank'
-new WebPresenter(model, client, bank, loadDemo)
+const buffer = document.createElement('div')
+buffer.style.width = '100%'
+buffer.style.height = '100%'
+buffer.style.overflow = 'hidden'
+const controls = document.createElement('fieldset')
+controls.disabled = true
+const list = document.createElement('ul')
+const presenter = new WebPresenter(model, client, buffer, controls, list, loadDemo)
 
 const app = document.querySelector('#app')
 if (!app) {
     throw new Error('missing #app')
 }
-render(<Widget model={model} bank={bank} />, app)
+render(<Widget model={model} buffer={buffer} controls={controls} list={list} chosen={() => presenter.chosen()} />, app)
 
 const previewNote = 36
 const previewVelocity = 1

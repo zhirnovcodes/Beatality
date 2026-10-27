@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <vector>
 
 // VST3 and standalone host. The message thread only queues commands.
 // The audio thread owns the engine.
@@ -53,14 +54,27 @@ public:
     bool canAppend() const;
     juce::String trackName(int index) const;
     int playTrack() const;
+    // Slot inside the loop while a note is held. -1 when nothing is sounding.
+    int playSlot() const;
+    double trackRate(int index) const;
+    int trackFrames(int index) const;
+    const std::vector<float>& trackPeaks(int index) const;
     juce::String errorText() const;
 
 private:
+    struct TrackPicture {
+        double rate = 0;
+        int frames = 0;
+        std::vector<float> peaks;
+    };
+
     struct Impl;
     std::unique_ptr<Impl> impl;
     juce::StringArray names;
+    std::vector<TrackPicture> pictures;
     juce::String error;
     std::atomic<std::uint32_t> view{0};
+    std::atomic<int> slot{-1};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Processor)
 };

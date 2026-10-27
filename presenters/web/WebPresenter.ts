@@ -7,6 +7,8 @@ interface SampleRow {
     samples: Float32Array
     presenter: SampleBufferPresenter
     element: HTMLElement
+    strip: HTMLElement
+    controls: HTMLElement
 }
 
 function isAbort(error: unknown): boolean {
@@ -17,12 +19,15 @@ function isAbort(error: unknown): boolean {
 export class WebPresenter {
     private playSlot = -1
     private playTrack = -1
+    private selected = -1
     private rows: SampleRow[] = []
 
     constructor(
         private readonly model: WebViewModel,
         private readonly client: EngineClient,
-        private readonly bank: HTMLElement,
+        private readonly buffer: HTMLElement,
+        private readonly controls: HTMLFieldSetElement,
+        private readonly list: HTMLElement,
         loadPack: () => Promise<void>,
     ) {
         model.bind({
@@ -47,9 +52,16 @@ export class WebPresenter {
         this.sync()
     }
 
+    // The row whose Start, Length, and Loop are on the page. -1 when none.
+    chosen(): number {
+        return this.selected
+    }
+
     private sync() {
         this.followSample()
         this.markPlaying()
+        this.paintList()
+        this.mount()
     }
 
     private followSample() {
@@ -67,6 +79,8 @@ export class WebPresenter {
                 return true
             }
             row.presenter.clear()
+            row.strip.remove()
+            row.controls.remove()
             row.element.remove()
             return false
         })
@@ -84,31 +98,22 @@ export class WebPresenter {
                 loopBeats: this.model.loopBeats,
                 sliceBeats,
             })
-            this.bank.append(row.element)
+        }
+        if (this.selected >= this.model.tracks.length) {
+            this.selected = -1
         }
     }
 
     private createRow(name: string, samples: Float32Array): SampleRow {
-        const element = document.createElement('div')
-        element.className = 'sample-row'
-        const title = document.createElement('div')
-        title.className = 'sample-row-title'
-        const label = document.createElement('span')
-        label.textContent = name
-        const remove = document.createElement('button')
-        remove.type = 'button'
-        remove.textContent = 'Remove'
-        remove.addEventListener('click', () => {
-            const index = this.indexOf(samples)
-            if (index >= 0) {
-                this.model.remove(index)
-            }
-        })
-        title.append(label, remove)
         const host = document.createElement('div')
-        element.append(title, host)
         const view = new SampleBufferView(host)
         view.setName(name)
+        const element = host.querySelector('.sample-buffer')
+        const strip = host.querySelector('.sample-buffer-strip')
+        const controls = host.querySelector('.sample-buffer-controls')
+        if (!(element instanceof HTMLElement) || !(strip instanceof HTMLElement) || !(controls instanceof HTMLElement)) {
+            throw new Error('missing sample buffer')
+        }
         const presenter = new SampleBufferPresenter(view)
         presenter.onEdit = (start, length, loop) => {
             const index = this.indexOf(samples)
@@ -116,7 +121,7 @@ export class WebPresenter {
                 void this.client.setTrack(index, start, length, loop)
             }
         }
-        return { samples, presenter, element }
+        return { samples, presenter, element, strip, controls }
     }
 
     private indexOf(samples: Float32Array): number {
@@ -128,14 +133,107 @@ export class WebPresenter {
         return -1
     }
 
+    private rowAt(index: number): SampleRow | null {
+        const wave = this.client.registry.wave(index)
+        if (!wave) {
+            return null
+        }
+        return this.rows.find((row) => row.samples === wave.samples) ?? null
+    }
+
+    // The strip in the top slot. The selected row, or the first track before a click.
+    private headerRow(): number {
+        if (this.selected >= 0 && this.selected < this.model.tracks.length) {
+            return this.selected
+        }
+        return this.model.tracks.length > 0 ? 0 : -1
+    }
+
+    private paintList() {
+        const tracks = this.model.tracks
+        let same = this.list.childElementCount === tracks.length
+        if (same) {
+            const items = this.list.children
+            for (let index = 0; index < tracks.length; index++) {
+                if (items[index].getAttribute('data-name') !== tracks[index].name) {
+                    same = false
+                    break
+                }
+            }
+        }
+        if (!same) {
+            this.list.replaceChildren()
+            for (let index = 0; index < tracks.length; index++) {
+                const item = document.createElement('li')
+                item.setAttribute('role', 'option')
+                item.setAttribute('data-name', tracks[index].name)
+                const label = document.createElement('div')
+                label.className = 'track-name'
+                label.textContent = tracks[index].name
+                item.append(label)
+                item.addEventListener('click', () => {
+                    this.selected = index
+                    this.paintList()
+                    this.mount()
+                })
+                this.list.append(item)
+            }
+        }
+        const items = this.list.children
+        for (let index = 0; index < items.length; index++) {
+            const item = items[index]
+            item.setAttribute('aria-selected', index === this.selected ? 'true' : 'false')
+            if (index === this.playTrack) {
+                item.setAttribute('data-heard', '')
+            } else {
+                item.removeAttribute('data-heard')
+            }
+        }
+    }
+
+    // Every track keeps its picture. The chosen one sits in the top slot; the rest stay on their rows.
+    private mount() {
+        const shown = this.headerRow()
+        const items = this.list.children
+        for (let index = 0; index < this.model.tracks.length; index++) {
+            const row = this.rowAt(index)
+            if (!row || index === shown) {
+                continue
+            }
+            const item = items[index]
+            if (!item || row.strip.parentElement === item) {
+                continue
+            }
+            item.append(row.strip)
+            row.presenter.refit()
+        }
+        const shownRow = shown >= 0 ? this.rowAt(shown) : null
+        if (shownRow) {
+            if (shownRow.strip.parentElement !== this.buffer) {
+                this.buffer.replaceChildren(shownRow.strip)
+                shownRow.presenter.refit()
+            }
+        } else if (this.buffer.childElementCount > 0) {
+            this.buffer.replaceChildren()
+        }
+        const selected = this.selected >= 0 ? this.rowAt(this.selected) : null
+        if (selected) {
+            if (selected.controls.parentElement !== this.controls) {
+                this.controls.replaceChildren(selected.controls)
+            }
+            this.controls.disabled = false
+        } else {
+            if (this.controls.childElementCount > 0) {
+                this.controls.replaceChildren()
+            }
+            this.controls.disabled = true
+        }
+    }
+
     private markPlaying() {
         const sliceBeats = 2 ** this.model.sliceExp
         for (let index = 0; index < this.model.tracks.length; index++) {
-            const wave = this.client.registry.wave(index)
-            if (!wave) {
-                continue
-            }
-            const row = this.rows.find((item) => item.samples === wave.samples)
+            const row = this.rowAt(index)
             if (!row) {
                 continue
             }
@@ -166,7 +264,6 @@ export class WebPresenter {
         try {
             await action()
         } catch (error) {
-            // The file dialog rejects with AbortError when the user dismisses it.
             if (isAbort(error)) {
                 return
             }

@@ -59,7 +59,9 @@ function processorScript(): Plugin {
 
 export default defineConfig({
     plugins: [processorScript()],
-    server: { fs: { allow: [repoRoot] } },
+    // localhost on this machine is IPv6-only unless the host is set, so a
+    // browser that opens 127.0.0.1 is refused. Listen on every loopback.
+    server: { host: true, port: 5173, fs: { allow: [repoRoot] } },
     build: {
         rollupOptions: {
             input: {
