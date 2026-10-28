@@ -505,6 +505,11 @@ export function EffectControls({ model }: { model: WebViewModel }) {
         model.setGlobalBeat(input.valueAsNumber)
     }
 
+    const onGlobalChance = (event: Event) => {
+        const input = event.currentTarget as HTMLInputElement
+        model.setGlobalChance(input.valueAsNumber)
+    }
+
     const onReverbPower = (event: Event) => {
         const input = event.currentTarget as HTMLInputElement
         model.setReverbPower(input.valueAsNumber)
@@ -513,6 +518,16 @@ export function EffectControls({ model }: { model: WebViewModel }) {
     const onReverbChance = (event: Event) => {
         const input = event.currentTarget as HTMLInputElement
         model.setReverbChance(input.valueAsNumber)
+    }
+
+    const onDelayPower = (event: Event) => {
+        const input = event.currentTarget as HTMLInputElement
+        model.setDelayPower(input.valueAsNumber)
+    }
+
+    const onDelayChance = (event: Event) => {
+        const input = event.currentTarget as HTMLInputElement
+        model.setDelayChance(input.valueAsNumber)
     }
 
     return (
@@ -527,12 +542,24 @@ export function EffectControls({ model }: { model: WebViewModel }) {
                 <span>{beatLabel(model.globalBeatExp)}</span>
             </label>
             <label>
+                Global chance
+                <input type="range" id="global-chance" min={0} max={1} step={0.01} value={model.globalChance} onInput={onGlobalChance} />
+            </label>
+            <label>
                 Reverb
                 <input type="range" id="reverb-power" min={0} max={1} step={0.01} value={model.reverbPower} onInput={onReverbPower} />
             </label>
             <label>
                 Chance
                 <input type="range" id="reverb-chance" min={0} max={1} step={0.01} value={model.reverbChance} onInput={onReverbChance} />
+            </label>
+            <label>
+                Delay
+                <input type="range" id="delay-power" min={0} max={1} step={0.01} value={model.delayPower} onInput={onDelayPower} />
+            </label>
+            <label>
+                Delay chance
+                <input type="range" id="delay-chance" min={0} max={1} step={0.01} value={model.delayChance} onInput={onDelayChance} />
             </label>
         </>
     )

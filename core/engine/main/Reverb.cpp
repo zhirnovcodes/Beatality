@@ -22,7 +22,7 @@ int lengthOf(int tuning, double sampleRate) {
     return length > 0 ? length : 1;
 }
 
-// 1/16, 1/8, 1/4, 1/2, 1, and 2 land on even steps from 0 to 0.9.
+// Decay at full wet. 1/16, 1/8, 1/4, 1/2, 1, and 2 land on even steps from 0 to 0.9.
 float feedbackFor(double beats) {
     const double t = (std::log2(beats) + 4.0) / 5.0;
     const double clamped = t < 0.0 ? 0.0 : (t > 1.0 ? 1.0 : t);
@@ -90,10 +90,10 @@ float Reverb::tank(Stage* combs, Stage* allpasses, float input, float feedback) 
 }
 
 void Reverb::apply(float dryL, float dryR, int, float wet, double beats, double, double, float& outL, float& outR) {
-    const float feedback = feedbackFor(beats);
+    const float mix = wet < 0.0f ? 0.0f : (wet > 1.0f ? 1.0f : wet);
+    const float feedback = feedbackFor(beats) * mix;
     const float wetL = tank(combsL_, allL_, dryL, feedback);
     const float wetR = tank(combsR_, allR_, dryR, feedback);
-    const float mix = wet < 0.0f ? 0.0f : (wet > 1.0f ? 1.0f : wet);
     outL = dryL + (wetL - dryL) * mix;
     outR = dryR + (wetR - dryR) * mix;
     quiet_ = false;

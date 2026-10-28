@@ -48,8 +48,11 @@ public:
     void setAttack(int ms);
     void setGlobalPower(double power);
     void setGlobalBeat(int exponent);
+    void setGlobalChance(double chance);
     void setReverbPower(double power);
     void setReverbChance(double chance);
+    void setDelayPower(double power);
+    void setDelayChance(double chance);
     void setOutput(double volume, double pan);
     void setTrack(int index, double start, double length, bool loop, double volume, double pan);
     // Factory banks shipped with the plugin. Each entry is a name and a .beatality file name.
@@ -69,8 +72,11 @@ public:
     int attackMs() const { return savedAttack; }
     double globalPower() const { return savedGlobalPower; }
     int globalBeat() const { return savedGlobalBeat; }
+    double globalChance() const { return savedGlobalChance; }
     double reverbPower() const { return savedReverbPower; }
     double reverbChance() const { return savedReverbChance; }
+    double delayPower() const { return savedDelayPower; }
+    double delayChance() const { return savedDelayChance; }
     double outputVolume() const { return savedVolume; }
     double outputPan() const { return savedPan; }
     double trackStart(int index) const;
@@ -120,8 +126,11 @@ private:
     int savedAttack = 2;
     double savedGlobalPower = 1;
     int savedGlobalBeat = 0;
+    double savedGlobalChance = 0;
     double savedReverbPower = 1;
     double savedReverbChance = 0;
+    double savedDelayPower = 1;
+    double savedDelayChance = 0;
     double savedVolume = 1;
     double savedPan = 0;
     std::atomic<std::uint32_t> view{0};

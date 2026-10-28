@@ -12,7 +12,7 @@ SliceEngine::SliceEngine(double sampleRate, std::uint64_t seed)
 
 void SliceEngine::play() {
     if (sequence_.empty()) {
-        sequence_.generate(grid_.slotCount(), bank_.count(), rng_);
+        sequence_.generate(grid_.slotCount(), bank_.count(), rng_, reverbChance_, delayChance_);
     }
     listen();
     if (playing_ || play_.fadingOut()) {
@@ -49,7 +49,7 @@ void SliceEngine::randomize() {
     if (live) {
         from = bufferForSlot(position_ / sliceFrames());
     }
-    sequence_.generate(grid_.slotCount(), bank_.count(), rng_);
+    sequence_.generate(grid_.slotCount(), bank_.count(), rng_, reverbChance_, delayChance_);
     if (live) {
         handoff(from);
     }
@@ -262,9 +262,15 @@ void SliceEngine::setGlobalPower(double power) { globalPower_ = power; }
 
 void SliceEngine::setGlobalBeat(int exponent) { globalBeat_ = std::ldexp(1.0, exponent); }
 
+void SliceEngine::setGlobalChance(double chance) { globalChance_ = chance; }
+
 void SliceEngine::setReverbPower(double power) { reverbPower_ = power; }
 
 void SliceEngine::setReverbChance(double chance) { reverbChance_ = chance; }
+
+void SliceEngine::setDelayPower(double power) { delayPower_ = power; }
+
+void SliceEngine::setDelayChance(double chance) { delayChance_ = chance; }
 
 void SliceEngine::setOutput(double volume, double pan) {
     volume_ = clamp(volume, 0.0, 1.2);
@@ -370,15 +376,17 @@ void SliceEngine::mixSlice(float& left, float& right) {
 }
 
 void SliceEngine::affect(EffectsBank& bank, int slot, int position, float& left, float& right) {
-    if (!(sequence_.rollAt(slot) < reverbChance_)) {
+    const EffectId effect = sequence_.effectAt(slot);
+    if (!(sequence_.rollAt(slot) < globalChance_) || effect == EffectId::None) {
         bank.clean();
         return;
     }
     bank.bind(slot);
-    const float wet = static_cast<float>(unit(reverbPower_ * globalPower_));
+    const double localPower = effect == EffectId::Reverb ? reverbPower_ : delayPower_;
+    const float wet = static_cast<float>(unit(localPower * globalPower_));
     float outL = 0.0f;
     float outR = 0.0f;
-    bank.apply(left, right, offsetInSlice(slot, position), wet, globalBeat_, sampleRate_, grid_.bpm(), outL, outR);
+    bank.apply(effect, left, right, offsetInSlice(slot, position), wet, globalBeat_, sampleRate_, grid_.bpm(), outL, outR);
     left = outL;
     right = outR;
 }
@@ -517,9 +525,9 @@ void SliceEngine::syncSequence(int oldExp, int oldSlots) {
     const int exp = grid_.sliceExp();
     const int slots = grid_.slotCount();
     if (exp != oldExp) {
-        sequence_.generate(slots, bank_.count(), rng_);
+        sequence_.generate(slots, bank_.count(), rng_, reverbChance_, delayChance_);
     } else if (slots > oldSlots) {
-        sequence_.append(slots, rng_);
+        sequence_.append(slots, rng_, reverbChance_, delayChance_);
     } else if (slots < oldSlots) {
         sequence_.crop(slots);
     }

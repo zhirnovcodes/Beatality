@@ -23,8 +23,11 @@ export interface ViewActions {
     setAttack: (ms: number) => void
     setGlobalPower: (power: number) => void
     setGlobalBeat: (exponent: number) => void
+    setGlobalChance: (chance: number) => void
     setReverbPower: (power: number) => void
     setReverbChance: (chance: number) => void
+    setDelayPower: (power: number) => void
+    setDelayChance: (chance: number) => void
     setOutput: (volume: number, pan: number) => void
 }
 
@@ -100,8 +103,11 @@ export class WebViewModel {
     attackMs = 2
     globalPower = 1
     globalBeatExp = 0
+    globalChance = 0
     reverbPower = 1
     reverbChance = 0
+    delayPower = 1
+    delayChance = 0
     outputVolume = 1
     outputPan = 0
     factoryBanks: FactoryBank[] = []
@@ -266,6 +272,18 @@ export class WebViewModel {
         this.actions?.setGlobalBeat(exponent)
     }
 
+    setGlobalChance(chance: number) {
+        if (!Number.isFinite(chance) || chance < 0 || chance > 1) {
+            return
+        }
+        if (chance === this.globalChance) {
+            return
+        }
+        this.globalChance = chance
+        this.notify()
+        this.actions?.setGlobalChance(chance)
+    }
+
     setReverbPower(power: number) {
         if (!Number.isFinite(power) || power < 0 || power > 1) {
             return
@@ -288,6 +306,30 @@ export class WebViewModel {
         this.reverbChance = chance
         this.notify()
         this.actions?.setReverbChance(chance)
+    }
+
+    setDelayPower(power: number) {
+        if (!Number.isFinite(power) || power < 0 || power > 1) {
+            return
+        }
+        if (power === this.delayPower) {
+            return
+        }
+        this.delayPower = power
+        this.notify()
+        this.actions?.setDelayPower(power)
+    }
+
+    setDelayChance(chance: number) {
+        if (!Number.isFinite(chance) || chance < 0 || chance > 1) {
+            return
+        }
+        if (chance === this.delayChance) {
+            return
+        }
+        this.delayChance = chance
+        this.notify()
+        this.actions?.setDelayChance(chance)
     }
 
     // Master mix. Volume is 0..1.2 and snaps to 1. Pan is -1..1 and snaps to 0.

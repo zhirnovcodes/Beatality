@@ -85,8 +85,11 @@ export class WebPresenter {
             setAttack: (ms) => void this.perform(() => this.client.setAttack(ms)),
             setGlobalPower: (power) => void this.perform(() => this.client.setGlobalPower(power)),
             setGlobalBeat: (exponent) => void this.perform(() => this.client.setGlobalBeat(exponent)),
+            setGlobalChance: (chance) => void this.perform(() => this.client.setGlobalChance(chance)),
             setReverbPower: (power) => void this.perform(() => this.client.setReverbPower(power)),
             setReverbChance: (chance) => void this.perform(() => this.client.setReverbChance(chance)),
+            setDelayPower: (power) => void this.perform(() => this.client.setDelayPower(power)),
+            setDelayChance: (chance) => void this.perform(() => this.client.setDelayChance(chance)),
             setOutput: (volume, pan) => void this.perform(() => this.client.setOutput(volume, pan)),
         })
         client.onSnapshot = (snapshot) => {

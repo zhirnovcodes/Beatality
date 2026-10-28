@@ -22,8 +22,11 @@ interface Core {
     bt_set_attack: (engine: number, ms: number) => void
     bt_set_global_power: (engine: number, power: number) => void
     bt_set_global_beat: (engine: number, exponent: number) => void
+    bt_set_global_chance: (engine: number, chance: number) => void
     bt_set_reverb_power: (engine: number, power: number) => void
     bt_set_reverb_chance: (engine: number, chance: number) => void
+    bt_set_delay_power: (engine: number, power: number) => void
+    bt_set_delay_chance: (engine: number, chance: number) => void
     bt_set_track: (
         engine: number,
         index: number,
@@ -119,6 +122,11 @@ interface GlobalBeatMessage {
     exponent: number
 }
 
+interface GlobalChanceMessage {
+    type: 'globalChance'
+    chance: number
+}
+
 interface ReverbPowerMessage {
     type: 'reverbPower'
     power: number
@@ -126,6 +134,16 @@ interface ReverbPowerMessage {
 
 interface ReverbChanceMessage {
     type: 'reverbChance'
+    chance: number
+}
+
+interface DelayPowerMessage {
+    type: 'delayPower'
+    power: number
+}
+
+interface DelayChanceMessage {
+    type: 'delayChance'
     chance: number
 }
 
@@ -188,8 +206,11 @@ type HostMessage =
     | AttackMessage
     | GlobalPowerMessage
     | GlobalBeatMessage
+    | GlobalChanceMessage
     | ReverbPowerMessage
     | ReverbChanceMessage
+    | DelayPowerMessage
+    | DelayChanceMessage
     | TrackMessage
     | OutputMessage
     | FreeMessage
@@ -384,11 +405,20 @@ class BeatalityProcessor extends AudioWorkletProcessor {
         } else if (message.type === 'globalBeat') {
             this.core!.bt_set_global_beat(this.engine, message.exponent)
             this.postSnapshot(0)
+        } else if (message.type === 'globalChance') {
+            this.core!.bt_set_global_chance(this.engine, message.chance)
+            this.postSnapshot(0)
         } else if (message.type === 'reverbPower') {
             this.core!.bt_set_reverb_power(this.engine, message.power)
             this.postSnapshot(0)
         } else if (message.type === 'reverbChance') {
             this.core!.bt_set_reverb_chance(this.engine, message.chance)
+            this.postSnapshot(0)
+        } else if (message.type === 'delayPower') {
+            this.core!.bt_set_delay_power(this.engine, message.power)
+            this.postSnapshot(0)
+        } else if (message.type === 'delayChance') {
+            this.core!.bt_set_delay_chance(this.engine, message.chance)
             this.postSnapshot(0)
         } else if (message.type === 'track') {
             this.core!.bt_set_track(

@@ -194,7 +194,7 @@ AppendPayload* payloadFromReader(juce::AudioFormatReader& reader, double rate, s
 class CommandQueue {
 public:
     struct Slot {
-        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, GlobalPower, GlobalBeat, ReverbPower, ReverbChance, Track, Output, Pack };
+        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, GlobalPower, GlobalBeat, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, Track, Output, Pack };
         Kind kind = Kind::Randomize;
         AppendPayload* append = nullptr;
         PackPayload* pack = nullptr;
@@ -358,8 +358,11 @@ struct Processor::Impl {
         engine->setAttack(attackMs);
         engine->setGlobalPower(globalPower);
         engine->setGlobalBeat(globalBeatExp);
+        engine->setGlobalChance(globalChance);
         engine->setReverbPower(reverbPower);
         engine->setReverbChance(reverbChance);
+        engine->setDelayPower(delayPower);
+        engine->setDelayChance(delayChance);
         engine->setOutput(outputVolume, outputPan);
     }
 
@@ -487,6 +490,14 @@ struct Processor::Impl {
         engine->setGlobalBeat(exponent);
     }
 
+    void applyGlobalChance(double chance) {
+        globalChance = chance;
+        if (engine == nullptr) {
+            return;
+        }
+        engine->setGlobalChance(chance);
+    }
+
     void applyReverbPower(double power) {
         reverbPower = power;
         if (engine == nullptr) {
@@ -501,6 +512,22 @@ struct Processor::Impl {
             return;
         }
         engine->setReverbChance(chance);
+    }
+
+    void applyDelayPower(double power) {
+        delayPower = power;
+        if (engine == nullptr) {
+            return;
+        }
+        engine->setDelayPower(power);
+    }
+
+    void applyDelayChance(double chance) {
+        delayChance = chance;
+        if (engine == nullptr) {
+            return;
+        }
+        engine->setDelayChance(chance);
     }
 
     void applyOutput(double volume, double pan) {
@@ -559,11 +586,20 @@ struct Processor::Impl {
         case CommandQueue::Slot::Kind::GlobalBeat:
             applyGlobalBeat(slot.number);
             break;
+        case CommandQueue::Slot::Kind::GlobalChance:
+            applyGlobalChance(slot.first);
+            break;
         case CommandQueue::Slot::Kind::ReverbPower:
             applyReverbPower(slot.first);
             break;
         case CommandQueue::Slot::Kind::ReverbChance:
             applyReverbChance(slot.first);
+            break;
+        case CommandQueue::Slot::Kind::DelayPower:
+            applyDelayPower(slot.first);
+            break;
+        case CommandQueue::Slot::Kind::DelayChance:
+            applyDelayChance(slot.first);
             break;
         case CommandQueue::Slot::Kind::Track:
             applyTrack(slot.index, slot.first, slot.second, slot.flag, slot.third, slot.fourth);
@@ -815,8 +851,11 @@ struct Processor::Impl {
     int attackMs = bt::SliceEngine::kAttackMinMs;
     double globalPower = 1;
     int globalBeatExp = 0;
+    double globalChance = 0;
     double reverbPower = 1;
     double reverbChance = 0;
+    double delayPower = 1;
+    double delayChance = 0;
     double outputVolume = 1;
     double outputPan = 0;
 };
@@ -1088,6 +1127,17 @@ void Processor::setGlobalBeat(int exponent) {
     impl->queue.push(slot);
 }
 
+void Processor::setGlobalChance(double chance) {
+    if (!std::isfinite(chance) || chance < bt::SliceEngine::kGlobalChanceMin || chance > bt::SliceEngine::kGlobalChanceMax) {
+        return;
+    }
+    savedGlobalChance = chance;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::GlobalChance;
+    slot.first = chance;
+    impl->queue.push(slot);
+}
+
 void Processor::setReverbPower(double power) {
     if (!std::isfinite(power) || power < bt::SliceEngine::kReverbPowerMin || power > bt::SliceEngine::kReverbPowerMax) {
         return;
@@ -1106,6 +1156,28 @@ void Processor::setReverbChance(double chance) {
     savedReverbChance = chance;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::ReverbChance;
+    slot.first = chance;
+    impl->queue.push(slot);
+}
+
+void Processor::setDelayPower(double power) {
+    if (!std::isfinite(power) || power < bt::SliceEngine::kDelayPowerMin || power > bt::SliceEngine::kDelayPowerMax) {
+        return;
+    }
+    savedDelayPower = power;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::DelayPower;
+    slot.first = power;
+    impl->queue.push(slot);
+}
+
+void Processor::setDelayChance(double chance) {
+    if (!std::isfinite(chance) || chance < bt::SliceEngine::kDelayChanceMin || chance > bt::SliceEngine::kDelayChanceMax) {
+        return;
+    }
+    savedDelayChance = chance;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::DelayChance;
     slot.first = chance;
     impl->queue.push(slot);
 }

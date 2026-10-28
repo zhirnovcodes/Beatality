@@ -72,6 +72,11 @@ export interface GlobalBeatMessage {
     exponent: number
 }
 
+export interface GlobalChanceMessage {
+    type: 'globalChance'
+    chance: number
+}
+
 export interface ReverbPowerMessage {
     type: 'reverbPower'
     power: number
@@ -79,6 +84,16 @@ export interface ReverbPowerMessage {
 
 export interface ReverbChanceMessage {
     type: 'reverbChance'
+    chance: number
+}
+
+export interface DelayPowerMessage {
+    type: 'delayPower'
+    power: number
+}
+
+export interface DelayChanceMessage {
+    type: 'delayChance'
     chance: number
 }
 
@@ -141,8 +156,11 @@ export type HostMessage =
     | AttackMessage
     | GlobalPowerMessage
     | GlobalBeatMessage
+    | GlobalChanceMessage
     | ReverbPowerMessage
     | ReverbChanceMessage
+    | DelayPowerMessage
+    | DelayChanceMessage
     | TrackMessage
     | OutputMessage
     | FreeMessage

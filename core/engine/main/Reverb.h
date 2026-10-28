@@ -5,7 +5,7 @@
 namespace bt {
 
 // Freeverb-sized comb and allpass tank. Wet signal only; the mix with dry is outside.
-// The beat length sets comb feedback. The tank is allocated with the engine.
+// The beat length sets the decay. The wet mix scales that feedback. The tank is allocated with the engine.
 class Reverb {
 public:
     explicit Reverb(double sampleRate);

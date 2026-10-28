@@ -179,6 +179,13 @@ BT_EXPORT void bt_set_global_beat(Instance* instance, int exponent) {
     instance->engine.setGlobalBeat(exponent);
 }
 
+BT_EXPORT void bt_set_global_chance(Instance* instance, double chance) {
+    if (instance == nullptr || !(chance >= bt::SliceEngine::kGlobalChanceMin) || chance > bt::SliceEngine::kGlobalChanceMax) {
+        return;
+    }
+    instance->engine.setGlobalChance(chance);
+}
+
 BT_EXPORT void bt_set_reverb_power(Instance* instance, double power) {
     if (instance == nullptr || !(power >= bt::SliceEngine::kReverbPowerMin) || power > bt::SliceEngine::kReverbPowerMax) {
         return;
@@ -191,6 +198,20 @@ BT_EXPORT void bt_set_reverb_chance(Instance* instance, double chance) {
         return;
     }
     instance->engine.setReverbChance(chance);
+}
+
+BT_EXPORT void bt_set_delay_power(Instance* instance, double power) {
+    if (instance == nullptr || !(power >= bt::SliceEngine::kDelayPowerMin) || power > bt::SliceEngine::kDelayPowerMax) {
+        return;
+    }
+    instance->engine.setDelayPower(power);
+}
+
+BT_EXPORT void bt_set_delay_chance(Instance* instance, double chance) {
+    if (instance == nullptr || !(chance >= bt::SliceEngine::kDelayChanceMin) || chance > bt::SliceEngine::kDelayChanceMax) {
+        return;
+    }
+    instance->engine.setDelayChance(chance);
 }
 
 // start is a fraction of the file, 0..1. length is 0..1. loop is 0 or 1.

@@ -7,8 +7,11 @@ const state = {
     attackMs: 2,
     globalPower: 1,
     globalBeat: 0,
+    globalChance: 0,
     reverbPower: 1,
     reverbChance: 0,
+    delayPower: 1,
+    delayChance: 0,
     playhead: 0,
     playTrack: -1,
     playSlot: -1,
@@ -502,6 +505,10 @@ function applyBankSettings(bank) {
             beat.textContent = sliceLabel(state.globalBeat)
         }
     }
+    if (bank.globalChance != null && Number.isFinite(Number(bank.globalChance))) {
+        state.globalChance = Number(bank.globalChance)
+        setRange('global-chance', state.globalChance)
+    }
     if (bank.reverbPower != null && Number.isFinite(Number(bank.reverbPower))) {
         state.reverbPower = Number(bank.reverbPower)
         setRange('reverb-power', state.reverbPower)
@@ -509,6 +516,14 @@ function applyBankSettings(bank) {
     if (bank.reverbChance != null && Number.isFinite(Number(bank.reverbChance))) {
         state.reverbChance = Number(bank.reverbChance)
         setRange('reverb-chance', state.reverbChance)
+    }
+    if (bank.delayPower != null && Number.isFinite(Number(bank.delayPower))) {
+        state.delayPower = Number(bank.delayPower)
+        setRange('delay-power', state.delayPower)
+    }
+    if (bank.delayChance != null && Number.isFinite(Number(bank.delayChance))) {
+        state.delayChance = Number(bank.delayChance)
+        setRange('delay-chance', state.delayChance)
     }
     const volume = Number(bank.volume)
     const pan = Number(bank.pan)
@@ -685,8 +700,11 @@ function wire() {
     document.getElementById('attack')?.addEventListener('input', onAttack)
     document.getElementById('global-power')?.addEventListener('input', onGlobalPower)
     document.getElementById('global-beat')?.addEventListener('input', onGlobalBeat)
+    document.getElementById('global-chance')?.addEventListener('input', onGlobalChance)
     document.getElementById('reverb-power')?.addEventListener('input', onReverbPower)
     document.getElementById('reverb-chance')?.addEventListener('input', onReverbChance)
+    document.getElementById('delay-power')?.addEventListener('input', onDelayPower)
+    document.getElementById('delay-chance')?.addEventListener('input', onDelayChance)
 
     document.getElementById('master-volume')?.addEventListener('input', onMaster)
     document.getElementById('master-pan')?.addEventListener('input', onMaster)
@@ -907,6 +925,19 @@ function onGlobalBeat() {
     void native('setGlobalBeat', exponent)
 }
 
+function onGlobalChance() {
+    const input = document.getElementById('global-chance')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const chance = input.valueAsNumber
+    if (chance === state.globalChance) {
+        return
+    }
+    state.globalChance = chance
+    void native('setGlobalChance', chance)
+}
+
 function onReverbPower() {
     const input = document.getElementById('reverb-power')
     if (!(input instanceof HTMLInputElement)) {
@@ -931,6 +962,32 @@ function onReverbChance() {
     }
     state.reverbChance = chance
     void native('setReverbChance', chance)
+}
+
+function onDelayPower() {
+    const input = document.getElementById('delay-power')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const power = input.valueAsNumber
+    if (power === state.delayPower) {
+        return
+    }
+    state.delayPower = power
+    void native('setDelayPower', power)
+}
+
+function onDelayChance() {
+    const input = document.getElementById('delay-chance')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const chance = input.valueAsNumber
+    if (chance === state.delayChance) {
+        return
+    }
+    state.delayChance = chance
+    void native('setDelayChance', chance)
 }
 
 function onMaster(event) {

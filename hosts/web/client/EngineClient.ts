@@ -113,6 +113,11 @@ export class EngineClient {
         this.node?.port.postMessage({ type: 'globalBeat', exponent })
     }
 
+    async setGlobalChance(chance: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'globalChance', chance })
+    }
+
     async setReverbPower(power: number): Promise<void> {
         await this.start()
         this.node?.port.postMessage({ type: 'reverbPower', power })
@@ -121,6 +126,16 @@ export class EngineClient {
     async setReverbChance(chance: number): Promise<void> {
         await this.start()
         this.node?.port.postMessage({ type: 'reverbChance', chance })
+    }
+
+    async setDelayPower(power: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'delayPower', power })
+    }
+
+    async setDelayChance(chance: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'delayChance', chance })
     }
 
     async setTrack(

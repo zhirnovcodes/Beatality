@@ -255,6 +255,12 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
             }
             completion(true);
         })
+        .withNativeFunction("setGlobalChance", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setGlobalChance(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
         .withNativeFunction("setReverbPower", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
             if (!args.isEmpty()) {
                 processor.setReverbPower(static_cast<double>(args[0]));
@@ -264,6 +270,18 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
         .withNativeFunction("setReverbChance", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
             if (!args.isEmpty()) {
                 processor.setReverbChance(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setDelayPower", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setDelayPower(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setDelayChance", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setDelayChance(static_cast<double>(args[0]));
             }
             completion(true);
         })
@@ -398,8 +416,11 @@ void Editor::pushBank() {
     object->setProperty("attack", processor.attackMs());
     object->setProperty("globalPower", processor.globalPower());
     object->setProperty("globalBeat", processor.globalBeat());
+    object->setProperty("globalChance", processor.globalChance());
     object->setProperty("reverbPower", processor.reverbPower());
     object->setProperty("reverbChance", processor.reverbChance());
+    object->setProperty("delayPower", processor.delayPower());
+    object->setProperty("delayChance", processor.delayChance());
     object->setProperty("volume", processor.outputVolume());
     object->setProperty("pan", processor.outputPan());
     deliver("onBank", juce::var(object));

@@ -1,0 +1,114 @@
+#include "Delay.h"
+
+#include <cmath>
+#include <new>
+
+namespace bt {
+
+namespace {
+
+// Full power is a long tail that still dies. Unity feedback would hold forever.
+constexpr float kFeedback = 0.95f;
+constexpr double kAttackBeatMin = 1.0 / 16.0;
+constexpr double kAttackBeatMax = 2.0;
+constexpr double kAttackMsMin = 4.0;
+constexpr double kAttackMsMax = 10.0;
+
+// 4 ms at 1/16, 10 ms at 2. Inverse lerp of the beat length, then the fade length.
+int attackFrames(double beats, double sampleRate) {
+    double t = (beats - kAttackBeatMin) / (kAttackBeatMax - kAttackBeatMin);
+    if (t < 0.0) {
+        t = 0.0;
+    } else if (t > 1.0) {
+        t = 1.0;
+    }
+    const double ms = kAttackMsMin + t * (kAttackMsMax - kAttackMsMin);
+    const int frames = static_cast<int>(std::llround(ms * 0.001 * sampleRate));
+    return frames > 0 ? frames : 1;
+}
+
+} // namespace
+
+Delay::Delay(double sampleRate) {
+    const int frames = static_cast<int>(std::llround(sampleRate * 4.0));
+    capacity_ = frames > 0 ? frames : 1;
+    left_.reset(new (std::nothrow) float[static_cast<std::size_t>(capacity_)]());
+    right_.reset(new (std::nothrow) float[static_cast<std::size_t>(capacity_)]());
+}
+
+void Delay::apply(float dryL, float dryR, int, float wet, double beats, double sampleRate, double bpm, float& outL, float& outR) {
+    // beats * 60 / bpm is the offset in seconds. Clamp it to the line.
+    const double limit = static_cast<double>(capacity_);
+    double frames = beats * 60.0 / bpm * sampleRate;
+    if (frames > limit) {
+        frames = limit;
+    }
+    int delay = static_cast<int>(std::llround(frames));
+    if (delay < 0) {
+        delay = 0;
+    } else if (delay > capacity_) {
+        delay = capacity_;
+    }
+
+    float echoL = 0.0f;
+    float echoR = 0.0f;
+    const bool arrived = delay > 0 && filled_ >= delay;
+    if (arrived) {
+        int read = write_ - delay;
+        if (read < 0) {
+            read += capacity_;
+        }
+        echoL = left_[static_cast<std::size_t>(read)];
+        echoR = right_[static_cast<std::size_t>(read)];
+    }
+    const float mix = wet < 0.0f ? 0.0f : (wet > 1.0f ? 1.0f : wet);
+    const float feedback = mix * kFeedback;
+    float inL = dryL + echoL * feedback;
+    float inR = dryR + echoR * feedback;
+    if (inL > -1.0e-15f && inL < 1.0e-15f) {
+        inL = 0.0f;
+    }
+    if (inR > -1.0e-15f && inR < 1.0e-15f) {
+        inR = 0.0f;
+    }
+    left_[static_cast<std::size_t>(write_)] = inL;
+    right_[static_cast<std::size_t>(write_)] = inR;
+    if (++write_ >= capacity_) {
+        write_ = 0;
+    }
+    if (filled_ < capacity_) {
+        ++filled_;
+    }
+
+    float delayedL = dryL;
+    float delayedR = dryR;
+    if (arrived) {
+        const int attack = attackFrames(beats, sampleRate);
+        float open = 1.0f;
+        if (attacked_ < attack) {
+            open = static_cast<float>(attacked_) / static_cast<float>(attack);
+            ++attacked_;
+        }
+        delayedL = dryL + (echoL - dryL) * open;
+        delayedR = dryR + (echoR - dryR) * open;
+    }
+    outL = dryL + (delayedL - dryL) * mix;
+    outR = dryR + (delayedR - dryR) * mix;
+    quiet_ = false;
+}
+
+void Delay::clean() {
+    if (quiet_) {
+        return;
+    }
+    for (int i = 0; i < capacity_; ++i) {
+        left_[static_cast<std::size_t>(i)] = 0.0f;
+        right_[static_cast<std::size_t>(i)] = 0.0f;
+    }
+    write_ = 0;
+    filled_ = 0;
+    attacked_ = 0;
+    quiet_ = true;
+}
+
+} // namespace bt

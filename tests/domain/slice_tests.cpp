@@ -119,6 +119,10 @@ void testSequenceAppendAndCrop() {
         CHECK(sequence.indexAt(i, 2) == prefix[i]);
     }
     CHECK(sequence.savedCount() == 2);
+    // Rolls follow the indices, so the next index draw is after those floats.
+    for (int i = 0; i < 8; ++i) {
+        shadow.nextFloat();
+    }
 
     const std::uint16_t* buffer = sequence.data();
     sequence.append(10, rng);
@@ -201,6 +205,72 @@ void testAssignReplacesThePrefix() {
     CHECK(sequence.savedCount() == 0);
 }
 
+void testEffectIdsFollowTheWeights() {
+    bt::Rng plainRng(5);
+    bt::Sequence plain;
+    plain.generate(6, 2, plainRng);
+    bt::Rng delayRng(5);
+    bt::Sequence delay;
+    delay.generate(6, 2, delayRng, 0.0, 1.0);
+    for (int i = 0; i < 6; ++i) {
+        CHECK(delay.indexAt(i, 2) == plain.indexAt(i, 2));
+        CHECK(delay.rollAt(i) == plain.rollAt(i));
+        CHECK(plain.effectAt(i) == bt::EffectId::None);
+        CHECK(delay.effectAt(i) == bt::EffectId::Delay);
+    }
+
+    bt::Rng reverbRng(9);
+    bt::Sequence reverb;
+    reverb.generate(4, 1, reverbRng, 1.0, 0.0);
+    for (int i = 0; i < 4; ++i) {
+        CHECK(reverb.effectAt(i) == bt::EffectId::Reverb);
+    }
+
+    bt::Rng walkRng(2);
+    bt::Sequence walked;
+    walked.generate(1, 1, walkRng, 0.25, 0.75);
+    bt::Rng walkShadow(2);
+    walkShadow.nextInt(1);
+    walkShadow.nextFloat();
+    const float pick = walkShadow.nextFloat();
+    const bt::EffectId expected = pick < 0.25f ? bt::EffectId::Reverb : bt::EffectId::Delay;
+    CHECK(walked.effectAt(0) == expected);
+
+    bt::Rng bothRng(1);
+    bt::Sequence mixed;
+    mixed.generate(80, 1, bothRng, 1.0, 1.0);
+    int reverbs = 0;
+    int delays = 0;
+    for (int i = 0; i < mixed.size(); ++i) {
+        if (mixed.effectAt(i) == bt::EffectId::Reverb) {
+            ++reverbs;
+        }
+        if (mixed.effectAt(i) == bt::EffectId::Delay) {
+            ++delays;
+        }
+    }
+    CHECK(reverbs > 0);
+    CHECK(delays > 0);
+
+    const std::uint16_t slots[] = {1, 0};
+    mixed.assign(slots, 2, 2);
+    CHECK(mixed.effectAt(0) == bt::EffectId::None);
+    CHECK(mixed.effectAt(1) == bt::EffectId::None);
+    CHECK(mixed.rollAt(0) == 1.0f);
+    CHECK(mixed.rollAt(1) == 1.0f);
+
+    bt::Rng grownRng(4);
+    bt::Sequence grown;
+    grown.generate(2, 2, grownRng, 1.0, 0.0);
+    grown.append(4, grownRng, 0.0, 1.0);
+    CHECK(grown.effectAt(0) == bt::EffectId::Reverb);
+    CHECK(grown.effectAt(1) == bt::EffectId::Reverb);
+    CHECK(grown.effectAt(2) == bt::EffectId::Delay);
+    CHECK(grown.effectAt(3) == bt::EffectId::Delay);
+    grown.crop(2);
+    CHECK(grown.effectAt(2) == bt::EffectId::None);
+}
+
 void testSameSeedSameSequence() {
     bt::Rng aRng(42);
     bt::Rng bRng(42);
@@ -226,6 +296,7 @@ int main() {
     testIndexMapsOntoTheCurrentCount();
     testGenerateDrawsEveryTrack();
     testAssignReplacesThePrefix();
+    testEffectIdsFollowTheWeights();
     testSameSeedSameSequence();
 
     if (g_failed != 0) {
