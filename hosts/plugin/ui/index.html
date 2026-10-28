@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Beatality</title>
+<link rel="stylesheet" href="/ui/skin/skin.css">
+<style>
+  html, body { margin: 0; width: 496px; height: 488px; background: #2a2c30; overflow: hidden; }
+  #error {
+    height: 21px; margin: 0; padding: 0 8px;
+    color: #ff8d8d; font: 12px/21px system-ui, sans-serif;
+    text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .beatality-skin .sample-grid .row > .spectrum { overflow: hidden; }
+  .beatality-skin .sample-grid .row > .spectrum canvas {
+    position: absolute; left: 0; top: 0; width: 424px; height: 28px; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div class="beatality-skin">
+  <section class="part top" aria-label="Main controls">
+    <div class="window"></div>
+    <div class="content">
+      <div class="bpm-caption" aria-hidden="true"></div>
+      <div class="bpm-lcd" aria-hidden="true"></div>
+      <div class="bpm-field">
+        <input type="text" id="bpm" value="120" inputmode="numeric" maxlength="3" spellcheck="false" autocomplete="off" aria-label="BPM">
+      </div>
+      <button type="button" class="bpm-btn plus" aria-label="BPM up">+</button>
+      <button type="button" class="bpm-btn minus" aria-label="BPM down">-</button>
+
+      <div class="seek" role="meter" aria-label="Playhead position" aria-valuemin="0" aria-valuemax="1">
+        <div class="band"></div><div class="head"></div>
+        <input type="range" id="playhead" min="0" max="1" step="0.001" value="0" disabled tabindex="-1" aria-label="Playhead position">
+      </div>
+
+      <div class="slider-captions" aria-hidden="true">
+        <span data-for="loop">LOOP: <b class="value">8</b></span>
+        <span data-for="slice">SLICES: <b class="value">1</b></span>
+        <span data-for="attack">ATTACK: <b class="value">2</b> <i class="unit">MS</i></span>
+      </div>
+      <div class="slider loop">
+        <div class="track"></div><div class="ticks dim"></div><div class="ticks lit"></div><div class="thumb"></div>
+        <input type="range" id="loop" min="1" max="32" step="1" value="8" aria-label="Loop">
+      </div>
+      <div class="slider slice">
+        <div class="track"></div><div class="ticks dim"></div><div class="ticks lit"></div><div class="thumb"></div>
+        <input type="range" id="slice" min="-4" max="4" step="1" value="0" aria-label="Slices">
+      </div>
+      <div class="slider attack">
+        <div class="track"></div><div class="ticks dim"></div><div class="ticks lit"></div><div class="thumb"></div>
+        <input type="range" id="attack" min="2" max="16" step="1" value="2" aria-label="Attack (ms)">
+      </div>
+    </div>
+    <div class="case"></div>
+    <div class="controls">
+      <button type="button" class="randomize" id="randomize" disabled>Randomize</button>
+    </div>
+  </section>
+  <section class="part bottom" aria-label="Samples">
+    <div class="window"></div>
+    <div class="content">
+      <div class="viewport" id="sample-viewport" tabindex="0">
+        <div class="scroll-content">
+          <div class="sample-grid" id="sample-grid" role="listbox" aria-label="Samples"></div>
+        </div>
+      </div>
+    </div>
+    <div class="case"></div>
+    <div class="controls">
+      <div class="scrollbar" role="scrollbar" aria-controls="sample-viewport" aria-orientation="vertical">
+        <div class="thumb"></div>
+      </div>
+      <button type="button" class="scroll-arrow up" aria-label="Scroll up"></button>
+      <button type="button" class="scroll-arrow down" aria-label="Scroll down"></button>
+      <button type="button" class="round-btn append" id="append">Append</button>
+      <button type="button" class="round-btn remove" id="remove" disabled>Remove</button>
+      <button type="button" class="round-btn load" id="load-bank">Load</button>
+      <button type="button" class="round-btn clear" id="clear" disabled>Clear</button>
+      <fieldset class="sample-panel" id="selected-sample" disabled>
+        <div class="row start"><span class="name">START</span>
+          <div class="slider"><div class="track"></div><div class="thumb"></div>
+            <input type="range" id="start" min="0" max="1" step="0.001" value="0" aria-label="Start"></div></div>
+        <div class="row length"><span class="name">LENGTH</span>
+          <div class="slider"><div class="track"></div><div class="thumb"></div>
+            <input type="range" id="length" min="0" max="1" step="0.001" value="1" aria-label="Length"></div></div>
+        <div class="loop-col"><span class="name">LOOP</span>
+          <input type="checkbox" class="toggle" id="track-loop" aria-label="Loop"></div>
+      </fieldset>
+    </div>
+  </section>
+</div>
+<p id="error"></p>
+<script src="/plugin.js"></script>
+</body>
+</html>

@@ -91,9 +91,10 @@ else()
             NEEDS_MIDI_INPUT TRUE
             NEEDS_MIDI_OUTPUT FALSE
             IS_MIDI_EFFECT FALSE
-            EDITOR_WANTS_KEYBOARD_FOCUS FALSE
+            EDITOR_WANTS_KEYBOARD_FOCUS TRUE
             COPY_PLUGIN_AFTER_BUILD FALSE
-            NEEDS_WEB_BROWSER FALSE
+            NEEDS_WEB_BROWSER TRUE
+            NEEDS_WEBVIEW2 TRUE
             NEEDS_CURL FALSE
             VST3_CATEGORIES Instrument Synth
         )
@@ -101,7 +102,6 @@ else()
             PRIVATE
                 hosts/plugin/PluginProcessor.cpp
                 hosts/plugin/PluginEditor.cpp
-                hosts/plugin/SampleBufferView.cpp
         )
         target_include_directories(Beatality PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hosts/common)
         juce_add_binary_data(BeatalityBank
@@ -110,9 +110,24 @@ else()
                 apps/web-widget/public/packs/demo/685110__snapper4298__115bpm_let-the-bass-kick-loop_808.wav
                 apps/web-widget/public/packs/demo/797799__snapper4298__break-beat-115-bpm.wav
         )
+        file(GLOB BEATALITY_SHAPE_PNGS CONFIGURE_DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/apps/web-widget/src/ui/shapes/*.png")
+        juce_add_binary_data(BeatalitySkin
+            HEADER_NAME SkinData.h
+            NAMESPACE SkinData
+            SOURCES
+                hosts/plugin/ui/index.html
+                hosts/plugin/ui/plugin.js
+                apps/web-widget/src/ui/skin/skin.css
+                apps/web-widget/src/ui/skin/DSEG7Classic-Bold.woff2
+                apps/web-widget/src/ui/skin/Orbitron-Bold.ttf
+                apps/web-widget/src/ui/skin/silkscreen-latin-400-normal.woff2
+                apps/web-widget/src/ui/skin/silkscreen-latin-700-normal.woff2
+                ${BEATALITY_SHAPE_PNGS}
+        )
         target_compile_definitions(Beatality
             PUBLIC
-                JUCE_WEB_BROWSER=0
+                JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1
                 JUCE_USE_CURL=0
                 JUCE_VST3_CAN_REPLACE_VST2=0
                 JUCE_USE_MP3AUDIOFORMAT=1
@@ -121,8 +136,10 @@ else()
             PRIVATE
                 beatality_slice_engine
                 BeatalityBank
+                BeatalitySkin
                 juce::juce_audio_utils
                 juce::juce_audio_formats
+                juce::juce_gui_extra
             PUBLIC
                 juce::juce_recommended_config_flags
                 juce::juce_recommended_warning_flags

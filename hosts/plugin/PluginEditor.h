@@ -1,13 +1,11 @@
 #pragma once
 
 #include "PluginProcessor.h"
-#include "SampleBufferView.h"
 
-#include <vector>
+#include <juce_gui_extra/juce_gui_extra.h>
 
-class Editor : public juce::AudioProcessorEditor,
-               private juce::ListBoxModel,
-               private juce::Timer {
+// The skin from the web widget, hosted in WebView2. Audio stays in the processor.
+class Editor : public juce::AudioProcessorEditor, private juce::Timer {
 public:
     explicit Editor(Processor&);
     ~Editor() override;
@@ -16,59 +14,22 @@ public:
     void resized() override;
 
 private:
-    struct TrackEdit {
-        double start = 0;
-        double length = 1;
-        bool loop = false;
-    };
-
-    int getNumRows() override;
-    void paintListBoxItem(int row, juce::Graphics&, int width, int height, bool selected) override;
-    void selectedRowsChanged(int lastRowSelected) override;
     void timerCallback() override;
-
     void chooseFiles();
-    void refresh();
-    void adoptTracks();
-    void showSelection();
-    void refillSlice();
-    void commitTrack();
-    int bufferRow() const;
-    SampleBufferView::Picture pictureFor(int row) const;
+    void deliver(const juce::String& functionName, const juce::var& payload);
+    void pushLive();
+    void pushBank();
+    void noteBank(bool replaced);
+    juce::WebBrowserComponent::Options browserOptions();
 
     Processor& processor;
-    juce::Label title;
-    juce::Label error;
-    SampleBufferView sampleBuffer;
-    juce::ListBox list;
-    juce::Label startLabel{"", "Start"};
-    juce::Slider start;
-    juce::Label lengthLabel{"", "Length"};
-    juce::Slider length;
-    juce::ToggleButton trackLoop{"Loop"};
-    juce::Label bpmLabel{"", "BPM"};
-    juce::Slider bpm;
-    juce::Label loopLabel{"", "Loop"};
-    juce::Slider loopBeats;
-    juce::Label sliceLabel{"", "Slice"};
-    juce::ComboBox slice;
-    juce::Label attackLabel{"", "Attack"};
-    juce::Slider attack;
-    juce::Label playheadLabel{"", "Playhead"};
-    juce::Slider playhead;
-    juce::TextButton loadBank{"Load bank"};
-    juce::TextButton clear{"Clear"};
-    juce::TextButton append{"Append"};
-    juce::TextButton remove{"Remove"};
-    juce::TextButton randomize{"Randomize"};
+    std::unique_ptr<juce::WebBrowserComponent> browser;
     std::unique_ptr<juce::FileChooser> chooser;
-    std::vector<TrackEdit> plays;
-    int sliceExp = 0;
-    int loopSize = 8;
-    int shownRow = -1;
-    double sentBpm = 120;
-    int sentAttack = 2;
-    bool writing = false;
+    juce::Label missing;
+    bool pageReady = false;
+    int epoch = 0;
+    juce::String lastStamp;
+    juce::String lastLive;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Editor)
 };
