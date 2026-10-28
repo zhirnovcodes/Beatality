@@ -20,31 +20,7 @@ body {
 .page-sources {
     display: flex;
     align-items: center;
-    gap: 16px;
     width: 496px;
-}
-
-#effect-controls {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 16px;
-    flex: 1;
-    min-width: 0;
-}
-
-#effect-controls label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1 1 42%;
-    min-width: 0;
-    white-space: nowrap;
-}
-
-#effect-controls input[type='range'] {
-    flex: 1;
-    min-width: 0;
 }
 
 #preview {

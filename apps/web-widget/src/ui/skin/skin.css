@@ -3,7 +3,7 @@
 .beatality-skin {
   position: relative;
   width: 496px;
-  height: 467px;
+  height: 667px;   /* top 210 + effects 200 + samples 257 */
   user-select: none;
 }
 .beatality-skin .part {
@@ -11,8 +11,9 @@
   left: 0;
   width: 496px;
 }
-.beatality-skin .part.top    { top: 0;     height: 210px; }
-.beatality-skin .part.bottom { top: 210px; height: 257px; }
+.beatality-skin .part.top     { top: 0;     height: 210px; }
+.beatality-skin .part.effects { top: 210px; height: 200px; }
+.beatality-skin .part.bottom  { top: 410px; height: 257px; }
 
 /* window layer (glass / screen) below, metal case above it */
 .beatality-skin .part > .window,
@@ -24,10 +25,12 @@
   background-size: 100% 100%;
   background-repeat: no-repeat;
 }
-.beatality-skin .top    > .window { background-image: url("../shapes/top_glass.png"); }
-.beatality-skin .top    > .case   { background-image: url("../shapes/top_case.png"); }
-.beatality-skin .bottom > .window { background-image: url("../shapes/bottom_screen.png"); }
-.beatality-skin .bottom > .case   { background-image: url("../shapes/bottom_case.png"); }
+.beatality-skin .top     > .window { background-image: url("../shapes/top_glass.png"); }
+.beatality-skin .top     > .case   { background-image: url("../shapes/top_case.png"); }
+.beatality-skin .bottom  > .window { background-image: url("../shapes/bottom_screen.png"); }
+.beatality-skin .bottom  > .case   { background-image: url("../shapes/bottom_case.png"); }
+.beatality-skin .effects > .window { background-image: url("../shapes/effects_screen.png"); }
+.beatality-skin .effects > .case   { background-image: url("../shapes/effects_case.png"); }
 
 /* controls go between the window and the case, so the case's shadow falls on them */
 .beatality-skin .part > .content { position: absolute; inset: 0; }
@@ -409,3 +412,64 @@
 .beatality-skin .bank-btn:active { background: #0f2a04; }
 .beatality-skin .bank-btn:disabled { cursor: default; background: #6f7166; border-color: #8a8c80; color: #d2d98a; }
 .beatality-skin .bank-btn.close { width: 24px; padding: 0; }
+
+/* ---------- Effects part: RANDOMIZE, caption boxes, vertical sliders ----------
+   Caption boxes sit on the screen above each group. Sliders are pixel art (fx_*.png is 2x):
+   frame 13 x 100, 18 px apart inside a group, groups 4 px apart.
+   Order: GLOBAL power, GLOBAL %, clock, then power and % for each effect.
+   --pos (0..1) comes from the range input; the green fill rises from the bottom to the handle. */
+.beatality-skin .fx-randomize {
+  position: absolute; left: 216px; top: 179px; width: 64px; height: 20px; margin: 0; cursor: pointer;
+  border: 1px solid #000; border-radius: 0;
+  background: linear-gradient(#ffffff, #e4e6e0 9px, #c8cbc4); color: #111;
+  box-shadow: inset 1px 1px 0 #fff, inset -1px 0 0 #9a9d96, 2px -1px 3px rgba(0, 0, 0, 0.55), -1px -1px 2px rgba(0, 0, 0, 0.25);
+  font: 400 8px/12px "Silkscreen", monospace; letter-spacing: 0.5px; text-align: center; vertical-align: top;
+  display: block; padding: 0 0 6px;
+}
+.beatality-skin .fx-randomize:active { background: linear-gradient(#c8cbc4, #e4e6e0); box-shadow: inset 1px 1px 0 #8a8d86, 1px -1px 2px rgba(0, 0, 0, 0.45); }
+.beatality-skin .fx-randomize:focus-visible { outline: 1px dotted #000; outline-offset: -3px; }
+
+.beatality-skin .fx-caps { position: absolute; left: 0; top: 51px; width: 496px; height: 22px; }
+.beatality-skin .fx-cap {
+  position: absolute; top: 0; height: 22px; box-sizing: border-box;
+  background: #000; box-shadow: 0 0 0 1px #1e3008;
+  font: 400 8px/10px "Silkscreen", monospace; color: #d8ff20; white-space: nowrap;
+}
+.beatality-skin .fx-cap .name { position: absolute; left: 0; right: 0; top: 1px; text-align: center; }
+.beatality-skin .fx-cap .sub  { position: absolute; top: 11px; transform: translateX(-50%); font-weight: 400; color: #a8d81c; }
+.beatality-skin .fx-cap .clock {
+  position: absolute; left: 5px; top: 3px; width: 15px; height: 15px;
+  background: url("../shapes/fx_clock.png") 0 0 / 100% 100% no-repeat; image-rendering: pixelated;
+}
+
+.beatality-skin .fx-sliders { position: absolute; left: 0; top: 77px; width: 496px; height: 100px; }
+.beatality-skin .fx-slider { --pos: 0; position: absolute; top: 0; width: 24px; height: 100px; }
+.beatality-skin .fx-slider > div { position: absolute; pointer-events: none; image-rendering: pixelated; background: 0 0 / 100% 100% no-repeat; }
+.beatality-skin .fx-slider > .track { left: 6px; top: 0; width: 13px; height: 100px; background-image: url("../shapes/fx_track.png"); }
+.beatality-skin .fx-slider > .fill {
+  left: 6px; top: 0; width: 13px; height: 100px; background-image: url("../shapes/fx_track_fill.png");
+  clip-path: inset(calc(2px + (1 - var(--pos)) * 87px + 4px) 0 0 0);
+}
+.beatality-skin .fx-slider > .thumb {
+  left: 7px; width: 12px; height: 10px; top: calc(2px + (1 - var(--pos)) * 87px);
+  background-image: url("../shapes/fx_thumb.png");
+}
+.beatality-skin .fx-slider > input[type="range"] {
+  position: absolute; left: 4px; top: -2px; width: 17px; height: 104px; margin: 0; padding: 0;
+  writing-mode: vertical-lr; direction: rtl;
+  opacity: 0; cursor: pointer;
+}
+.beatality-skin .fx-slider.idle > input[type="range"] { cursor: default; }
+
+.beatality-skin .fx-scale { position: absolute; top: 0; width: 26px; height: 100px; margin: 0; padding: 0; list-style: none; }
+.beatality-skin .fx-scale > li {
+  position: absolute; left: 0; width: 26px; height: 11px; margin-top: -6px;
+  background: #123c04; box-shadow: inset 0 0 0 1px #0a2602;
+  font: 400 8px/11px "Silkscreen", monospace; color: #c8ff2a; text-align: center;
+}
+.beatality-skin .fx-scale > li:nth-child(1) { top: 7px; }
+.beatality-skin .fx-scale > li:nth-child(2) { top: 24px; }
+.beatality-skin .fx-scale > li:nth-child(3) { top: 41px; }
+.beatality-skin .fx-scale > li:nth-child(4) { top: 59px; }
+.beatality-skin .fx-scale > li:nth-child(5) { top: 76px; }
+.beatality-skin .fx-scale > li:nth-child(6) { top: 94px; }

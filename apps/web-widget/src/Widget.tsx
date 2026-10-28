@@ -1,3 +1,4 @@
+import { Fragment } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import type { WebViewModel } from '../../../viewmodels/web/WebViewModel'
 import './ui/skin/skin.css'
@@ -53,7 +54,7 @@ export function Widget({
         if (!root) {
             return
         }
-        root.querySelectorAll<HTMLElement>('.slider, .seek, .mix-slider').forEach((slider) => {
+        root.querySelectorAll<HTMLElement>('.slider, .seek, .mix-slider, .fx-slider').forEach((slider) => {
             const input = slider.querySelector('input[type="range"]')
             if (input instanceof HTMLInputElement) {
                 placeThumb(input)
@@ -132,6 +133,22 @@ export function Widget({
         model.setOutput(model.outputVolume, input.valueAsNumber)
         input.value = String(model.outputPan)
         placeThumb(input)
+    }
+
+    const onFx = (apply: (value: number) => void) => (event: Event) => {
+        const input = event.currentTarget as HTMLInputElement
+        apply(input.valueAsNumber)
+        placeThumb(input)
+    }
+
+    const shuffleEffects = () => {
+        model.setGlobalPower(randomUnit())
+        model.setGlobalChance(randomUnit())
+        model.setGlobalBeat(-4 + Math.floor(Math.random() * 6))
+        model.setDelayPower(randomUnit())
+        model.setDelayChance(randomUnit())
+        model.setReverbPower(randomUnit())
+        model.setReverbChance(randomUnit())
     }
 
     const onSelectBank = () => {
@@ -308,6 +325,132 @@ export function Widget({
                             Randomize
                         </button>
                     </div>
+                </section>
+                <section className="part effects" aria-label="Effects">
+                    <div className="window" />
+                    <div className="content">
+                        <div className="fx-caps" aria-hidden="true">
+                            <FxCap name="GLOBAL" left={31} />
+                            <div className="fx-cap" style={{ left: '79px', width: '26px' }}>
+                                <span className="clock" />
+                            </div>
+                            <FxCap name="DELAY" left={132} />
+                            <FxCap name="REVERB" left={180} />
+                            {laterEffects.map((effect) => (
+                                <FxCap key={effect.id} name={effect.name} left={effect.cap} />
+                            ))}
+                        </div>
+                        <div className="fx-sliders">
+                            <FxSlider
+                                id="fx-power"
+                                label="Global power"
+                                left={32}
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={model.globalPower}
+                                onInput={onFx((value) => model.setGlobalPower(value))}
+                            />
+                            <FxSlider
+                                id="fx-chance"
+                                label="Global chance (%)"
+                                left={50}
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={model.globalChance}
+                                onInput={onFx((value) => model.setGlobalChance(value))}
+                            />
+                            <FxSlider
+                                id="fx-time"
+                                label="Effect time"
+                                left={80}
+                                min={-4}
+                                max={1}
+                                step={1}
+                                value={model.globalBeatExp}
+                                extraClass="time"
+                                valueText={`${beatLabel(model.globalBeatExp)} beat`}
+                                onInput={onFx((value) => model.setGlobalBeat(value))}
+                            />
+                            <FxSlider
+                                id="fx-delay-power"
+                                label="Delay power"
+                                left={133}
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={model.delayPower}
+                                onInput={onFx((value) => model.setDelayPower(value))}
+                            />
+                            <FxSlider
+                                id="fx-delay-chance"
+                                label="Delay chance (%)"
+                                left={151}
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={model.delayChance}
+                                onInput={onFx((value) => model.setDelayChance(value))}
+                            />
+                            <FxSlider
+                                id="fx-reverb-power"
+                                label="Reverb power"
+                                left={181}
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={model.reverbPower}
+                                onInput={onFx((value) => model.setReverbPower(value))}
+                            />
+                            <FxSlider
+                                id="fx-reverb-chance"
+                                label="Reverb chance (%)"
+                                left={199}
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={model.reverbChance}
+                                onInput={onFx((value) => model.setReverbChance(value))}
+                            />
+                            {laterEffects.map((effect) => (
+                                <Fragment key={effect.id}>
+                                    <FxSlider
+                                        id={`fx-${effect.id}-power`}
+                                        label={`${effect.name} power`}
+                                        left={effect.power}
+                                        min={0}
+                                        max={1}
+                                        step={0.01}
+                                        value={0}
+                                        idle
+                                    />
+                                    <FxSlider
+                                        id={`fx-${effect.id}-chance`}
+                                        label={`${effect.name} chance (%)`}
+                                        left={effect.chance}
+                                        min={0}
+                                        max={1}
+                                        step={0.01}
+                                        value={0}
+                                        idle
+                                    />
+                                </Fragment>
+                            ))}
+                            <ol className="fx-scale" aria-hidden="true" style={{ left: '102px' }}>
+                                <li>2</li>
+                                <li>1</li>
+                                <li>1/2</li>
+                                <li>1/4</li>
+                                <li>1/8</li>
+                                <li>1/16</li>
+                            </ol>
+                        </div>
+                        <button type="button" className="fx-randomize" id="fx-randomize" onClick={shuffleEffects}>
+                            RANDOMIZE
+                        </button>
+                    </div>
+                    <div className="case" />
                 </section>
                 <section className="part bottom" aria-label="Samples">
                     <div className="window" />
@@ -491,77 +634,72 @@ export function Widget({
     )
 }
 
-export function EffectControls({ model }: { model: WebViewModel }) {
-    const [, setTick] = useState(0)
-    useEffect(() => model.subscribe(() => setTick((tick) => tick + 1)), [model])
+const laterEffects = [
+    { id: 'reverse', name: 'REVERSE', cap: 228, power: 229, chance: 247 },
+    { id: 'filter', name: 'FILTER', cap: 276, power: 277, chance: 295 },
+    { id: 'flanger', name: 'FLANGER', cap: 324, power: 325, chance: 343 },
+    { id: 'trance', name: 'TRANCE', cap: 372, power: 373, chance: 391 },
+    { id: 'shift', name: 'SHIFT', cap: 420, power: 421, chance: 439 },
+]
 
-    const onPower = (event: Event) => {
-        const input = event.currentTarget as HTMLInputElement
-        model.setGlobalPower(input.valueAsNumber)
-    }
-
-    const onBeat = (event: Event) => {
-        const input = event.currentTarget as HTMLInputElement
-        model.setGlobalBeat(input.valueAsNumber)
-    }
-
-    const onGlobalChance = (event: Event) => {
-        const input = event.currentTarget as HTMLInputElement
-        model.setGlobalChance(input.valueAsNumber)
-    }
-
-    const onReverbPower = (event: Event) => {
-        const input = event.currentTarget as HTMLInputElement
-        model.setReverbPower(input.valueAsNumber)
-    }
-
-    const onReverbChance = (event: Event) => {
-        const input = event.currentTarget as HTMLInputElement
-        model.setReverbChance(input.valueAsNumber)
-    }
-
-    const onDelayPower = (event: Event) => {
-        const input = event.currentTarget as HTMLInputElement
-        model.setDelayPower(input.valueAsNumber)
-    }
-
-    const onDelayChance = (event: Event) => {
-        const input = event.currentTarget as HTMLInputElement
-        model.setDelayChance(input.valueAsNumber)
-    }
-
+function FxCap({ name, left }: { name: string; left: number }) {
     return (
-        <>
-            <label>
-                Power
-                <input type="range" id="global-power" min={0} max={1} step={0.01} value={model.globalPower} onInput={onPower} />
-            </label>
-            <label>
-                Beat
-                <input type="range" id="global-beat" min={-4} max={1} step={1} value={model.globalBeatExp} onInput={onBeat} />
-                <span>{beatLabel(model.globalBeatExp)}</span>
-            </label>
-            <label>
-                Global chance
-                <input type="range" id="global-chance" min={0} max={1} step={0.01} value={model.globalChance} onInput={onGlobalChance} />
-            </label>
-            <label>
-                Reverb
-                <input type="range" id="reverb-power" min={0} max={1} step={0.01} value={model.reverbPower} onInput={onReverbPower} />
-            </label>
-            <label>
-                Chance
-                <input type="range" id="reverb-chance" min={0} max={1} step={0.01} value={model.reverbChance} onInput={onReverbChance} />
-            </label>
-            <label>
-                Delay
-                <input type="range" id="delay-power" min={0} max={1} step={0.01} value={model.delayPower} onInput={onDelayPower} />
-            </label>
-            <label>
-                Delay chance
-                <input type="range" id="delay-chance" min={0} max={1} step={0.01} value={model.delayChance} onInput={onDelayChance} />
-            </label>
-        </>
+        <div className="fx-cap" style={{ left: `${left}px`, width: '44px' }}>
+            <span className="name">{name}</span>
+            <span className="sub" style={{ left: '13px' }}>
+                PWR
+            </span>
+            <span className="sub" style={{ left: '31px' }}>
+                %
+            </span>
+        </div>
+    )
+}
+
+function FxSlider({
+    id,
+    label,
+    left,
+    min,
+    max,
+    step,
+    value,
+    idle,
+    extraClass,
+    valueText,
+    onInput,
+}: {
+    id: string
+    label: string
+    left: number
+    min: number
+    max: number
+    step: number
+    value: number
+    idle?: boolean
+    extraClass?: string
+    valueText?: string
+    onInput?: (event: Event) => void
+}) {
+    const className = ['fx-slider', extraClass, idle ? 'idle' : ''].filter(Boolean).join(' ')
+    return (
+        <div className={className} style={{ left: `${left}px` }}>
+            <div className="track" />
+            <div className="fill" />
+            <div className="thumb" />
+            <input
+                type="range"
+                id={id}
+                min={min}
+                max={max}
+                step={step}
+                value={value}
+                disabled={idle}
+                aria-label={label}
+                aria-valuetext={valueText}
+                onInput={onInput}
+            />
+        </div>
     )
 }
 
@@ -583,8 +721,12 @@ function clampBpm(value: number): number | null {
     return bpm
 }
 
+function randomUnit(): number {
+    return Math.round(Math.random() * 100) / 100
+}
+
 function placeThumb(input: HTMLInputElement) {
-    const slider = input.closest('.slider, .seek, .mix-slider')
+    const slider = input.closest('.slider, .seek, .mix-slider, .fx-slider')
     if (!(slider instanceof HTMLElement)) {
         return
     }
