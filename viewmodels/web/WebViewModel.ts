@@ -13,6 +13,7 @@ export interface ViewActions {
     setLoop: (beats: number) => void
     setSlice: (exponent: number) => void
     setAttack: (ms: number) => void
+    setOutput: (volume: number, pan: number) => void
 }
 
 export interface ViewState {
@@ -43,6 +44,19 @@ function unit(value: number): number {
     return value > 1 ? 1 : value
 }
 
+function snapTo(value: number, min: number, max: number, target: number): number {
+    let clamped = value
+    if (clamped < min) {
+        clamped = min
+    } else if (clamped > max) {
+        clamped = max
+    }
+    if (Math.abs(clamped - target) <= (max - min) * 0.04) {
+        return target
+    }
+    return clamped
+}
+
 function sliceLabel(exponent: number): string {
     if (exponent >= 0) {
         return String(sliceBeats(exponent))
@@ -69,6 +83,8 @@ export class WebViewModel {
     loopBeats = 8
     sliceExp = 0
     attackMs = 2
+    outputVolume = 1
+    outputPan = 0
 
     private actions: ViewActions | null = null
     private listeners = new Set<() => void>()
@@ -172,6 +188,22 @@ export class WebViewModel {
         this.attackMs = ms
         this.notify()
         this.actions?.setAttack(ms)
+    }
+
+    // Master mix. Volume is 0..1.2 and snaps to 1. Pan is -1..1 and snaps to 0.
+    setOutput(volume: number, pan: number) {
+        if (!Number.isFinite(volume) || !Number.isFinite(pan)) {
+            return
+        }
+        const nextVolume = snapTo(volume, 0, 1.2, 1)
+        const nextPan = snapTo(pan, -1, 1, 0)
+        if (nextVolume === this.outputVolume && nextPan === this.outputPan) {
+            return
+        }
+        this.outputVolume = nextVolume
+        this.outputPan = nextPan
+        this.notify()
+        this.actions?.setOutput(nextVolume, nextPan)
     }
 
     show(state: ViewState) {

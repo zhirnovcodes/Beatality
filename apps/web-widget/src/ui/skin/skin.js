@@ -71,7 +71,7 @@
 /* Sliders: thumb, lit ticks and caption follow the range input. */
 (function () {
   const SLICE = { "-4": "1/16", "-3": "1/8", "-2": "1/4", "-1": "1/2", "0": "1", "1": "2", "2": "4", "3": "8", "4": "16" };
-  document.querySelectorAll(".beatality-skin .slider, .beatality-skin .seek").forEach(function (slider) {
+  document.querySelectorAll(".beatality-skin .slider, .beatality-skin .seek, .beatality-skin .mix-slider").forEach(function (slider) {
     const input = slider.querySelector('input[type="range"]');
     const value = document.querySelector('.beatality-skin .slider-captions [data-for="' + input.id + '"] .value');
     function sync() {
@@ -117,4 +117,35 @@
   loop.addEventListener("input", build);
   slice.addEventListener("input", build);
   build();
+})();
+
+/* Selected-sample panel:
+   - Volume 0..1.2 snaps to 1, Pan -1..1 snaps to 0 (within 4 % of the range); the --snap mark shows where.
+   - Start time field (seconds) follows the Start slider: seconds = start x max; max comes from the engine
+     (data-max on the field; 10 s for now). Typing a value moves the slider. */
+(function () {
+  document.querySelectorAll('.beatality-skin input[type="range"][data-snap]').forEach(function (input) {
+    const snapValue = +input.dataset.snap, min = +input.min, max = +input.max;   // data-snap = the value to snap to
+    const slider = input.parentElement;
+    slider.style.setProperty("--snap", (snapValue - min) / (max - min));
+    input.addEventListener("input", function () {
+      if (Math.abs(+input.value - snapValue) <= (max - min) * 0.04) {
+        input.value = snapValue;
+        slider.style.setProperty("--pos", (snapValue - min) / (max - min));
+      }
+    });
+  });
+
+  const start = document.getElementById("start"), field = document.getElementById("start-time");
+  if (!start || !field) return;
+  const maxSec = () => +field.dataset.max || 10;
+  const show = () => { field.value = (+start.value * maxSec()).toFixed(2); };
+  start.addEventListener("input", show);
+  field.addEventListener("change", function () {
+    const sec = Math.min(Math.max(parseFloat(field.value.replace(",", ".")) || 0, 0), maxSec());
+    start.value = sec / maxSec();
+    start.dispatchEvent(new Event("input"));
+  });
+  field.addEventListener("keydown", function (e) { if (e.key === "Enter") field.blur(); });
+  show();
 })();

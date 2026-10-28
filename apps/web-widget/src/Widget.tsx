@@ -51,7 +51,7 @@ export function Widget({
         if (!root) {
             return
         }
-        root.querySelectorAll<HTMLElement>('.slider, .seek').forEach((slider) => {
+        root.querySelectorAll<HTMLElement>('.slider, .seek, .mix-slider').forEach((slider) => {
             const input = slider.querySelector('input[type="range"]')
             if (input instanceof HTMLInputElement) {
                 placeThumb(input)
@@ -118,6 +118,20 @@ export function Widget({
         placeThumb(input)
     }
 
+    const onMasterVolume = (event: Event) => {
+        const input = event.currentTarget as HTMLInputElement
+        model.setOutput(input.valueAsNumber, model.outputPan)
+        input.value = String(model.outputVolume)
+        placeThumb(input)
+    }
+
+    const onMasterPan = (event: Event) => {
+        const input = event.currentTarget as HTMLInputElement
+        model.setOutput(model.outputVolume, input.valueAsNumber)
+        input.value = String(model.outputPan)
+        placeThumb(input)
+    }
+
     const onLoadPack = () => {
         setLoadingPack(true)
         void model.loadPack().finally(() => setLoadingPack(false))
@@ -161,6 +175,41 @@ export function Widget({
                         <button type="button" className="bpm-btn minus" aria-label="BPM down" onClick={() => bumpBpm(-1)}>
                             -
                         </button>
+
+                        <span className="mix-caption volume">VOLUME</span>
+                        <div className="mix-slider volume">
+                            <div className="track" />
+                            <div className="snap" />
+                            <div className="thumb" />
+                            <input
+                                type="range"
+                                id="master-volume"
+                                min={0}
+                                max={1.2}
+                                step={0.01}
+                                value={model.outputVolume}
+                                data-snap="1"
+                                aria-label="Volume"
+                                onInput={onMasterVolume}
+                            />
+                        </div>
+                        <span className="mix-caption pan">PAN</span>
+                        <div className="mix-slider pan">
+                            <div className="track" />
+                            <div className="snap" />
+                            <div className="thumb" />
+                            <input
+                                type="range"
+                                id="master-pan"
+                                min={-1}
+                                max={1}
+                                step={0.01}
+                                value={model.outputPan}
+                                data-snap="0"
+                                aria-label="Pan"
+                                onInput={onMasterPan}
+                            />
+                        </div>
 
                         <div className="seek" role="meter" aria-label="Playhead position" aria-valuemin={0} aria-valuemax={1}>
                             <div className="band" />
@@ -273,16 +322,19 @@ export function Widget({
                         <button type="button" className="scroll-arrow down" aria-label="Scroll down" />
 
                         <button type="button" className="round-btn append" id="append" onClick={() => files.current?.click()}>
-                            Append
+                            Add
                         </button>
                         <button type="button" className="round-btn remove" id="remove" disabled={!model.hasTracks} onClick={onRemove}>
                             Remove
                         </button>
+                        <button type="button" className="round-btn clear" id="clear" disabled={!model.hasTracks} onClick={() => model.clear()}>
+                            Clear
+                        </button>
                         <button type="button" className="round-btn load" id="load-bank" disabled={loadingPack} onClick={onLoadPack}>
                             Load
                         </button>
-                        <button type="button" className="round-btn clear" id="clear" disabled={!model.hasTracks} onClick={() => model.clear()}>
-                            Clear
+                        <button type="button" className="round-btn save" id="save">
+                            Save
                         </button>
                         <input
                             ref={files}
@@ -296,25 +348,69 @@ export function Widget({
                         />
 
                         <fieldset className="sample-panel" id="selected-sample" disabled={chosenIndex < 0} ref={onPanel}>
-                            <div className="row start">
-                                <span className="name">START</span>
-                                <div className="slider">
+                            <div className="col c1">
+                                <span className="name top">VOLUME</span>
+                                <div className="slider top">
                                     <div className="track" />
+                                    <div className="snap" />
                                     <div className="thumb" />
-                                    <input type="range" id="start" min={0} max={1} step={0.001} defaultValue={0} aria-label="Start" disabled />
+                                    <input
+                                        type="range"
+                                        id="volume"
+                                        min={0}
+                                        max={1.2}
+                                        step={0.01}
+                                        defaultValue={1}
+                                        aria-label="Volume"
+                                        data-snap="1"
+                                    />
+                                </div>
+                                <span className="name bottom">PAN</span>
+                                <div className="slider bottom">
+                                    <div className="track" />
+                                    <div className="snap" />
+                                    <div className="thumb" />
+                                    <input
+                                        type="range"
+                                        id="pan"
+                                        min={-1}
+                                        max={1}
+                                        step={0.01}
+                                        defaultValue={0}
+                                        aria-label="Pan"
+                                        data-snap="0"
+                                    />
                                 </div>
                             </div>
-                            <div className="row length">
-                                <span className="name">LENGTH</span>
-                                <div className="slider">
+                            <div className="col c2">
+                                <span className="name top">START</span>
+                                <div className="slider top">
                                     <div className="track" />
                                     <div className="thumb" />
-                                    <input type="range" id="length" min={0} max={1} step={0.001} defaultValue={1} aria-label="Length" disabled />
+                                    <input type="range" id="start" min={0} max={1} step={0.001} defaultValue={0} aria-label="Start" />
+                                </div>
+                                <span className="name bottom">LENGTH</span>
+                                <div className="slider bottom">
+                                    <div className="track" />
+                                    <div className="thumb" />
+                                    <input type="range" id="length" min={0} max={1} step={0.001} defaultValue={1} aria-label="Length" />
                                 </div>
                             </div>
-                            <div className="loop-col">
-                                <span className="name">LOOP</span>
-                                <input type="checkbox" className="toggle" id="track-loop" aria-label="Loop" disabled />
+                            <div className="col c3">
+                                <div className="time">
+                                    <input
+                                        type="text"
+                                        id="start-time"
+                                        defaultValue="0.00"
+                                        inputMode="decimal"
+                                        spellcheck={false}
+                                        aria-label="Start (seconds)"
+                                        data-max="0"
+                                    />
+                                    <span className="unit">SEC</span>
+                                </div>
+                                <span className="name loop">LOOP</span>
+                                <input type="checkbox" className="toggle" id="track-loop" aria-label="Loop" />
                             </div>
                         </fieldset>
                     </div>
@@ -337,7 +433,7 @@ function clampBpm(value: number): number | null {
 }
 
 function placeThumb(input: HTMLInputElement) {
-    const slider = input.closest('.slider, .seek')
+    const slider = input.closest('.slider, .seek, .mix-slider')
     if (!(slider instanceof HTMLElement)) {
         return
     }
@@ -346,6 +442,11 @@ function placeThumb(input: HTMLInputElement) {
     const value = Number(input.value)
     const pos = max > min ? (value - min) / (max - min) : 0
     slider.style.setProperty('--pos', String(pos))
+    const snap = input.dataset.snap
+    if (snap != null && snap !== '') {
+        const target = Number(snap)
+        slider.style.setProperty('--snap', String(max > min ? (target - min) / (max - min) : 0))
+    }
 }
 
 function attachSampleScroll(root: ParentNode): () => void {

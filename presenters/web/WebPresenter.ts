@@ -1,6 +1,6 @@
 import type { EngineClient } from '../../hosts/web/client/EngineClient'
 import type { WebViewModel } from '../../viewmodels/web/WebViewModel'
-import { SampleBufferPresenter } from './SampleBufferPresenter'
+import { SampleBufferPresenter, type TrackEdit } from './SampleBufferPresenter'
 import { SampleBufferView } from '../../views/web/SampleBufferView'
 
 interface SampleRow {
@@ -13,11 +13,6 @@ function isAbort(error: unknown): boolean {
     return typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
 }
 
-function formatSeconds(seconds: number): string {
-    const rounded = Math.round(seconds * 1000) / 1000
-    return String(rounded)
-}
-
 function placeThumb(input: HTMLInputElement) {
     const slider = input.closest('.slider')
     if (!(slider instanceof HTMLElement)) {
@@ -28,6 +23,28 @@ function placeThumb(input: HTMLInputElement) {
     const value = Number(input.value)
     const pos = max > min ? (value - min) / (max - min) : 0
     slider.style.setProperty('--pos', String(pos))
+    const snap = input.dataset.snap
+    if (snap != null && snap !== '') {
+        const target = Number(snap)
+        slider.style.setProperty('--snap', String(max > min ? (target - min) / (max - min) : 0))
+    }
+}
+
+// Within 4% of the range, the thumb sticks to data-snap (volume 1, pan 0).
+function holdSnap(input: HTMLInputElement): number {
+    const min = Number(input.min)
+    const max = Number(input.max)
+    let value = Number(input.value)
+    const snap = input.dataset.snap
+    if (snap != null && snap !== '') {
+        const target = Number(snap)
+        if (Number.isFinite(target) && Math.abs(value - target) <= (max - min) * 0.04) {
+            value = target
+            input.value = String(value)
+        }
+    }
+    placeThumb(input)
+    return value
 }
 
 // Skin sample row. The grid is 424px wide and each row is 28px tall.
@@ -41,16 +58,12 @@ export class WebPresenter {
     private builtColumns = -1
     private rows: SampleRow[] = []
     private panelBound = false
-    private startInput: HTMLInputElement | null = null
-    private lengthInput: HTMLInputElement | null = null
-    private loopInput: HTMLInputElement | null = null
-    private trackControls: HTMLFieldSetElement | null = null
     private volumeInput: HTMLInputElement | null = null
     private panInput: HTMLInputElement | null = null
-    private trackStartInput: HTMLInputElement | null = null
-    private trackStartSecInput: HTMLInputElement | null = null
-    private trackLengthInput: HTMLInputElement | null = null
-    private trackLoopInput: HTMLInputElement | null = null
+    private startInput: HTMLInputElement | null = null
+    private lengthInput: HTMLInputElement | null = null
+    private startTimeInput: HTMLInputElement | null = null
+    private loopInput: HTMLInputElement | null = null
     private selectionListener: (index: number) => void = () => {}
 
     constructor(
@@ -70,6 +83,7 @@ export class WebPresenter {
             setLoop: (beats) => void this.perform(() => this.client.setLoop(beats)),
             setSlice: (exponent) => void this.perform(() => this.client.setSlice(exponent)),
             setAttack: (ms) => void this.perform(() => this.client.setAttack(ms)),
+            setOutput: (volume, pan) => void this.perform(() => this.client.setOutput(volume, pan)),
         })
         client.onSnapshot = (snapshot) => {
             this.playSlot = snapshot.playing ? snapshot.playSlot : -1
@@ -87,7 +101,7 @@ export class WebPresenter {
         this.sync()
     }
 
-    // The row whose Start, Length, and Loop are on the page. -1 when none.
+    // The row whose sample controls are on the page. -1 when none.
     chosen(): number {
         return this.selected
     }
@@ -101,100 +115,52 @@ export class WebPresenter {
         if (this.panelBound) {
             return
         }
+        const volume = panel.querySelector('#volume')
+        const pan = panel.querySelector('#pan')
         const start = panel.querySelector('#start')
         const length = panel.querySelector('#length')
+        const startTime = panel.querySelector('#start-time')
         const loop = panel.querySelector('#track-loop')
-        if (!(start instanceof HTMLInputElement) || !(length instanceof HTMLInputElement) || !(loop instanceof HTMLInputElement)) {
-            throw new Error('missing sample panel')
-        }
-        this.panelBound = true
-        this.startInput = start
-        this.lengthInput = length
-        this.loopInput = loop
-        start.addEventListener('input', () => {
-            this.rowAt(this.selected)?.presenter.editStart(Number(start.value))
-            placeThumb(start)
-        })
-        length.addEventListener('input', () => {
-            this.rowAt(this.selected)?.presenter.editLength(Number(length.value))
-            placeThumb(length)
-        })
-        loop.addEventListener('change', () => {
-            this.rowAt(this.selected)?.presenter.editLoop(loop.checked)
-        })
-        this.syncPanel()
-    }
-
-    // Plain controls outside the skin. They edit the selected track.
-    bindTrackControls(panel: HTMLFieldSetElement) {
-        const volume = panel.querySelector('#track-volume')
-        const pan = panel.querySelector('#track-pan')
-        const start = panel.querySelector('#track-start')
-        const startSec = panel.querySelector('#track-start-sec')
-        const length = panel.querySelector('#track-length')
-        const loop = panel.querySelector('#track-loop-toggle')
         if (
             !(volume instanceof HTMLInputElement) ||
             !(pan instanceof HTMLInputElement) ||
             !(start instanceof HTMLInputElement) ||
-            !(startSec instanceof HTMLInputElement) ||
             !(length instanceof HTMLInputElement) ||
+            !(startTime instanceof HTMLInputElement) ||
             !(loop instanceof HTMLInputElement)
         ) {
-            throw new Error('missing track controls')
+            throw new Error('missing sample panel')
         }
-        this.trackControls = panel
+        this.panelBound = true
         this.volumeInput = volume
         this.panInput = pan
-        this.trackStartInput = start
-        this.trackStartSecInput = startSec
-        this.trackLengthInput = length
-        this.trackLoopInput = loop
-        this.openStart(start, startSec)
-        const edit = () => {
-            this.rowAt(this.selected)?.presenter.edit({
-                volume: Number(volume.value),
-                pan: Number(pan.value),
-                start: Number(start.value),
-                length: Number(length.value),
-                loop: loop.checked,
-            })
-        }
-        const editSeconds = (commit: boolean) => {
-            const row = this.rowAt(this.selected)
-            if (!row) {
-                return
+        this.startInput = start
+        this.lengthInput = length
+        this.startTimeInput = startTime
+        this.loopInput = loop
+        volume.addEventListener('input', () => {
+            this.editSelected({ volume: holdSnap(volume) })
+        })
+        pan.addEventListener('input', () => {
+            this.editSelected({ pan: holdSnap(pan) })
+        })
+        start.addEventListener('input', () => {
+            placeThumb(start)
+            this.editSelected({ start: Number(start.value) })
+        })
+        length.addEventListener('input', () => {
+            placeThumb(length)
+            this.editSelected({ length: Number(length.value) })
+        })
+        loop.addEventListener('change', () => {
+            this.editSelected({ loop: loop.checked })
+        })
+        startTime.addEventListener('change', () => this.commitStartTime())
+        startTime.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                startTime.blur()
             }
-            const text = startSec.value.trim()
-            const seconds = Number(text)
-            const duration = row.presenter.durationSec()
-            if (text === '' || !Number.isFinite(seconds)) {
-                if (commit) {
-                    const current = row.presenter.read()
-                    startSec.value = formatSeconds((current?.start ?? 0) * duration)
-                }
-                return
-            }
-            const clamped = Math.min(duration, Math.max(0, seconds))
-            const fraction = duration > 0 ? clamped / duration : 0
-            row.presenter.edit({
-                volume: Number(volume.value),
-                pan: Number(pan.value),
-                start: fraction,
-                length: Number(length.value),
-                loop: loop.checked,
-            })
-            if (commit) {
-                startSec.value = formatSeconds(clamped)
-            }
-        }
-        volume.addEventListener('input', edit)
-        pan.addEventListener('input', edit)
-        start.addEventListener('input', edit)
-        startSec.addEventListener('input', () => editSeconds(false))
-        startSec.addEventListener('change', () => editSeconds(true))
-        length.addEventListener('input', edit)
-        loop.addEventListener('change', edit)
+        })
         this.syncPanel()
     }
 
@@ -374,57 +340,75 @@ export class WebPresenter {
         }
     }
 
-    private syncPanel() {
-        const picture = this.selected >= 0 ? this.rowAt(this.selected)?.presenter.read() : null
-        if (this.trackControls) {
-            this.trackControls.disabled = !picture
-        }
-        const start = this.startInput
-        const length = this.lengthInput
-        const loop = this.loopInput
-        if (start && length && loop && picture) {
-            this.writeRange(start, picture.start)
-            this.writeRange(length, picture.length)
-            if (document.activeElement !== loop && loop.checked !== picture.loop) {
-                loop.checked = picture.loop
-            }
-        }
-        const volume = this.volumeInput
-        const pan = this.panInput
-        const trackStart = this.trackStartInput
-        const trackStartSec = this.trackStartSecInput
-        const trackLength = this.trackLengthInput
-        const trackLoop = this.trackLoopInput
-        if (!picture || !volume || !pan || !trackStart || !trackStartSec || !trackLength || !trackLoop) {
+    private editSelected(patch: Partial<TrackEdit>) {
+        const row = this.rowAt(this.selected)
+        const current = row?.presenter.read()
+        if (!row || !current) {
             return
         }
-        const durationSec = this.rowAt(this.selected)?.presenter.durationSec() ?? 0
-        this.openStart(trackStart, trackStartSec)
+        row.presenter.edit({ ...current, ...patch })
+    }
+
+    private commitStartTime() {
+        const field = this.startTimeInput
+        const row = this.rowAt(this.selected)
+        if (!field || !row) {
+            return
+        }
+        const duration = row.presenter.durationSec()
+        const parsed = Number.parseFloat(field.value.trim().replace(',', '.'))
+        const seconds = Number.isFinite(parsed) ? parsed : 0
+        const clamped = Math.min(duration, Math.max(0, seconds))
+        const fraction = duration > 0 ? clamped / duration : 0
+        field.value = clamped.toFixed(2)
+        this.editSelected({ start: fraction })
+    }
+
+    private syncPanel() {
+        const picture = this.selected >= 0 ? this.rowAt(this.selected)?.presenter.read() : null
+        const duration = picture ? (this.rowAt(this.selected)?.presenter.durationSec() ?? 0) : 0
+        const volume = this.volumeInput
+        const pan = this.panInput
+        const start = this.startInput
+        const length = this.lengthInput
+        const startTime = this.startTimeInput
+        const loop = this.loopInput
+        if (startTime) {
+            const limit = duration > 0 ? duration : 0
+            startTime.dataset.max = String(limit)
+            startTime.max = String(limit)
+        }
+        if (!volume || !pan || !start || !length || !startTime || !loop) {
+            return
+        }
+        if (!picture) {
+            this.writeRange(volume, 1)
+            this.writeRange(pan, 0)
+            this.writeRange(start, 0)
+            this.writeRange(length, 1)
+            this.writeStartTime(startTime, 0)
+            if (document.activeElement !== loop) {
+                loop.checked = false
+            }
+            return
+        }
         this.writeRange(volume, picture.volume)
         this.writeRange(pan, picture.pan)
-        this.writeRange(trackStart, picture.start)
-        this.writeSeconds(trackStartSec, picture.start * durationSec, durationSec)
-        this.writeRange(trackLength, picture.length)
-        if (document.activeElement !== trackLoop && trackLoop.checked !== picture.loop) {
-            trackLoop.checked = picture.loop
+        this.writeRange(start, picture.start)
+        this.writeRange(length, picture.length)
+        this.writeStartTime(startTime, picture.start * duration)
+        if (document.activeElement !== loop && loop.checked !== picture.loop) {
+            loop.checked = picture.loop
         }
     }
 
-    private openStart(slider: HTMLInputElement, seconds: HTMLInputElement) {
-        slider.readOnly = false
-        slider.disabled = false
-        seconds.readOnly = false
-        seconds.disabled = false
-    }
-
-    private writeSeconds(input: HTMLInputElement, value: number, max: number) {
-        const limit = max > 0 ? max : 0
-        input.max = String(limit)
-        input.readOnly = false
+    private writeStartTime(input: HTMLInputElement, seconds: number) {
         if (document.activeElement === input) {
             return
         }
-        const shown = formatSeconds(Math.min(limit, Math.max(0, value)))
+        const limit = Number(input.dataset.max)
+        const capped = Number.isFinite(limit) ? Math.min(limit, Math.max(0, seconds)) : Math.max(0, seconds)
+        const shown = capped.toFixed(2)
         if (input.value !== shown) {
             input.value = shown
         }

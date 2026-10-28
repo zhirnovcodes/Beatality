@@ -23,6 +23,14 @@
       <button type="button" class="bpm-btn plus" aria-label="BPM up">+</button>
       <button type="button" class="bpm-btn minus" aria-label="BPM down">-</button>
 
+      <!-- master volume and pan -->
+      <span class="mix-caption volume">VOLUME</span>
+      <div class="mix-slider volume"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
+        <input type="range" id="master-volume" min="0" max="1.2" step="0.01" value="1" data-snap="1" aria-label="Volume"></div>
+      <span class="mix-caption pan">PAN</span>
+      <div class="mix-slider pan"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
+        <input type="range" id="master-pan" min="-1" max="1" step="0.01" value="0" data-snap="0" aria-label="Pan"></div>
+
       <!-- playhead position (read-only): dotted band + bevelled head, 0..1; set #playhead.value and fire "input" to move it -->
       <div class="seek" role="meter" aria-label="Playhead position" aria-valuemin="0" aria-valuemax="1">
         <div class="band"></div><div class="head"></div>
@@ -72,22 +80,36 @@
       <button type="button" class="scroll-arrow up" aria-label="Scroll up"></button>
       <button type="button" class="scroll-arrow down" aria-label="Scroll down"></button>
 
-      <!-- four round buttons; labels are engraved in the case -->
-      <button type="button" class="round-btn append" id="append">Append</button>
+      <!-- five round buttons; labels are engraved in the case -->
+      <button type="button" class="round-btn append" id="append">Add</button>
       <button type="button" class="round-btn remove" id="remove">Remove</button>
-      <button type="button" class="round-btn load" id="load-bank">Load</button>
       <button type="button" class="round-btn clear" id="clear">Clear</button>
+      <button type="button" class="round-btn load" id="load-bank">Load</button>
+      <button type="button" class="round-btn save" id="save">Save</button>
 
-      <!-- selected sample: one convex screen with Start, Length and Loop -->
+      <!-- selected sample: one convex screen -->
       <fieldset class="sample-panel" id="selected-sample">
-        <div class="row start"><span class="name">START</span>
-          <div class="slider"><div class="track"></div><div class="thumb"></div>
-            <input type="range" id="start" min="0" max="1" step="0.001" value="0" aria-label="Start"></div></div>
-        <div class="row length"><span class="name">LENGTH</span>
-          <div class="slider"><div class="track"></div><div class="thumb"></div>
-            <input type="range" id="length" min="0" max="1" step="0.001" value="1" aria-label="Length"></div></div>
-        <div class="loop-col"><span class="name">LOOP</span>
-          <input type="checkbox" class="toggle" id="track-loop" aria-label="Loop"></div>
+        <div class="col c1">
+          <span class="name top">VOLUME</span>
+          <div class="slider top"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
+            <input type="range" id="volume" min="0" max="1.2" step="0.01" value="1" aria-label="Volume" data-snap="1"></div>
+          <span class="name bottom">PAN</span>
+          <div class="slider bottom"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
+            <input type="range" id="pan" min="-1" max="1" step="0.01" value="0" aria-label="Pan" data-snap="0"></div>
+        </div>
+        <div class="col c2">
+          <span class="name top">START</span>
+          <div class="slider top"><div class="track"></div><div class="thumb"></div>
+            <input type="range" id="start" min="0" max="1" step="0.001" value="0" aria-label="Start"></div>
+          <span class="name bottom">LENGTH</span>
+          <div class="slider bottom"><div class="track"></div><div class="thumb"></div>
+            <input type="range" id="length" min="0" max="1" step="0.001" value="1" aria-label="Length"></div>
+        </div>
+        <div class="col c3">
+          <div class="time"><input type="text" id="start-time" value="0.00" inputmode="decimal" spellcheck="false" aria-label="Start (seconds)" data-max="10"><span class="unit">SEC</span></div>
+          <span class="name loop">LOOP</span>
+          <input type="checkbox" class="toggle" id="track-loop" aria-label="Loop">
+        </div>
       </fieldset>
     </div>
   </section>

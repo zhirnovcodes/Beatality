@@ -235,10 +235,11 @@
 }
 
 /* ---------- Lower part: controls under the sample screen ----------
-   Left: four round buttons (Append, Remove, Load, Clear) like the reference's ADD / SUB / SEL / OPT;
-   their labels are engraved in bottom_case.png, and the recess round each button is cut into it too.
-   Right: one convex green screen (bottom_panel.png) with START and LENGTH sliders (same pixel design as
-   Loop / Slices, no ticks under them) and the LOOP toggle (pixel-art square with a check mark). */
+   Left: five round buttons ADD, REMOVE, CLEAR, LOAD, SAVE (floppy); labels engraved in bottom_case.png,
+   a recess round each button cut into it too.
+   Right: one convex green screen (bottom_panel.png, 234 x 52 at x 236) — three columns:
+     VOLUME slider, PAN under it | START slider, LENGTH under it | start time field (sec), LOOP toggle under it.
+   Sliders: same pixel design (short groove 64 px), no ticks; a small mark shows the snap point (Volume 1, Pan 0). */
 .beatality-skin .round-btn {
   position: absolute; top: 201px; width: 24px; height: 24px;
   padding: 0; border: 0; border-radius: 50%; font-size: 0; cursor: pointer;
@@ -246,56 +247,80 @@
 }
 .beatality-skin .round-btn.append { left: 14px;  background-image: url("../shapes/btn_append.png"); }
 .beatality-skin .round-btn.remove { left: 60px;  background-image: url("../shapes/btn_remove.png"); }
-.beatality-skin .round-btn.load   { left: 106px; background-image: url("../shapes/btn_load.png"); }
-.beatality-skin .round-btn.clear  { left: 152px; background-image: url("../shapes/btn_clear.png"); }
+.beatality-skin .round-btn.clear  { left: 106px; background-image: url("../shapes/btn_clear.png"); }
+.beatality-skin .round-btn.load   { left: 152px; background-image: url("../shapes/btn_load.png"); }
+.beatality-skin .round-btn.save   { left: 198px; background-image: url("../shapes/btn_save.png"); }
 .beatality-skin .round-btn.append:active { background-image: url("../shapes/btn_append_pressed.png"); }
 .beatality-skin .round-btn.remove:active { background-image: url("../shapes/btn_remove_pressed.png"); }
-.beatality-skin .round-btn.load:active   { background-image: url("../shapes/btn_load_pressed.png"); }
 .beatality-skin .round-btn.clear:active  { background-image: url("../shapes/btn_clear_pressed.png"); }
+.beatality-skin .round-btn.load:active   { background-image: url("../shapes/btn_load_pressed.png"); }
+.beatality-skin .round-btn.save:active   { background-image: url("../shapes/btn_save_pressed.png"); }
 .beatality-skin .round-btn:disabled { cursor: default; filter: saturate(0) brightness(0.85); }
 
 .beatality-skin .sample-panel {
-  position: absolute; left: 196px; top: 198px; width: 274px; height: 52px;
+  position: absolute; left: 236px; top: 198px; width: 234px; height: 52px;
   margin: 0; padding: 0; border: 0; min-width: 0;
   background: url("../shapes/bottom_panel.png") 0 0 / 100% 100% no-repeat;
-  font: 400 16px/1 "Silkscreen", monospace; color: #0b1d02; -webkit-font-smoothing: none;
 }
-/* left column: START, LENGTH under it; right column: LOOP caption, toggle under it */
-.beatality-skin .sample-panel .row { position: absolute; height: 18px; }
-.beatality-skin .sample-panel .row.start  { left: 10px; top: 6px;  width: 204px; }
-.beatality-skin .sample-panel .row.length { left: 10px; top: 28px; width: 204px; }
-/* START / LENGTH / LOOP captions: same style as the LOOP / SLICES / ATTACK captions — Orbitron Bold 9.5 px, lime with glow,
-   on a dark rectangle (#031A00, light catch on the top edge, darker bottom edge) */
-.beatality-skin .sample-panel .name {
-  position: absolute; height: 14px; padding: 0 5px; box-sizing: border-box;
-  font: 700 9.5px/14px "Orbitron", sans-serif; letter-spacing: 1.14px; white-space: nowrap;
-  color: #c4ff34; text-shadow: 0 0 2px rgba(196, 255, 52, 0.45);
-  background: linear-gradient(#0a3404 0, #031a00 2.5px, #031a00 calc(100% - 2.5px), #021300 100%);
-}
-.beatality-skin .sample-panel .row > .name { left: 0; top: 2px; width: 60px; }
-.beatality-skin .sample-panel .loop-col { position: absolute; left: 222px; top: 6px; width: 46px; height: 40px; }
-.beatality-skin .sample-panel .loop-col > .name { left: 0; right: 0; top: 2px; text-align: center; }
+.beatality-skin .sample-panel .col { position: absolute; top: 1px; width: 64px; height: 46px; }
+.beatality-skin .sample-panel .col.c1 { left: 10px; }
+.beatality-skin .sample-panel .col.c2 { left: 85px; }
+.beatality-skin .sample-panel .col.c3 { left: 160px; }
 
-.beatality-skin .sample-panel .slider { top: 2px; left: 76px; width: 128px; height: 14px; }
-.beatality-skin .sample-panel .slider > .track { top: 6px; width: 128px; background-image: url("../shapes/slider_track_long.png"); }
-.beatality-skin .sample-panel .slider > .thumb { top: 0; left: calc(3px + var(--pos) * 122px - 9px); }
-.beatality-skin .sample-panel .slider > input[type="range"] { left: -6px; top: -2px; width: 140px; height: 18px; }
+/* captions: Orbitron Bold, black, no background */
+.beatality-skin .sample-panel .name {
+  position: absolute; left: 0; height: 9px;
+  font: 700 7.5px/9px "Orbitron", sans-serif; letter-spacing: 0.9px; white-space: nowrap;
+  color: #000;
+}
+.beatality-skin .sample-panel .name.top    { top: 1px; }
+.beatality-skin .sample-panel .name.bottom { top: 24px; }
+.beatality-skin .sample-panel .name.loop   { top: 34px; height: 10px; line-height: 10px; }   /* level with "SEC" */
+
+/* short pixel sliders (64 px), 11 px apart horizontally; thumb sits on the groove */
+.beatality-skin .sample-panel .slider { left: 0; width: 64px; height: 12px; }
+.beatality-skin .sample-panel .slider.top    { top: 9px; }
+.beatality-skin .sample-panel .slider.bottom { top: 32px; }
+.beatality-skin .sample-panel .col.c1 .slider.top    { --snap: 0.833333; }   /* volume snaps to 1 */
+.beatality-skin .sample-panel .col.c1 .slider.bottom { --snap: 0.5; }         /* pan snaps to 0 */
+.beatality-skin .sample-panel .slider > .track { top: 6px; width: 64px; background-image: url("../shapes/slider_track_short.png"); }
+.beatality-skin .sample-panel .slider > .thumb {   /* smaller pin: 14 x 10 (slider_thumb_small.png), tip on the groove */
+  top: 2px; width: 14px; height: 10px; left: calc(3px + var(--pos) * 58px - 7px);
+  background-image: url("../shapes/slider_thumb_small.png");
+}
+.beatality-skin .sample-panel .slider > .snap {
+  position: absolute; top: 3px; width: 2px; height: 3px; background: #0b1d02; pointer-events: none;
+  left: calc(3px + var(--snap) * 58px - 1px);
+}
+.beatality-skin .sample-panel .slider > input[type="range"] { left: -6px; top: -2px; width: 76px; height: 16px; }
+
+/* start time field (seconds), under START */
+.beatality-skin .sample-panel .time { position: absolute; left: 0; top: 9px; height: 14px; width: 64px; }   /* top row, above LOOP: bottom at 23 = top groove bottom */
+.beatality-skin .sample-panel .time input {
+  position: absolute; left: 0; top: 0; width: 42px; height: 14px; box-sizing: border-box;
+  margin: 0; padding: 0 3px; border: 1px solid #10300a; border-radius: 0; outline: none;
+  background: #ecff7a; box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.25);
+  font: 400 8px/12px "Silkscreen", monospace; color: #0b1d02; text-align: right;
+}
+.beatality-skin .sample-panel .time input:focus { background: #f6ffb0; }
+.beatality-skin .sample-panel .time .unit {
+  position: absolute; left: 46px; top: 2px;
+  font: 700 7.5px/10px "Orbitron", sans-serif; letter-spacing: 0.9px; color: #000;
+}
 
 .beatality-skin .sample-panel .toggle {
-  position: absolute; left: 16px; top: 22px; width: 14px; height: 14px;
+  position: absolute; left: 46px; top: 32px; width: 14px; height: 14px;   /* bottom at 46, level with the field */
   margin: 0; appearance: none; cursor: pointer; image-rendering: pixelated;
   background: url("../shapes/loop_toggle.png") 0 0 / 100% 100% no-repeat;
 }
-.beatality-skin .sample-panel .row,
-.beatality-skin .sample-panel .loop-col { pointer-events: none; opacity: 0.4; }
 .beatality-skin .sample-panel .toggle:checked { background-image: url("../shapes/loop_toggle_on.png"); }
 .beatality-skin .sample-panel .toggle:focus-visible { outline: 1px dotted #0b1d02; outline-offset: 1px; }
 
 /* ---------- Upper part: playhead position (like the reference's seek bar) ----------
-   Dotted band across the whole glass (seek_band.png, 496 x 14 at y 120; its ends run under the case),
+   Dotted band across the whole glass (seek_band.png, 496 x 14 at y 127; its ends run under the case),
    bevelled 3D head with 3 dots (seek_head.png: body 46 x 13 + 3 px for the shadow). Value 0..1 (#playhead).
    The head travels over the visible glass: body left edge from x 14 to x 436. */
-.beatality-skin .seek { --pos: 0; position: absolute; left: 0; top: 120px; width: 496px; height: 14px; }
+.beatality-skin .seek { --pos: 0; position: absolute; left: 0; top: 127px; width: 496px; height: 14px; }   /* level with the glass's narrow waist (side tabs), where the case edges come closest */
 .beatality-skin .seek > .band {
   position: absolute; inset: 0;
   background: url("../shapes/seek_band.png") 0 0 / 100% 100% no-repeat; image-rendering: pixelated;
@@ -308,3 +333,35 @@
 }
 /* read-only: shows the playhead, cannot be dragged or focused (the input only carries the value) */
 .beatality-skin .seek > input[type="range"] { display: none; }
+
+/* ---------- Upper part: master VOLUME and PAN row (between the Loop / Slices / Attack sliders and the playhead) ----------
+   Captions: dark bars like the BPM caption, same font and size (Orbitron Bold 9.5 px, lime, glow), text right-aligned.
+   VOLUME bar starts under the case at the left, as wide as "SAMPLES BPM"; PAN bar in the middle.
+   Sliders: the top sliders' pixel design (groove + yellow pin, no ticks) with a small mark at the snap point.
+   Volume 0..1.2, snaps to 1, default 1. Pan -1..1, snaps to 0, default 0. */
+.beatality-skin .mix-caption {
+  position: absolute; top: 102px; height: 17px; box-sizing: border-box; padding-right: 6px;
+  font: 700 9.5px/17px "Orbitron", sans-serif; letter-spacing: 1.14px; white-space: nowrap; text-align: right;
+  color: #c4ff34; text-shadow: 0 0 2px rgba(196, 255, 52, 0.45);
+  background: linear-gradient(#0a3404 0, #031a00 2.5px, #031a00 calc(100% - 2.5px), #021300 100%);
+}
+.beatality-skin .mix-caption.volume { left: 0;     width: 132px; }
+.beatality-skin .mix-caption.pan    { left: 303px; width: 56px; }
+
+.beatality-skin .mix-slider { --pos: 0; --snap: 0; position: absolute; top: 104px; height: 14px; }
+.beatality-skin .mix-slider.volume { left: 138px; width: 160px; --len: 154px; --snap: 0.833333; }   /* snap at 1 of 0..1.2 */
+.beatality-skin .mix-slider.pan    { left: 366px; width: 112px; --len: 106px; --snap: 0.5; }       /* snap at 0 of -1..1 */
+.beatality-skin .mix-slider > .track,
+.beatality-skin .mix-slider > .thumb,
+.beatality-skin .mix-slider > .snap { position: absolute; pointer-events: none; image-rendering: pixelated; }
+.beatality-skin .mix-slider > .track { left: 0; top: 6px; width: 100%; height: 8px; background: 0 0 / 100% 100% no-repeat; }
+.beatality-skin .mix-slider.volume > .track { background-image: url("../shapes/slider_track_volume.png"); }
+.beatality-skin .mix-slider.pan    > .track { background-image: url("../shapes/slider_track_pan.png"); }
+.beatality-skin .mix-slider > .snap { top: 1px; width: 2px; height: 5px; background: #0b1d02; left: calc(3px + var(--snap) * var(--len) - 1px); }
+.beatality-skin .mix-slider > .thumb {
+  top: 0; width: 18px; height: 12px; left: calc(3px + var(--pos) * var(--len) - 9px);
+  background: url("../shapes/slider_thumb.png") 0 0 / 100% 100% no-repeat;
+}
+.beatality-skin .mix-slider > input[type="range"] {
+  position: absolute; left: -6px; top: -2px; width: calc(100% + 12px); height: 18px; margin: 0; opacity: 0; cursor: pointer;
+}
