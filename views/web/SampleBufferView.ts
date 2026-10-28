@@ -1,6 +1,7 @@
 export interface SampleBufferNumbers {
     knob: number
     length: number
+    volume: number
     imageStart: number
     imageWidth: number
     loop: boolean
@@ -56,6 +57,7 @@ export class SampleBufferView {
         contentWidth: number
         loop: boolean
         loopWidth: number
+        volume: number
     } | null = null
 
     constructor(host: HTMLElement, options: SampleBufferOptions = {}) {
@@ -262,7 +264,8 @@ export class SampleBufferView {
             painted.imageWidth === settings.imageWidth &&
             painted.contentWidth === settings.contentWidth &&
             painted.loop === settings.loop &&
-            painted.loopWidth === settings.loopWidth
+            painted.loopWidth === settings.loopWidth &&
+            painted.volume === settings.volume
         ) {
             return
         }
@@ -273,6 +276,7 @@ export class SampleBufferView {
             contentWidth: settings.contentWidth,
             loop: settings.loop,
             loopWidth: settings.loopWidth,
+            volume: settings.volume,
         }
 
         const ratio = window.devicePixelRatio || 1
@@ -306,8 +310,16 @@ export class SampleBufferView {
         const lead = Math.max(0, origin - settings.imageStart)
         const audioAfter = Math.max(0, settings.imageWidth - lead)
         const drawWidth = Math.min(Math.max(0, settings.contentWidth), audioAfter)
+        let volume = settings.volume
+        if (volume < 0) {
+            volume = 0
+        } else if (volume > 1.2) {
+            volume = 1.2
+        }
+        const waveHeight = height * volume
+        const waveY = (height - waveHeight) / 2
         const paintTile = (destX: number) => {
-            this.drawSource(ctx, image, settings.imageWidth, lead, drawWidth, destX, height)
+            this.drawSource(ctx, image, settings.imageWidth, lead, drawWidth, destX, waveY, waveHeight)
         }
         if (settings.loop && settings.contentWidth > 0) {
             const tiles = Math.ceil(settings.loopWidth / settings.contentWidth) + 1
@@ -331,9 +343,10 @@ export class SampleBufferView {
         cssX: number,
         cssWidth: number,
         destX: number,
+        destY: number,
         destHeight: number,
     ): void {
-        if (!(cssWidth > 0) || !(imageWidth > 0)) {
+        if (!(cssWidth > 0) || !(imageWidth > 0) || !(destHeight > 0)) {
             return
         }
         const srcX = Math.min(image.width, Math.max(0, (cssX / imageWidth) * image.width))
@@ -341,6 +354,6 @@ export class SampleBufferView {
         if (!(srcW > 0)) {
             return
         }
-        ctx.drawImage(image, srcX, 0, srcW, image.height, destX, 0, cssWidth, destHeight)
+        ctx.drawImage(image, srcX, 0, srcW, image.height, destX, destY, cssWidth, destHeight)
     }
 }

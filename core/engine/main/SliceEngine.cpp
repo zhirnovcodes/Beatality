@@ -64,21 +64,48 @@ void SliceEngine::append(const SampleBuffer& buffer) {
     }
 }
 
+namespace {
+
+double unit(double value) {
+    if (value < 0.0) {
+        return 0.0;
+    }
+    if (value > 1.0) {
+        return 1.0;
+    }
+    return value;
+}
+
+double clamp(double value, double low, double high) {
+    if (value < low) {
+        return low;
+    }
+    if (value > high) {
+        return high;
+    }
+    return value;
+}
+
+} // namespace
+
 void SliceEngine::setTrack(int index, double start, double length, bool loop) {
     if (index < 0 || index >= bank_.count()) {
         return;
     }
-    if (start < 0.0) {
-        start = 0.0;
-    } else if (start > 1.0) {
-        start = 1.0;
+    bank_.setPlay(index, TrackPlay{unit(start), unit(length), loop});
+}
+
+void SliceEngine::setIndexedTrack(int index, double start, double length, bool loop, double volume, double pan) {
+    if (index < 0 || index >= bank_.count()) {
+        return;
     }
-    if (length < 0.0) {
-        length = 0.0;
-    } else if (length > 1.0) {
-        length = 1.0;
-    }
-    bank_.setPlay(index, TrackPlay{start, length, loop});
+    bank_.setPlay(index, TrackPlay{
+                             .start = unit(start),
+                             .length = unit(length),
+                             .loop = loop,
+                             .volume = clamp(volume, 0.0, 1.2),
+                             .pan = clamp(pan, -1.0, 1.0),
+                         });
 }
 
 void SliceEngine::remove(int index) {
@@ -218,6 +245,11 @@ void SliceEngine::setAttack(int ms) {
     listen();
 }
 
+void SliceEngine::setOutput(double volume, double pan) {
+    volume_ = clamp(volume, 0.0, 1.2);
+    pan_ = clamp(pan, -1.0, 1.0);
+}
+
 void SliceEngine::render(float* left, float* right, int frames) {
     for (int i = 0; i < frames; ++i) {
         float sampleL = 0.0f;
@@ -228,6 +260,16 @@ void SliceEngine::render(float* left, float* right, int frames) {
         left[i] = sampleL;
         right[i] = sampleR;
         advance();
+    }
+    const float volume = static_cast<float>(volume_);
+    const float leftGain = static_cast<float>(pan_ <= 0.0 ? 1.0 : 1.0 - pan_) * volume;
+    const float rightGain = static_cast<float>(pan_ >= 0.0 ? 1.0 : 1.0 + pan_) * volume;
+    if (leftGain == 1.0f && rightGain == 1.0f) {
+        return;
+    }
+    for (int i = 0; i < frames; ++i) {
+        left[i] *= leftGain;
+        right[i] *= rightGain;
     }
 }
 
@@ -253,8 +295,8 @@ void SliceEngine::mixSlice(float& left, float& right) const {
         const int until = loop - position;
         if (fade > 0 && until <= fade) {
             sliceG = slice_.y(fade - until);
-            const SampleBuffer& next = bufferForSlot(0);
-            take(next, frameIn(next, bank_.play(sequence_.indexAt(0, bank_.count())), 0, position), nowL, nowR);
+            const int track = sequence_.indexAt(0, bank_.count());
+            hear(bufferForSlot(0), bank_.play(track), 0, position, nowL, nowR);
         }
     } else {
         const int slot = position / slice;
@@ -265,14 +307,14 @@ void SliceEngine::mixSlice(float& left, float& right) const {
             sliceG = slice_.y(fade - until);
             if (!intoSilence) {
                 const int nextSlot = boundary >= loop ? 0 : slot + 1;
-                const SampleBuffer& next = bufferForSlot(nextSlot);
-                take(next, frameIn(next, bank_.play(sequence_.indexAt(nextSlot, bank_.count())), nextSlot, position), nowL, nowR);
+                const int nextTrack = sequence_.indexAt(nextSlot, bank_.count());
+                hear(bufferForSlot(nextSlot), bank_.play(nextTrack), nextSlot, position, nowL, nowR);
             }
-            const SampleBuffer& prev = bufferForSlot(slot);
-            take(prev, frameIn(prev, bank_.play(sequence_.indexAt(slot, bank_.count())), slot, position), prevL, prevR);
+            const int track = sequence_.indexAt(slot, bank_.count());
+            hear(bufferForSlot(slot), bank_.play(track), slot, position, prevL, prevR);
         } else {
-            const SampleBuffer& current = bufferForSlot(slot);
-            take(current, frameIn(current, bank_.play(sequence_.indexAt(slot, bank_.count())), slot, position), nowL, nowR);
+            const int track = sequence_.indexAt(slot, bank_.count());
+            hear(bufferForSlot(slot), bank_.play(track), slot, position, nowL, nowR);
         }
     }
 
@@ -296,7 +338,7 @@ void SliceEngine::mixOutgoing(float& left, float& right) {
     float oldL = 0.0f;
     float oldR = 0.0f;
     const int slot = outgoingPosition_ < musical ? outgoingPosition_ / slice : 0;
-    take(outgoingBuffer_, frameIn(outgoingBuffer_, outgoingPlay_, slot, outgoingPosition_), oldL, oldR);
+    hear(outgoingBuffer_, outgoingPlay_, slot, outgoingPosition_, oldL, oldR);
     left += oldG * oldL;
     right += oldG * oldR;
     if (oldG == 0.0f && pendingHeld_) {
@@ -438,8 +480,8 @@ int SliceEngine::frameIn(const SampleBuffer& buffer, const TrackPlay& play, int 
     }
     const int local = position - origin;
     const double durationSec = static_cast<double>(buffer.frames) / sampleRate_;
-    const double start = play.start < 0.0 ? 0.0 : (play.start > 1.0 ? 1.0 : play.start);
-    const double length = play.length < 0.0 ? 0.0 : (play.length > 1.0 ? 1.0 : play.length);
+    const double start = unit(play.start);
+    const double length = unit(play.length);
     const int maxSlices = grid_.trackSlices(durationSec * (1.0 - start));
     const int sliceCount = static_cast<int>(std::llround(length * (maxSlices - 1))) + 1;
     if (!play.loop && slot >= sliceCount) {
@@ -448,6 +490,16 @@ int SliceEngine::frameIn(const SampleBuffer& buffer, const TrackPlay& play, int 
     const int trackSlice = slot % sliceCount;
     const int startFrame = static_cast<int>(std::llround(start * buffer.frames));
     return startFrame + trackSlice * slice + local;
+}
+
+void SliceEngine::hear(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position, float& left, float& right) const {
+    take(buffer, frameIn(buffer, play, slot, position), left, right);
+    const float volume = static_cast<float>(clamp(play.volume, 0.0, 1.2));
+    const double pan = clamp(play.pan, -1.0, 1.0);
+    const float leftGain = static_cast<float>(pan <= 0.0 ? 1.0 : 1.0 - pan);
+    const float rightGain = static_cast<float>(pan >= 0.0 ? 1.0 : 1.0 + pan);
+    left *= volume * leftGain;
+    right *= volume * rightGain;
 }
 
 void SliceEngine::take(const SampleBuffer& buffer, int frame, float& left, float& right) const {

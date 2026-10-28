@@ -286,6 +286,8 @@
   margin: 0; appearance: none; cursor: pointer; image-rendering: pixelated;
   background: url("../shapes/loop_toggle.png") 0 0 / 100% 100% no-repeat;
 }
+.beatality-skin .sample-panel .row,
+.beatality-skin .sample-panel .loop-col { pointer-events: none; opacity: 0.4; }
 .beatality-skin .sample-panel .toggle:checked { background-image: url("../shapes/loop_toggle_on.png"); }
 .beatality-skin .sample-panel .toggle:focus-visible { outline: 1px dotted #0b1d02; outline-offset: 1px; }
 

@@ -5,12 +5,15 @@
 namespace bt {
 
 // Where a track is read from. Randomize does not touch these.
-// start and length are fractions of the file, 0..1.
+// start is a fraction of the file, 0..1, from the first sample to the end.
 // length 0 keeps one slice. length 1 uses every slice after start.
+// volume is 0..1.2. pan is -1..1.
 struct TrackPlay {
     double start = 0;
     double length = 1;
     bool loop = false;
+    double volume = 1;
+    double pan = 0;
 };
 
 // One host-owned buffer per track, in list order.

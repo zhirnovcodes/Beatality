@@ -49,7 +49,12 @@ public:
     void setLoop(int beats);
     void setSlice(int exponent);
     void setAttack(int ms);
+    // volume is 0..1.2 and scales the mix. The host multiplies that by note velocity.
+    // pan is -1..1 and balances the two channels.
+    void setOutput(double volume, double pan);
     void setTrack(int index, double start, double length, bool loop);
+    // Web track. start is a fraction of the file, 0..1.
+    void setIndexedTrack(int index, double start, double length, bool loop, double volume, double pan);
 
     int count() const { return bank_.count(); }
 
@@ -72,6 +77,7 @@ private:
     int frameIn(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position) const;
     void remember(const SampleBuffer& buffer);
     void take(const SampleBuffer& buffer, int frame, float& left, float& right) const;
+    void hear(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position, float& left, float& right) const;
 
     int fadeFrames() const;
     int sliceFrames() const;
@@ -80,6 +86,8 @@ private:
 
     double sampleRate_;
     int attackMs_ = kAttackMinMs;
+    double volume_ = 1;
+    double pan_ = 0;
     Rng rng_;
     SliceGrid grid_;
     Sequence sequence_;

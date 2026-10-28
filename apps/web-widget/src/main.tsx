@@ -40,6 +40,23 @@ render(
     app,
 )
 
+const trackControls = document.querySelector('#track-controls')
+if (!(trackControls instanceof HTMLFieldSetElement)) {
+    throw new Error('missing track controls')
+}
+presenter.bindTrackControls(trackControls)
+
+const outputVolume = document.querySelector('#output-volume')
+const outputPan = document.querySelector('#output-pan')
+if (!(outputVolume instanceof HTMLInputElement) || !(outputPan instanceof HTMLInputElement)) {
+    throw new Error('missing output controls')
+}
+const sendOutput = () => {
+    void client.setOutput(Number(outputVolume.value), Number(outputPan.value))
+}
+outputVolume.addEventListener('input', sendOutput)
+outputPan.addEventListener('input', sendOutput)
+
 const previewNote = 36
 const previewVelocity = 1
 

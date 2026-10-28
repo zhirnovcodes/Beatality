@@ -68,6 +68,14 @@ export interface TrackMessage {
     start: number
     length: number
     loop: boolean
+    volume: number
+    pan: number
+}
+
+export interface OutputMessage {
+    type: 'output'
+    volume: number
+    pan: number
 }
 
 export interface FreeMessage {
@@ -87,6 +95,7 @@ export type HostMessage =
     | SliceMessage
     | AttackMessage
     | TrackMessage
+    | OutputMessage
     | FreeMessage
 
 export interface ReadyMessage {

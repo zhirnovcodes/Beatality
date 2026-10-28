@@ -301,7 +301,7 @@ export function Widget({
                                 <div className="slider">
                                     <div className="track" />
                                     <div className="thumb" />
-                                    <input type="range" id="start" min={0} max={1} step={0.001} defaultValue={0} aria-label="Start" />
+                                    <input type="range" id="start" min={0} max={1} step={0.001} defaultValue={0} aria-label="Start" disabled />
                                 </div>
                             </div>
                             <div className="row length">
@@ -309,12 +309,12 @@ export function Widget({
                                 <div className="slider">
                                     <div className="track" />
                                     <div className="thumb" />
-                                    <input type="range" id="length" min={0} max={1} step={0.001} defaultValue={1} aria-label="Length" />
+                                    <input type="range" id="length" min={0} max={1} step={0.001} defaultValue={1} aria-label="Length" disabled />
                                 </div>
                             </div>
                             <div className="loop-col">
                                 <span className="name">LOOP</span>
-                                <input type="checkbox" className="toggle" id="track-loop" aria-label="Loop" />
+                                <input type="checkbox" className="toggle" id="track-loop" aria-label="Loop" disabled />
                             </div>
                         </fieldset>
                     </div>

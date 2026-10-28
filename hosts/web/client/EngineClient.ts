@@ -101,9 +101,21 @@ export class EngineClient {
         this.node?.port.postMessage({ type: 'attack', ms })
     }
 
-    async setTrack(index: number, start: number, length: number, loop: boolean): Promise<void> {
+    async setTrack(
+        index: number,
+        start: number,
+        length: number,
+        loop: boolean,
+        volume: number,
+        pan: number,
+    ): Promise<void> {
         await this.start()
-        this.node?.port.postMessage({ type: 'track', index, start, length, loop })
+        this.node?.port.postMessage({ type: 'track', index, start, length, loop, volume, pan })
+    }
+
+    async setOutput(volume: number, pan: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'output', volume, pan })
     }
 
     // Empties the bank. A sounding voice fades out.

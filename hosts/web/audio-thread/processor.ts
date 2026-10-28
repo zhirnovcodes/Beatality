@@ -18,7 +18,16 @@ interface Core {
     bt_set_loop: (engine: number, beats: number) => void
     bt_set_slice: (engine: number, exponent: number) => void
     bt_set_attack: (engine: number, ms: number) => void
-    bt_set_track: (engine: number, index: number, start: number, length: number, loop: number) => void
+    bt_set_track: (
+        engine: number,
+        index: number,
+        start: number,
+        length: number,
+        loop: number,
+        volume: number,
+        pan: number,
+    ) => void
+    bt_set_output: (engine: number, volume: number, pan: number) => void
     bt_render: (engine: number, left: number, right: number, frames: number) => void
     bt_snapshot: (engine: number) => void
     bt_snapshot_count: (engine: number) => number
@@ -100,6 +109,14 @@ interface TrackMessage {
     start: number
     length: number
     loop: boolean
+    volume: number
+    pan: number
+}
+
+interface OutputMessage {
+    type: 'output'
+    volume: number
+    pan: number
 }
 
 interface FreeMessage {
@@ -119,6 +136,7 @@ type HostMessage =
     | SliceMessage
     | AttackMessage
     | TrackMessage
+    | OutputMessage
     | FreeMessage
 
 interface WorkletPort {
@@ -305,7 +323,17 @@ class BeatalityProcessor extends AudioWorkletProcessor {
             this.core!.bt_set_attack(this.engine, message.ms)
             this.postSnapshot(0)
         } else if (message.type === 'track') {
-            this.core!.bt_set_track(this.engine, message.index, message.start, message.length, message.loop ? 1 : 0)
+            this.core!.bt_set_track(
+                this.engine,
+                message.index,
+                message.start,
+                message.length,
+                message.loop ? 1 : 0,
+                message.volume,
+                message.pan,
+            )
+        } else if (message.type === 'output') {
+            this.core!.bt_set_output(this.engine, message.volume, message.pan)
         } else if (message.type === 'free') {
             this.freeId(message.id)
         }

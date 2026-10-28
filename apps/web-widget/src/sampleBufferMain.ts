@@ -25,6 +25,8 @@ presenter.show({
     start: 0,
     length: 1,
     loop: false,
+    volume: 1,
+    pan: 0,
     playheadBeats: playhead,
 })
 

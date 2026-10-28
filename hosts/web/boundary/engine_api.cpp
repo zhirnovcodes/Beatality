@@ -19,6 +19,7 @@ struct Instance {
     bt::SliceEngine engine;
     bt::SliceSnapshot snapshot;
     bt::NoteGate gate;
+    float velocity = 1.0f;
 
     Instance(double sampleRate, std::uint64_t seed) : engine(sampleRate, seed) {}
 };
@@ -76,12 +77,19 @@ BT_EXPORT int bt_append(Instance* instance, std::uint32_t id, const float* plana
     return 1;
 }
 
-// status is note-off, note-on, or all-off. Note and velocity travel with the event. The gate ignores them.
-BT_EXPORT void bt_midi(Instance* instance, int status, int, int) {
+// status is note-off, note-on, or all-off. Note is unused.
+// Velocity is 0..1. It scales the mix after output volume.
+BT_EXPORT void bt_midi(Instance* instance, int status, int, double velocity) {
     if (instance == nullptr) {
         return;
     }
     if (status == kNoteOn) {
+        if (velocity < 0.0) {
+            velocity = 0.0;
+        } else if (velocity > 1.0) {
+            velocity = 1.0;
+        }
+        instance->velocity = static_cast<float>(velocity);
         applyGate(*instance, instance->gate.noteOn());
     } else if (status == kNoteOff) {
         applyGate(*instance, instance->gate.noteOff());
@@ -139,12 +147,21 @@ BT_EXPORT void bt_set_attack(Instance* instance, int ms) {
     instance->engine.setAttack(ms);
 }
 
-// start and length are fractions of the file, 0..1. loop is 0 or 1.
-BT_EXPORT void bt_set_track(Instance* instance, int index, double start, double length, int loop) {
+// start is a fraction of the file, 0..1. length is 0..1. loop is 0 or 1.
+// volume is 0..1.2. pan is -1..1.
+BT_EXPORT void bt_set_track(Instance* instance, int index, double start, double length, int loop, double volume, double pan) {
     if (instance == nullptr) {
         return;
     }
-    instance->engine.setTrack(index, start, length, loop != 0);
+    instance->engine.setIndexedTrack(index, start, length, loop != 0, volume, pan);
+}
+
+// volume is 0..1.2 and multiplies note velocity. pan is -1..1.
+BT_EXPORT void bt_set_output(Instance* instance, double volume, double pan) {
+    if (instance == nullptr) {
+        return;
+    }
+    instance->engine.setOutput(volume, pan);
 }
 
 BT_EXPORT void bt_render(Instance* instance, float* left, float* right, int frames) {
@@ -152,6 +169,14 @@ BT_EXPORT void bt_render(Instance* instance, float* left, float* right, int fram
         return;
     }
     instance->engine.render(left, right, frames);
+    const float velocity = instance->velocity;
+    if (velocity == 1.0f) {
+        return;
+    }
+    for (int i = 0; i < frames; ++i) {
+        left[i] *= velocity;
+        right[i] *= velocity;
+    }
 }
 
 // Takes a new snapshot; read it with the getters below.

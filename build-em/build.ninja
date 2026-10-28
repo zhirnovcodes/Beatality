@@ -324,7 +324,7 @@ build CMakeFiles/beatality.dir/hosts/web/boundary/engine_api.cpp.o: CXX_COMPILER
 build beatality.wasm: CXX_EXECUTABLE_LINKER__beatality_Release CMakeFiles/beatality.dir/hosts/web/boundary/engine_api.cpp.o | libbeatality_slice_engine.a libbeatality_slices.a libbeatality_domain.a || libbeatality_domain.a libbeatality_slice_engine.a libbeatality_slices.a
   CONFIG = Release
   FLAGS = -O3 -DNDEBUG
-  LINK_FLAGS = -O2 --no-entry -sSTANDALONE_WASM -sALLOW_MEMORY_GROWTH -sFILESYSTEM=0 -sEXPORTED_FUNCTIONS=_bt_alloc,_bt_free,_bt_create,_bt_destroy,_bt_append,_bt_midi,_bt_randomize,_bt_remove,_bt_clear,_bt_set_bpm,_bt_set_loop,_bt_set_slice,_bt_set_attack,_bt_set_track,_bt_render,_bt_snapshot,_bt_snapshot_count,_bt_snapshot_playing,_bt_snapshot_slice_exp,_bt_snapshot_loop,_bt_snapshot_bpm,_bt_snapshot_play_slot,_bt_snapshot_play_track,_bt_snapshot_playhead,_bt_snapshot_released_count,_bt_snapshot_released_id
+  LINK_FLAGS = -O2 --no-entry -sSTANDALONE_WASM -sALLOW_MEMORY_GROWTH -sFILESYSTEM=0 -sEXPORTED_FUNCTIONS=_bt_alloc,_bt_free,_bt_create,_bt_destroy,_bt_append,_bt_midi,_bt_randomize,_bt_remove,_bt_clear,_bt_set_bpm,_bt_set_loop,_bt_set_slice,_bt_set_attack,_bt_set_track,_bt_set_output,_bt_render,_bt_snapshot,_bt_snapshot_count,_bt_snapshot_playing,_bt_snapshot_slice_exp,_bt_snapshot_loop,_bt_snapshot_bpm,_bt_snapshot_play_slot,_bt_snapshot_play_track,_bt_snapshot_playhead,_bt_snapshot_released_count,_bt_snapshot_released_id
   LINK_LIBRARIES = libbeatality_slice_engine.a  libbeatality_slices.a  libbeatality_domain.a
   OBJECT_DIR = CMakeFiles\beatality.dir
   POST_BUILD = cd .

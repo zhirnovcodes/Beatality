@@ -13,6 +13,11 @@ function isAbort(error: unknown): boolean {
     return typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
 }
 
+function formatSeconds(seconds: number): string {
+    const rounded = Math.round(seconds * 1000) / 1000
+    return String(rounded)
+}
+
 function placeThumb(input: HTMLInputElement) {
     const slider = input.closest('.slider')
     if (!(slider instanceof HTMLElement)) {
@@ -39,6 +44,13 @@ export class WebPresenter {
     private startInput: HTMLInputElement | null = null
     private lengthInput: HTMLInputElement | null = null
     private loopInput: HTMLInputElement | null = null
+    private trackControls: HTMLFieldSetElement | null = null
+    private volumeInput: HTMLInputElement | null = null
+    private panInput: HTMLInputElement | null = null
+    private trackStartInput: HTMLInputElement | null = null
+    private trackStartSecInput: HTMLInputElement | null = null
+    private trackLengthInput: HTMLInputElement | null = null
+    private trackLoopInput: HTMLInputElement | null = null
     private selectionListener: (index: number) => void = () => {}
 
     constructor(
@@ -113,6 +125,79 @@ export class WebPresenter {
         this.syncPanel()
     }
 
+    // Plain controls outside the skin. They edit the selected track.
+    bindTrackControls(panel: HTMLFieldSetElement) {
+        const volume = panel.querySelector('#track-volume')
+        const pan = panel.querySelector('#track-pan')
+        const start = panel.querySelector('#track-start')
+        const startSec = panel.querySelector('#track-start-sec')
+        const length = panel.querySelector('#track-length')
+        const loop = panel.querySelector('#track-loop-toggle')
+        if (
+            !(volume instanceof HTMLInputElement) ||
+            !(pan instanceof HTMLInputElement) ||
+            !(start instanceof HTMLInputElement) ||
+            !(startSec instanceof HTMLInputElement) ||
+            !(length instanceof HTMLInputElement) ||
+            !(loop instanceof HTMLInputElement)
+        ) {
+            throw new Error('missing track controls')
+        }
+        this.trackControls = panel
+        this.volumeInput = volume
+        this.panInput = pan
+        this.trackStartInput = start
+        this.trackStartSecInput = startSec
+        this.trackLengthInput = length
+        this.trackLoopInput = loop
+        this.openStart(start, startSec)
+        const edit = () => {
+            this.rowAt(this.selected)?.presenter.edit({
+                volume: Number(volume.value),
+                pan: Number(pan.value),
+                start: Number(start.value),
+                length: Number(length.value),
+                loop: loop.checked,
+            })
+        }
+        const editSeconds = (commit: boolean) => {
+            const row = this.rowAt(this.selected)
+            if (!row) {
+                return
+            }
+            const text = startSec.value.trim()
+            const seconds = Number(text)
+            const duration = row.presenter.durationSec()
+            if (text === '' || !Number.isFinite(seconds)) {
+                if (commit) {
+                    const current = row.presenter.read()
+                    startSec.value = formatSeconds((current?.start ?? 0) * duration)
+                }
+                return
+            }
+            const clamped = Math.min(duration, Math.max(0, seconds))
+            const fraction = duration > 0 ? clamped / duration : 0
+            row.presenter.edit({
+                volume: Number(volume.value),
+                pan: Number(pan.value),
+                start: fraction,
+                length: Number(length.value),
+                loop: loop.checked,
+            })
+            if (commit) {
+                startSec.value = formatSeconds(clamped)
+            }
+        }
+        volume.addEventListener('input', edit)
+        pan.addEventListener('input', edit)
+        start.addEventListener('input', edit)
+        startSec.addEventListener('input', () => editSeconds(false))
+        startSec.addEventListener('change', () => editSeconds(true))
+        length.addEventListener('input', edit)
+        loop.addEventListener('change', edit)
+        this.syncPanel()
+    }
+
     private sync() {
         this.followSample()
         this.markPlaying()
@@ -169,10 +254,14 @@ export class WebPresenter {
         spectrum.className = 'spectrum'
         const view = new SampleBufferView(spectrum, skinRow)
         const presenter = new SampleBufferPresenter(view)
-        presenter.onEdit = (start, length, loop) => {
+        presenter.onEdit = (play) => {
             const index = this.indexOf(samples)
-            if (index >= 0) {
-                void this.client.setTrack(index, start, length, loop)
+            if (index < 0) {
+                return
+            }
+            void this.client.setTrack(index, play.start, play.length, play.loop, play.volume, play.pan)
+            if (index === this.selected) {
+                this.syncPanel()
             }
         }
         return { samples, presenter, spectrum }
@@ -286,20 +375,58 @@ export class WebPresenter {
     }
 
     private syncPanel() {
+        const picture = this.selected >= 0 ? this.rowAt(this.selected)?.presenter.read() : null
+        if (this.trackControls) {
+            this.trackControls.disabled = !picture
+        }
         const start = this.startInput
         const length = this.lengthInput
         const loop = this.loopInput
-        if (!start || !length || !loop) {
+        if (start && length && loop && picture) {
+            this.writeRange(start, picture.start)
+            this.writeRange(length, picture.length)
+            if (document.activeElement !== loop && loop.checked !== picture.loop) {
+                loop.checked = picture.loop
+            }
+        }
+        const volume = this.volumeInput
+        const pan = this.panInput
+        const trackStart = this.trackStartInput
+        const trackStartSec = this.trackStartSecInput
+        const trackLength = this.trackLengthInput
+        const trackLoop = this.trackLoopInput
+        if (!picture || !volume || !pan || !trackStart || !trackStartSec || !trackLength || !trackLoop) {
             return
         }
-        const picture = this.selected >= 0 ? this.rowAt(this.selected)?.presenter.read() : null
-        if (!picture) {
+        const durationSec = this.rowAt(this.selected)?.presenter.durationSec() ?? 0
+        this.openStart(trackStart, trackStartSec)
+        this.writeRange(volume, picture.volume)
+        this.writeRange(pan, picture.pan)
+        this.writeRange(trackStart, picture.start)
+        this.writeSeconds(trackStartSec, picture.start * durationSec, durationSec)
+        this.writeRange(trackLength, picture.length)
+        if (document.activeElement !== trackLoop && trackLoop.checked !== picture.loop) {
+            trackLoop.checked = picture.loop
+        }
+    }
+
+    private openStart(slider: HTMLInputElement, seconds: HTMLInputElement) {
+        slider.readOnly = false
+        slider.disabled = false
+        seconds.readOnly = false
+        seconds.disabled = false
+    }
+
+    private writeSeconds(input: HTMLInputElement, value: number, max: number) {
+        const limit = max > 0 ? max : 0
+        input.max = String(limit)
+        input.readOnly = false
+        if (document.activeElement === input) {
             return
         }
-        this.writeRange(start, picture.start)
-        this.writeRange(length, picture.length)
-        if (document.activeElement !== loop && loop.checked !== picture.loop) {
-            loop.checked = picture.loop
+        const shown = formatSeconds(Math.min(limit, Math.max(0, value)))
+        if (input.value !== shown) {
+            input.value = shown
         }
     }
 

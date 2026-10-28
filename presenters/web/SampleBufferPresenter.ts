@@ -11,7 +11,17 @@ export interface SamplePicture {
     start: number
     length: number
     loop: boolean
+    volume: number
+    pan: number
     playheadBeats: number
+}
+
+export interface TrackEdit {
+    start: number
+    length: number
+    loop: boolean
+    volume: number
+    pan: number
 }
 
 export interface SampleFollow {
@@ -39,7 +49,7 @@ export class SampleBufferPresenter {
     private buildingLoop = 0
     private buildToken = 0
 
-    onEdit: ((start: number, length: number, loop: boolean) => void) | null = null
+    onEdit: ((play: TrackEdit) => void) | null = null
 
     constructor(private readonly view: SampleBufferView) {
         view.onKnobChange = (value) => this.editStart(value)
@@ -47,18 +57,46 @@ export class SampleBufferPresenter {
         view.onLoopChange = (loop) => this.editLoop(loop)
     }
 
-    read(): { start: number; length: number; loop: boolean } | null {
+    // Length of the file in seconds. Start 1 lands on this.
+    durationSec(): number {
+        const picture = this.picture
+        if (!picture || !(picture.sampleRate > 0)) {
+            return 0
+        }
+        return picture.samples.length / picture.sampleRate
+    }
+
+    read(): TrackEdit | null {
         if (!this.picture) {
             return null
         }
-        return { start: this.picture.start, length: this.picture.length, loop: this.picture.loop }
+        return {
+            start: this.picture.start,
+            length: this.picture.length,
+            loop: this.picture.loop,
+            volume: this.picture.volume,
+            pan: this.picture.pan,
+        }
+    }
+
+    edit(play: TrackEdit) {
+        if (!this.picture) {
+            return
+        }
+        this.picture.start = unit(play.start)
+        this.picture.length = unit(play.length)
+        this.picture.loop = play.loop
+        this.picture.volume = clamp(play.volume, 0, 1.2)
+        this.picture.pan = clamp(play.pan, -1, 1)
+        this.publish()
+        this.edited()
     }
 
     editStart(value: number) {
         if (!this.picture) {
             return
         }
-        this.picture.start = value
+        this.picture.start = unit(value)
         this.publish()
         this.edited()
     }
@@ -67,7 +105,7 @@ export class SampleBufferPresenter {
         if (!this.picture) {
             return
         }
-        this.picture.length = value
+        this.picture.length = unit(value)
         this.publish()
         this.edited()
     }
@@ -100,6 +138,8 @@ export class SampleBufferPresenter {
                 start: 0,
                 length: 1,
                 loop: false,
+                volume: 1,
+                pan: 0,
                 playheadBeats: -1,
             }
             this.publish()
@@ -130,6 +170,8 @@ export class SampleBufferPresenter {
             start: 0,
             length: 1,
             loop: false,
+            volume: 1,
+            pan: 0,
             playheadBeats: -1,
         }
         this.buildToken++
@@ -157,7 +199,13 @@ export class SampleBufferPresenter {
         if (!this.picture) {
             return
         }
-        this.onEdit?.(this.picture.start, this.picture.length, this.picture.loop)
+        this.onEdit?.({
+            start: this.picture.start,
+            length: this.picture.length,
+            loop: this.picture.loop,
+            volume: this.picture.volume,
+            pan: this.picture.pan,
+        })
     }
 
     private publish(): void {
@@ -229,6 +277,7 @@ export class SampleBufferPresenter {
         return {
             knob: picture.start,
             length: picture.length,
+            volume: picture.volume,
             imageStart: placed.imageStart,
             imageWidth: placed.imageWidth,
             loop: picture.loop,
@@ -245,13 +294,13 @@ export class SampleBufferPresenter {
         const pxPerBeat = loopWidth / picture.loopBeats
         const durationSec = picture.samples.length / picture.sampleRate
         const imageWidth = durationSec * (picture.bpm / 60) * pxPerBeat
-        const imageStart = this.view.frameOffset - picture.start * imageWidth
-
+        const start = unit(picture.start)
+        const imageStart = this.view.frameOffset - start * imageWidth
         const sliceSec = (picture.sliceBeats * 60) / picture.bpm
-        const usableSec = durationSec * (1 - picture.start)
+        const usableSec = durationSec * (1 - start)
         const maxSlices = slicesIn(usableSec, sliceSec)
-        // Length 0 keeps one slice. Length 1 uses every slice the track can hold.
-        const length = Math.min(1, Math.max(0, picture.length))
+        // Length 0 keeps one slice. Length 1 uses every slice after start.
+        const length = unit(picture.length)
         const sliceCount = Math.round(length * (maxSlices - 1)) + 1
         const gridWidth = picture.sliceBeats * pxPerBeat
         const contentWidth = sliceCount * gridWidth
@@ -275,6 +324,17 @@ export class SampleBufferPresenter {
 function slicesIn(durationSec: number, sliceSec: number): number {
     const count = Math.floor(durationSec / sliceSec + 0.99)
     return count < 1 ? 1 : count
+}
+
+function unit(value: number): number {
+    return clamp(value, 0, 1)
+}
+
+function clamp(value: number, low: number, high: number): number {
+    if (!(value > low)) {
+        return low
+    }
+    return value > high ? high : value
 }
 
 interface Placed {

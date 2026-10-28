@@ -35,6 +35,38 @@ body {
     overflow: hidden;
 }
 
+#track-controls {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 8px 24px;
+    margin: 0;
+    padding: 12px 16px;
+    color: inherit;
+    border: 1px solid #666;
+}
+
+#track-controls label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 240px;
+}
+
+#track-controls label.start {
+    grid-column: 1 / -1;
+}
+
+#track-controls input[type='range'] {
+    width: 140px;
+}
+
+#track-controls input[type='number'] {
+    width: 5.5em;
+    color: #111;
+    background: #fff;
+}
+
 #error {
     min-height: 1.2em;
     margin: 0;

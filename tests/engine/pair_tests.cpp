@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -343,6 +344,101 @@ void testTrackWindowIsWhatPlays() {
     CHECK(near(after[199], 0.5));
 }
 
+void testIndexedTrackKeepsTheSliceGrid() {
+    constexpr int kRate = 10000;
+    constexpr int kSlice = 5000;
+    std::vector<float> left(kSlice * 2, 0.2f);
+    std::vector<float> right(kSlice * 2, 0.5f);
+    for (int i = kSlice; i < kSlice * 2; ++i) {
+        left[static_cast<std::size_t>(i)] = 0.4f;
+        right[static_cast<std::size_t>(i)] = 0.8f;
+    }
+    const bt::SampleBuffer buffer{1, left.data(), right.data(), static_cast<int>(left.size())};
+
+    auto probe = [&](double start, double length, bool loop, double volume, double pan, int at) {
+        bt::SliceEngine engine(kRate, 1);
+        engine.append(buffer);
+        engine.setIndexedTrack(0, start, length, loop, volume, pan);
+        engine.play();
+        std::vector<float> outL(at + 1);
+        std::vector<float> outR(at + 1);
+        engine.render(outL.data(), outR.data(), at + 1);
+        return std::pair<float, float>(outL[static_cast<std::size_t>(at)], outR[static_cast<std::size_t>(at)]);
+    };
+
+    const auto head = probe(0.0, 0.0, false, 1.0, 0.0, 200);
+    CHECK(near(head.first, 0.2));
+    CHECK(near(head.second, 0.5));
+
+    // Start halfway through the file, which is the second slice. The remainder is one slice.
+    const auto mid = probe(0.5, 1.0, false, 1.0, 0.0, 200);
+    CHECK(near(mid.first, 0.4));
+    CHECK(near(mid.second, 0.8));
+    const auto after = probe(0.5, 1.0, false, 1.0, 0.0, 5200);
+    CHECK(after.first == 0.0f);
+    CHECK(after.second == 0.0f);
+
+    const auto quiet = probe(0.0, 0.0, false, 0.5, 0.0, 200);
+    CHECK(near(quiet.first, 0.1));
+    CHECK(near(quiet.second, 0.25));
+
+    const auto hardLeft = probe(0.0, 0.0, false, 1.0, -1.0, 200);
+    CHECK(near(hardLeft.first, 0.2));
+    CHECK(hardLeft.second == 0.0f);
+
+    const auto hardRight = probe(0.0, 0.0, false, 1.0, 1.0, 200);
+    CHECK(hardRight.first == 0.0f);
+    CHECK(near(hardRight.second, 0.5));
+}
+
+void testOutputVolumeAndPan() {
+    constexpr int kRate = 10000;
+    std::vector<float> left(8000, 0.5f);
+    std::vector<float> right(8000, 0.25f);
+
+    auto probe = [&](double volume, double pan) {
+        bt::SliceEngine engine(kRate, 1);
+        engine.append({1, left.data(), right.data(), static_cast<int>(left.size())});
+        engine.setIndexedTrack(0, 0.0, 1.0, false, 0.5, 0.0);
+        engine.setOutput(volume, pan);
+        engine.play();
+        std::vector<float> outL(201);
+        std::vector<float> outR(201);
+        engine.render(outL.data(), outR.data(), 201);
+        return std::pair<float, float>(outL[200], outR[200]);
+    };
+
+    const auto boosted = probe(1.2, 0.0);
+    CHECK(near(boosted.first, 0.5f * 0.5f * 1.2f));
+    CHECK(near(boosted.second, 0.25f * 0.5f * 1.2f));
+
+    const auto hardLeft = probe(1.0, -1.0);
+    CHECK(near(hardLeft.first, 0.5f * 0.5f));
+    CHECK(hardLeft.second == 0.0f);
+
+    const auto hardRight = probe(1.0, 1.0);
+    CHECK(hardRight.first == 0.0f);
+    CHECK(near(hardRight.second, 0.25f * 0.5f));
+
+    const auto clamped = probe(5.0, 4.0);
+    CHECK(clamped.first == 0.0f);
+    CHECK(near(clamped.second, 0.25f * 0.5f * 1.2f));
+
+    bt::SliceEngine engine(kRate, 1);
+    engine.append({1, left.data(), right.data(), static_cast<int>(left.size())});
+    engine.play();
+    std::vector<float> open(201);
+    std::vector<float> openR(201);
+    engine.render(open.data(), openR.data(), 201);
+    engine.setOutput(0.0, 0.0);
+    std::vector<float> closed(40);
+    std::vector<float> closedR(40);
+    engine.render(closed.data(), closedR.data(), 40);
+    CHECK(closed[20] == 0.0f);
+    CHECK(closedR[20] == 0.0f);
+    CHECK(near(open[200], 0.5f));
+}
+
 void testPlayheadIsTheFractionOfTheLoop() {
     constexpr int kRate = 10000;
     std::vector<float> samples(8000, 0.5f);
@@ -460,6 +556,8 @@ int main() {
     testStopFallsFromTheCurrentGain();
     testPlayAndStopReturnToTheStart();
     testTrackWindowIsWhatPlays();
+    testIndexedTrackKeepsTheSliceGrid();
+    testOutputVolumeAndPan();
     testPlayheadIsTheFractionOfTheLoop();
     testClearWhileStoppedReleasesEveryTrack();
     testClearWhilePlayingFadesTheHeardTrack();
