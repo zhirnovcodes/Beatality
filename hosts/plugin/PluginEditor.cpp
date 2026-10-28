@@ -195,10 +195,16 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
             }
             completion(true);
         })
+        .withNativeFunction("setOutput", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (args.size() >= 2) {
+                processor.setOutput(static_cast<double>(args[0]), static_cast<double>(args[1]));
+            }
+            completion(true);
+        })
         .withNativeFunction("setTrack", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
-            if (args.size() >= 4) {
+            if (args.size() >= 6) {
                 processor.setTrack(static_cast<int>(args[0]), static_cast<double>(args[1]), static_cast<double>(args[2]),
-                                   static_cast<bool>(args[3]));
+                                   static_cast<bool>(args[3]), static_cast<double>(args[4]), static_cast<double>(args[5]));
             }
             completion(true);
         });

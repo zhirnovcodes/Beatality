@@ -9,6 +9,8 @@ const state = {
     playTrack: -1,
     playSlot: -1,
     canAppend: true,
+    outputVolume: 1,
+    outputPan: 0,
 }
 
 const plays = []
@@ -65,7 +67,7 @@ function columns() {
 }
 
 function placeThumb(input) {
-    const slider = input.closest('.slider, .seek')
+    const slider = input.closest('.slider, .seek, .mix-slider')
     if (!(slider instanceof HTMLElement)) {
         return
     }
@@ -74,6 +76,33 @@ function placeThumb(input) {
     const value = Number(input.value)
     const pos = max > min ? (value - min) / (max - min) : 0
     slider.style.setProperty('--pos', String(pos))
+    const snap = input.dataset.snap
+    if (snap != null && snap !== '') {
+        const target = Number(snap)
+        slider.style.setProperty('--snap', String(max > min ? (target - min) / (max - min) : 0))
+    }
+}
+
+function holdSnap(input) {
+    const min = Number(input.min)
+    const max = Number(input.max)
+    let value = Number(input.value)
+    const snap = input.dataset.snap
+    if (snap != null && snap !== '') {
+        const target = Number(snap)
+        if (Number.isFinite(target) && Math.abs(value - target) <= (max - min) * 0.04) {
+            value = target
+            input.value = String(value)
+        }
+    }
+    placeThumb(input)
+    return value
+}
+
+function durationSec(index) {
+    const rate = pictures.rates[index] || 0
+    const frames = pictures.frames[index] || 0
+    return rate > 0 && frames > 0 ? frames / rate : 0
 }
 
 function setRange(id, value) {
@@ -167,8 +196,17 @@ function drawWave(canvas, index) {
 
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
     ctx.fillStyle = '#c1fd31'
+    let volume = play.volume
+    if (!Number.isFinite(volume)) {
+        volume = 1
+    }
+    if (volume < 0) {
+        volume = 0
+    } else if (volume > 1.2) {
+        volume = 1.2
+    }
     const mid = height * 0.5
-    const half = height * 0.5
+    const half = mid * volume
     for (let x = 0; x < width; x++) {
         let into = x
         if (play.loop && contentWidth > 0) {
@@ -184,8 +222,19 @@ function drawWave(canvas, index) {
         if (column < 0 || column >= peaks.length) {
             continue
         }
-        const bar = Math.max(peaks[column] * half, 0.5)
-        ctx.fillRect(x, mid - bar, 1, bar * 2)
+        if (!(half > 0)) {
+            continue
+        }
+        let bar = peaks[column] * half
+        if (volume >= 1 && bar > 0 && bar < 0.5) {
+            bar = 0.5
+        }
+        if (!(bar > 0)) {
+            continue
+        }
+        const top = Math.max(0, mid - bar)
+        const drawn = Math.min(height, mid + bar) - top
+        ctx.fillRect(x, top, 1, drawn)
     }
 }
 
@@ -217,17 +266,49 @@ function markRows() {
     }
 }
 
+function writeStartTime(seconds) {
+    const input = document.getElementById('start-time')
+    if (!(input instanceof HTMLInputElement) || document.activeElement === input) {
+        return
+    }
+    const limit = Number(input.dataset.max)
+    const capped = Number.isFinite(limit) ? Math.min(limit, Math.max(0, seconds)) : Math.max(0, seconds)
+    const shown = capped.toFixed(2)
+    if (input.value !== shown) {
+        input.value = shown
+    }
+}
+
 function syncPanel() {
     const panel = document.getElementById('selected-sample')
     if (panel instanceof HTMLFieldSetElement) {
         panel.disabled = selected < 0
     }
     const play = plays[selected]
+    const duration = play ? durationSec(selected) : 0
+    const startTime = document.getElementById('start-time')
+    if (startTime instanceof HTMLInputElement) {
+        const limit = duration > 0 ? duration : 0
+        startTime.dataset.max = String(limit)
+        startTime.max = String(limit)
+    }
     if (!play) {
+        setRange('volume', 1)
+        setRange('pan', 0)
+        setRange('start', 0)
+        setRange('length', 1)
+        writeStartTime(0)
+        const loop = document.getElementById('track-loop')
+        if (loop instanceof HTMLInputElement && document.activeElement !== loop) {
+            loop.checked = false
+        }
         return
     }
+    setRange('volume', play.volume)
+    setRange('pan', play.pan)
     setRange('start', play.start)
     setRange('length', play.length)
+    writeStartTime(play.start * duration)
     const loop = document.getElementById('track-loop')
     if (loop instanceof HTMLInputElement && document.activeElement !== loop) {
         loop.checked = play.loop
@@ -285,8 +366,12 @@ function paintGrid() {
     syncButtons()
 }
 
+function freshPlay(name) {
+    return { name, start: 0, length: 1, loop: false, volume: 1, pan: 0 }
+}
+
 function replacePlays(names) {
-    plays.splice(0, plays.length, ...names.map((name) => ({ name, start: 0, length: 1, loop: false })))
+    plays.splice(0, plays.length, ...names.map(freshPlay))
     selected = -1
 }
 
@@ -308,7 +393,7 @@ function onBank(bank) {
     } else if (names.length >= plays.length && plays.every((play, index) => play.name === names[index])) {
         pendingRemove = -1
         for (let index = plays.length; index < names.length; index++) {
-            plays.push({ name: names[index], start: 0, length: 1, loop: false })
+            plays.push(freshPlay(names[index]))
         }
     } else {
         pendingRemove = -1
@@ -343,7 +428,7 @@ function commitTrack() {
     if (!play || selected < 0) {
         return
     }
-    void native('setTrack', selected, play.start, play.length, play.loop)
+    void native('setTrack', selected, play.start, play.length, play.loop, play.volume, play.pan)
 }
 
 function attachSampleScroll() {
@@ -467,12 +552,22 @@ function wire() {
     document.getElementById('slice')?.addEventListener('input', onSlice)
     document.getElementById('attack')?.addEventListener('input', onAttack)
 
+    document.getElementById('master-volume')?.addEventListener('input', onMaster)
+    document.getElementById('master-pan')?.addEventListener('input', onMaster)
+    document.getElementById('volume')?.addEventListener('input', onGain)
+    document.getElementById('pan')?.addEventListener('input', onGain)
+
     const start = document.getElementById('start')
     const length = document.getElementById('length')
     start?.addEventListener('input', onRegion)
     length?.addEventListener('input', onRegion)
-    start?.addEventListener('change', commitTrack)
-    length?.addEventListener('change', commitTrack)
+    const startTime = document.getElementById('start-time')
+    startTime?.addEventListener('change', commitStartTime)
+    startTime?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && startTime instanceof HTMLInputElement) {
+            startTime.blur()
+        }
+    })
     document.getElementById('track-loop')?.addEventListener('change', () => {
         const play = plays[selected]
         const loop = document.getElementById('track-loop')
@@ -521,7 +616,7 @@ function wire() {
         void native('randomize')
     })
 
-    document.querySelectorAll('.slider input').forEach((input) => {
+    document.querySelectorAll('.slider input, .mix-slider input').forEach((input) => {
         if (input instanceof HTMLInputElement) {
             placeThumb(input)
         }
@@ -619,6 +714,60 @@ function onAttack() {
     void native('setAttack', ms)
 }
 
+function onMaster(event) {
+    const input = event.currentTarget
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const value = holdSnap(input)
+    if (input.id === 'master-volume') {
+        state.outputVolume = value
+    } else {
+        state.outputPan = value
+    }
+    void native('setOutput', state.outputVolume, state.outputPan)
+}
+
+function onGain(event) {
+    const play = plays[selected]
+    const input = event.currentTarget
+    if (!play || !(input instanceof HTMLInputElement)) {
+        return
+    }
+    const value = holdSnap(input)
+    if (input.id === 'volume') {
+        play.volume = value
+        const canvas = document.querySelectorAll('#sample-grid .row')[selected]?.querySelector('canvas')
+        if (canvas instanceof HTMLCanvasElement) {
+            drawWave(canvas, selected)
+        }
+    }
+    if (input.id === 'pan') {
+        play.pan = value
+    }
+    commitTrack()
+}
+
+function commitStartTime() {
+    const field = document.getElementById('start-time')
+    const play = plays[selected]
+    if (!(field instanceof HTMLInputElement) || !play || selected < 0) {
+        return
+    }
+    const duration = durationSec(selected)
+    const parsed = Number.parseFloat(field.value.trim().replace(',', '.'))
+    const seconds = Number.isFinite(parsed) ? parsed : 0
+    const clamped = Math.min(duration, Math.max(0, seconds))
+    play.start = duration > 0 ? clamped / duration : 0
+    field.value = clamped.toFixed(2)
+    setRange('start', play.start)
+    const canvas = document.querySelectorAll('#sample-grid .row')[selected]?.querySelector('canvas')
+    if (canvas instanceof HTMLCanvasElement) {
+        drawWave(canvas, selected)
+    }
+    commitTrack()
+}
+
 function onRegion(event) {
     const play = plays[selected]
     const input = event.currentTarget
@@ -627,6 +776,7 @@ function onRegion(event) {
     }
     if (input.id === 'start') {
         play.start = Number(input.value)
+        writeStartTime(play.start * durationSec(selected))
     }
     if (input.id === 'length') {
         play.length = Number(input.value)
@@ -636,6 +786,7 @@ function onRegion(event) {
     if (canvas instanceof HTMLCanvasElement) {
         drawWave(canvas, selected)
     }
+    commitTrack()
 }
 
 wire()

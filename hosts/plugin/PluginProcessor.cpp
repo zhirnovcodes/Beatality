@@ -151,13 +151,15 @@ AppendPayload* payloadFromReader(juce::AudioFormatReader& reader, double rate, s
 class CommandQueue {
 public:
     struct Slot {
-        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, Track };
+        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, Track, Output };
         Kind kind = Kind::Randomize;
         AppendPayload* append = nullptr;
         int index = 0;
         int number = 0;
         double first = 0;
         double second = 0;
+        double third = 1;
+        double fourth = 0;
         bool flag = false;
     };
 
@@ -212,6 +214,8 @@ struct SourceTrack {
     double start = 0;
     double length = 1;
     bool loop = false;
+    double volume = 1;
+    double pan = 0;
 };
 
 struct DeviceAudio {
@@ -270,6 +274,7 @@ struct Processor::Impl {
         engine->setLoop(loopBeats);
         engine->setSlice(sliceExp);
         engine->setAttack(attackMs);
+        engine->setOutput(outputVolume, outputPan);
     }
 
     void applyAppend(AppendPayload* payload) {
@@ -380,16 +385,28 @@ struct Processor::Impl {
         remember();
     }
 
-    void applyTrack(int index, double start, double length, bool loop) {
+    void applyOutput(double volume, double pan) {
+        outputVolume = volume;
+        outputPan = pan;
+        if (engine == nullptr) {
+            return;
+        }
+        engine->setOutput(volume, pan);
+    }
+
+    void applyTrack(int index, double start, double length, bool loop, double volume, double pan) {
         if (index >= 0 && index < static_cast<int>(sources.size())) {
-            sources[static_cast<std::size_t>(index)].start = start;
-            sources[static_cast<std::size_t>(index)].length = length;
-            sources[static_cast<std::size_t>(index)].loop = loop;
+            SourceTrack& source = sources[static_cast<std::size_t>(index)];
+            source.start = start;
+            source.length = length;
+            source.loop = loop;
+            source.volume = volume;
+            source.pan = pan;
         }
         if (engine == nullptr) {
             return;
         }
-        engine->setTrack(index, start, length, loop);
+        engine->setIndexedTrack(index, start, length, loop, volume, pan);
     }
 
     void applySlot(CommandQueue::Slot slot) {
@@ -419,7 +436,10 @@ struct Processor::Impl {
             applyAttack(slot.number);
             break;
         case CommandQueue::Slot::Kind::Track:
-            applyTrack(slot.index, slot.first, slot.second, slot.flag);
+            applyTrack(slot.index, slot.first, slot.second, slot.flag, slot.third, slot.fourth);
+            break;
+        case CommandQueue::Slot::Kind::Output:
+            applyOutput(slot.first, slot.second);
             break;
         }
     }
@@ -511,7 +531,7 @@ struct Processor::Impl {
             device.right = std::move(resampled.right);
             const bt::SampleBuffer buffer{device.id, device.left.get(), device.right.get(), device.frames};
             engine->append(buffer);
-            engine->setTrack(index, source.start, source.length, source.loop);
+            engine->setIndexedTrack(index, source.start, source.length, source.loop, source.volume, source.pan);
             devices.push_back(std::move(device));
             ++index;
         }
@@ -551,6 +571,8 @@ struct Processor::Impl {
     int loopBeats = 8;
     int sliceExp = 0;
     int attackMs = bt::SliceEngine::kAttackMinMs;
+    double outputVolume = 1;
+    double outputPan = 0;
 };
 
 Processor::Processor()
@@ -792,8 +814,20 @@ void Processor::setAttack(int ms) {
     impl->queue.push(slot);
 }
 
-void Processor::setTrack(int index, double start, double length, bool loop) {
-    if (index < 0 || index >= names.size() || !std::isfinite(start) || !std::isfinite(length)) {
+void Processor::setOutput(double volume, double pan) {
+    if (!std::isfinite(volume) || !std::isfinite(pan)) {
+        return;
+    }
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::Output;
+    slot.first = volume;
+    slot.second = pan;
+    impl->queue.push(slot);
+}
+
+void Processor::setTrack(int index, double start, double length, bool loop, double volume, double pan) {
+    if (index < 0 || index >= names.size() || !std::isfinite(start) || !std::isfinite(length) || !std::isfinite(volume) ||
+        !std::isfinite(pan)) {
         return;
     }
     CommandQueue::Slot slot;
@@ -801,6 +835,8 @@ void Processor::setTrack(int index, double start, double length, bool loop) {
     slot.index = index;
     slot.first = start;
     slot.second = length;
+    slot.third = volume;
+    slot.fourth = pan;
     slot.flag = loop;
     impl->queue.push(slot);
 }

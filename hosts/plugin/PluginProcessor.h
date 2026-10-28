@@ -46,7 +46,8 @@ public:
     void setLoop(int beats);
     void setSlice(int exponent);
     void setAttack(int ms);
-    void setTrack(int index, double start, double length, bool loop);
+    void setOutput(double volume, double pan);
+    void setTrack(int index, double start, double length, bool loop, double volume, double pan);
     // Replaces the track list with the stored Demo bank. Does not move the playhead.
     bool loadBank();
     // Empties the current bank. A sounding voice fades out, and the playhead returns to 0.
