@@ -20,6 +20,10 @@ interface Core {
     bt_set_loop: (engine: number, beats: number) => void
     bt_set_slice: (engine: number, exponent: number) => void
     bt_set_attack: (engine: number, ms: number) => void
+    bt_set_global_power: (engine: number, power: number) => void
+    bt_set_global_beat: (engine: number, exponent: number) => void
+    bt_set_reverb_power: (engine: number, power: number) => void
+    bt_set_reverb_chance: (engine: number, chance: number) => void
     bt_set_track: (
         engine: number,
         index: number,
@@ -105,6 +109,26 @@ interface AttackMessage {
     ms: number
 }
 
+interface GlobalPowerMessage {
+    type: 'globalPower'
+    power: number
+}
+
+interface GlobalBeatMessage {
+    type: 'globalBeat'
+    exponent: number
+}
+
+interface ReverbPowerMessage {
+    type: 'reverbPower'
+    power: number
+}
+
+interface ReverbChanceMessage {
+    type: 'reverbChance'
+    chance: number
+}
+
 interface TrackMessage {
     type: 'track'
     index: number
@@ -162,6 +186,10 @@ type HostMessage =
     | LoopMessage
     | SliceMessage
     | AttackMessage
+    | GlobalPowerMessage
+    | GlobalBeatMessage
+    | ReverbPowerMessage
+    | ReverbChanceMessage
     | TrackMessage
     | OutputMessage
     | FreeMessage
@@ -349,6 +377,18 @@ class BeatalityProcessor extends AudioWorkletProcessor {
             this.postSnapshot(0)
         } else if (message.type === 'attack') {
             this.core!.bt_set_attack(this.engine, message.ms)
+            this.postSnapshot(0)
+        } else if (message.type === 'globalPower') {
+            this.core!.bt_set_global_power(this.engine, message.power)
+            this.postSnapshot(0)
+        } else if (message.type === 'globalBeat') {
+            this.core!.bt_set_global_beat(this.engine, message.exponent)
+            this.postSnapshot(0)
+        } else if (message.type === 'reverbPower') {
+            this.core!.bt_set_reverb_power(this.engine, message.power)
+            this.postSnapshot(0)
+        } else if (message.type === 'reverbChance') {
+            this.core!.bt_set_reverb_chance(this.engine, message.chance)
             this.postSnapshot(0)
         } else if (message.type === 'track') {
             this.core!.bt_set_track(

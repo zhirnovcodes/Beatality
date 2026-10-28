@@ -62,6 +62,26 @@ export interface AttackMessage {
     ms: number
 }
 
+export interface GlobalPowerMessage {
+    type: 'globalPower'
+    power: number
+}
+
+export interface GlobalBeatMessage {
+    type: 'globalBeat'
+    exponent: number
+}
+
+export interface ReverbPowerMessage {
+    type: 'reverbPower'
+    power: number
+}
+
+export interface ReverbChanceMessage {
+    type: 'reverbChance'
+    chance: number
+}
+
 export interface TrackMessage {
     type: 'track'
     index: number
@@ -119,6 +139,10 @@ export type HostMessage =
     | LoopMessage
     | SliceMessage
     | AttackMessage
+    | GlobalPowerMessage
+    | GlobalBeatMessage
+    | ReverbPowerMessage
+    | ReverbChanceMessage
     | TrackMessage
     | OutputMessage
     | FreeMessage

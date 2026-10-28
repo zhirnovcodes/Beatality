@@ -21,6 +21,10 @@ export interface ViewActions {
     setLoop: (beats: number) => void
     setSlice: (exponent: number) => void
     setAttack: (ms: number) => void
+    setGlobalPower: (power: number) => void
+    setGlobalBeat: (exponent: number) => void
+    setReverbPower: (power: number) => void
+    setReverbChance: (chance: number) => void
     setOutput: (volume: number, pan: number) => void
 }
 
@@ -41,6 +45,8 @@ export interface SliceChoice {
 
 const expMin = -4
 const expMax = 4
+const beatExpMin = -4
+const beatExpMax = 1
 
 function sliceBeats(exponent: number): number {
     return 2 ** exponent
@@ -92,6 +98,10 @@ export class WebViewModel {
     loopBeats = 8
     sliceExp = 0
     attackMs = 2
+    globalPower = 1
+    globalBeatExp = 0
+    reverbPower = 1
+    reverbChance = 0
     outputVolume = 1
     outputPan = 0
     factoryBanks: FactoryBank[] = []
@@ -230,6 +240,54 @@ export class WebViewModel {
         this.attackMs = ms
         this.notify()
         this.actions?.setAttack(ms)
+    }
+
+    setGlobalPower(power: number) {
+        if (!Number.isFinite(power) || power < 0 || power > 1) {
+            return
+        }
+        if (power === this.globalPower) {
+            return
+        }
+        this.globalPower = power
+        this.notify()
+        this.actions?.setGlobalPower(power)
+    }
+
+    setGlobalBeat(exponent: number) {
+        if (!Number.isInteger(exponent) || exponent < beatExpMin || exponent > beatExpMax) {
+            return
+        }
+        if (exponent === this.globalBeatExp) {
+            return
+        }
+        this.globalBeatExp = exponent
+        this.notify()
+        this.actions?.setGlobalBeat(exponent)
+    }
+
+    setReverbPower(power: number) {
+        if (!Number.isFinite(power) || power < 0 || power > 1) {
+            return
+        }
+        if (power === this.reverbPower) {
+            return
+        }
+        this.reverbPower = power
+        this.notify()
+        this.actions?.setReverbPower(power)
+    }
+
+    setReverbChance(chance: number) {
+        if (!Number.isFinite(chance) || chance < 0 || chance > 1) {
+            return
+        }
+        if (chance === this.reverbChance) {
+            return
+        }
+        this.reverbChance = chance
+        this.notify()
+        this.actions?.setReverbChance(chance)
     }
 
     // Master mix. Volume is 0..1.2 and snaps to 1. Pan is -1..1 and snaps to 0.

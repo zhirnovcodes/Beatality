@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Curve.h"
+#include "EffectsBank.h"
 #include "Rng.h"
 #include "SampleBank.h"
 #include "SampleBuffer.h"
@@ -35,6 +36,15 @@ public:
     static constexpr int kMaxTracks = SampleBank::kCapacity;
     static constexpr int kAttackMinMs = 2;
     static constexpr int kAttackMaxMs = 16;
+    static constexpr double kGlobalPowerMin = 0;
+    static constexpr double kGlobalPowerMax = 1;
+    static constexpr double kReverbPowerMin = 0;
+    static constexpr double kReverbPowerMax = 1;
+    static constexpr double kReverbChanceMin = 0;
+    static constexpr double kReverbChanceMax = 1;
+    // Global beat is 2^exponent beats. -4 is 1/16, 1 is 2.
+    static constexpr int kGlobalBeatExpMin = -4;
+    static constexpr int kGlobalBeatExpMax = 1;
 
     SliceEngine(double sampleRate, std::uint64_t seed);
 
@@ -49,6 +59,14 @@ public:
     void setLoop(int beats);
     void setSlice(int exponent);
     void setAttack(int ms);
+    // power is 0..1 and scales every effect. Default 1.
+    void setGlobalPower(double power);
+    // exponent selects 2^exponent beats, from 1/16 through 2. Default 1 beat.
+    void setGlobalBeat(int exponent);
+    // power is 0..1 and scales the reverb. Default 1.
+    void setReverbPower(double power);
+    // chance is 0..1. A slice uses reverb when its roll is below this. Default 0.
+    void setReverbChance(double chance);
     // volume is 0..1.2 and scales the mix. The host multiplies that by note velocity.
     // pan is -1..1 and balances the two channels.
     void setOutput(double volume, double pan);
@@ -73,10 +91,13 @@ private:
     void place(double beats);
     void listen();
 
-    void mixSlice(float& left, float& right) const;
+    void mixSlice(float& left, float& right);
+    void affect(EffectsBank& bank, int slot, int position, float& left, float& right);
+    int offsetInSlice(int slot, int position) const;
     void applyPlay(float& left, float& right) const;
     void mixOutgoing(float& left, float& right);
     void advance();
+    void cleanBanks();
     int heard() const;
 
     const SampleBuffer& bufferForSlot(int slot) const;
@@ -92,8 +113,16 @@ private:
 
     double sampleRate_;
     int attackMs_ = kAttackMinMs;
+    double globalPower_ = 1;
+    double globalBeat_ = 1;
+    double reverbPower_ = 1;
+    double reverbChance_ = 0;
     double volume_ = 1;
     double pan_ = 0;
+    EffectsBank currentBank_;
+    EffectsBank decayingBank_;
+    // True while the attack fade is mixing the slot that is leaving.
+    bool fading_ = false;
     Rng rng_;
     SliceGrid grid_;
     Sequence sequence_;

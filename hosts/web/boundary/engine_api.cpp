@@ -165,6 +165,34 @@ BT_EXPORT void bt_set_attack(Instance* instance, int ms) {
     instance->engine.setAttack(ms);
 }
 
+BT_EXPORT void bt_set_global_power(Instance* instance, double power) {
+    if (instance == nullptr || !(power >= bt::SliceEngine::kGlobalPowerMin) || power > bt::SliceEngine::kGlobalPowerMax) {
+        return;
+    }
+    instance->engine.setGlobalPower(power);
+}
+
+BT_EXPORT void bt_set_global_beat(Instance* instance, int exponent) {
+    if (instance == nullptr || exponent < bt::SliceEngine::kGlobalBeatExpMin || exponent > bt::SliceEngine::kGlobalBeatExpMax) {
+        return;
+    }
+    instance->engine.setGlobalBeat(exponent);
+}
+
+BT_EXPORT void bt_set_reverb_power(Instance* instance, double power) {
+    if (instance == nullptr || !(power >= bt::SliceEngine::kReverbPowerMin) || power > bt::SliceEngine::kReverbPowerMax) {
+        return;
+    }
+    instance->engine.setReverbPower(power);
+}
+
+BT_EXPORT void bt_set_reverb_chance(Instance* instance, double chance) {
+    if (instance == nullptr || !(chance >= bt::SliceEngine::kReverbChanceMin) || chance > bt::SliceEngine::kReverbChanceMax) {
+        return;
+    }
+    instance->engine.setReverbChance(chance);
+}
+
 // start is a fraction of the file, 0..1. length is 0..1. loop is 0 or 1.
 // volume is 0..1.2. pan is -1..1.
 BT_EXPORT void bt_set_track(Instance* instance, int index, double start, double length, int loop, double volume, double pan) {

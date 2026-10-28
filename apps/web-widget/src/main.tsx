@@ -4,7 +4,7 @@ import { MidiStatus } from '../../../hosts/web/messages'
 import { decodeBanks, decodePack } from '../../../hosts/web/pack'
 import { WebPresenter } from '../../../presenters/web/WebPresenter'
 import { WebViewModel } from '../../../viewmodels/web/WebViewModel'
-import { Widget } from './Widget'
+import { EffectControls, Widget } from './Widget'
 import './widget.css'
 import wasmUrl from '../../../build-wasm/beatality.wasm?url'
 
@@ -33,6 +33,11 @@ const app = document.querySelector('#app')
 if (!app) {
     throw new Error('missing #app')
 }
+const effectControls = document.querySelector('#effect-controls')
+if (!effectControls) {
+    throw new Error('missing #effect-controls')
+}
+render(<EffectControls model={model} />, effectControls)
 render(
     <Widget
         model={model}

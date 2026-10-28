@@ -83,6 +83,10 @@ export class WebPresenter {
             setLoop: (beats) => void this.perform(() => this.client.setLoop(beats)),
             setSlice: (exponent) => void this.perform(() => this.client.setSlice(exponent)),
             setAttack: (ms) => void this.perform(() => this.client.setAttack(ms)),
+            setGlobalPower: (power) => void this.perform(() => this.client.setGlobalPower(power)),
+            setGlobalBeat: (exponent) => void this.perform(() => this.client.setGlobalBeat(exponent)),
+            setReverbPower: (power) => void this.perform(() => this.client.setReverbPower(power)),
+            setReverbChance: (chance) => void this.perform(() => this.client.setReverbChance(chance)),
             setOutput: (volume, pan) => void this.perform(() => this.client.setOutput(volume, pan)),
         })
         client.onSnapshot = (snapshot) => {
@@ -490,8 +494,6 @@ export class WebPresenter {
             this.model.fail(error instanceof Error ? error.message : String(error))
         }
     }
-}
-
 }
 
 

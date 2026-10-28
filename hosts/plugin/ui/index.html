@@ -5,7 +5,13 @@
 <title>Beatality</title>
 <link rel="stylesheet" href="/ui/skin/skin.css">
 <style>
-  html, body { margin: 0; width: 496px; height: 488px; background: #2a2c30; overflow: hidden; }
+  html, body { margin: 0; width: 496px; background: #2a2c30; }
+  .effect-controls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+    padding: 8px 12px 12px; color: #ddd; font: 13px/1 system-ui, sans-serif;
+  }
+  .effect-controls label { display: flex; align-items: center; gap: 8px; flex: 1 1 calc(50% - 16px); min-width: 0; white-space: nowrap; }
+  .effect-controls input[type="range"] { flex: 1; min-width: 0; }
   #error {
     height: 21px; margin: 0; padding: 0 8px;
     color: #ff8d8d; font: 12px/21px system-ui, sans-serif;
@@ -71,7 +77,10 @@
       <div class="viewport" id="sample-viewport" tabindex="0">
         <div class="scroll-content">
           <div class="sample-grid" id="sample-grid" role="listbox" aria-label="Samples"></div>
-          <div class="bank-list" id="bank-list" role="listbox" aria-label="Banks" hidden></div>
+          <div class="bank-view" id="bank-view">
+            <div class="header">SELECT BANK</div>
+            <ol class="bank-list" id="bank-list" role="listbox" aria-label="Banks"></ol>
+          </div>
         </div>
       </div>
     </div>
@@ -87,10 +96,10 @@
       <button type="button" class="round-btn clear" id="clear" disabled>Clear</button>
       <button type="button" class="round-btn load" id="load-bank">Load</button>
       <button type="button" class="round-btn save" id="save">Save</button>
-      <div class="bank-actions" id="bank-actions" hidden>
-        <button type="button" id="bank-select">SELECT</button>
-        <button type="button" id="bank-load-file">LOAD FILE</button>
-        <button type="button" id="bank-close">X</button>
+      <div class="bank-panel" id="bank-panel">
+        <button type="button" class="bank-btn" id="bank-select">SELECT</button>
+        <button type="button" class="bank-btn" id="bank-load-file">LOAD FILE</button>
+        <button type="button" class="bank-btn close" id="bank-close" aria-label="Close">X</button>
       </div>
       <fieldset class="sample-panel" id="selected-sample" disabled>
         <div class="col c1">
@@ -119,6 +128,12 @@
   </section>
 </div>
 <p id="error"></p>
+<div class="effect-controls">
+  <label>Power <input type="range" id="global-power" min="0" max="1" step="0.01" value="1"></label>
+  <label>Beat <input type="range" id="global-beat" min="-4" max="1" step="1" value="0"> <span id="global-beat-value">1</span></label>
+  <label>Reverb <input type="range" id="reverb-power" min="0" max="1" step="0.01" value="1"></label>
+  <label>Chance <input type="range" id="reverb-chance" min="0" max="1" step="0.01" value="0"></label>
+</div>
 <script src="/plugin.js"></script>
 </body>
 </html>

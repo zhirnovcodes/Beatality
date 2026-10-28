@@ -255,69 +255,12 @@
 .beatality-skin .round-btn.clear:active  { background-image: url("../shapes/btn_clear_pressed.png"); }
 .beatality-skin .round-btn.load:active   { background-image: url("../shapes/btn_load_pressed.png"); }
 .beatality-skin .round-btn.save:active   { background-image: url("../shapes/btn_save_pressed.png"); }
-.beatality-skin .round-btn:disabled { cursor: default; filter: saturate(0) brightness(0.85); }
-
-.beatality-skin .bank-list {
-  width: 424px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.beatality-skin .bank-header {
-  height: 28px;
-  color: #c1fd31;
-  font: 700 12px/28px "Orbitron", sans-serif;
-  letter-spacing: 1px;
-  text-align: center;
-}
-.beatality-skin .bank-row {
-  position: relative;
-  height: 28px;
-  padding: 0 8px;
-  border: 0;
-  background: transparent;
-  color: #d7d7d7;
-  font: 700 11px/28px "Orbitron", sans-serif;
-  text-align: left;
-  cursor: pointer;
-}
-.beatality-skin .bank-row .plate {
-  position: absolute;
-  z-index: 0;
-  inset: 2px 0;
-}
-.beatality-skin .bank-row.selected .plate {
-  background: rgba(193, 253, 49, 0.18);
-  box-shadow: inset 0 0 0 1px rgba(193, 253, 49, 0.65);
-}
-.beatality-skin .bank-row .label { position: relative; z-index: 1; }
-.beatality-skin .bank-actions {
-  position: absolute;
-  left: 236px;
-  top: 198px;
-  width: 234px;
-  height: 52px;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  padding: 4px 6px;
-  background: url("../shapes/bottom_panel.png") 0 0 / 100% 100% no-repeat;
-}
-.beatality-skin .bank-actions button {
-  flex: 1 1 0;
-  height: 28px;
-  padding: 0;
-  border: 0;
-  background: #1a1c18;
-  color: #c1fd31;
-  font: 700 8px/28px "Orbitron", sans-serif;
-  letter-spacing: 0.3px;
-  cursor: pointer;
-}
-.beatality-skin .bank-actions button:disabled { cursor: default; filter: saturate(0) brightness(0.85); }
+.beatality-skin .round-btn:disabled { cursor: default; }
+.beatality-skin .round-btn.append:disabled { background-image: url("../shapes/btn_append_disabled.png"); }
+.beatality-skin .round-btn.remove:disabled { background-image: url("../shapes/btn_remove_disabled.png"); }
+.beatality-skin .round-btn.clear:disabled  { background-image: url("../shapes/btn_clear_disabled.png"); }
+.beatality-skin .round-btn.load:disabled   { background-image: url("../shapes/btn_load_disabled.png"); }
+.beatality-skin .round-btn.save:disabled   { background-image: url("../shapes/btn_save_disabled.png"); }
 .beatality-skin .missing-label {
   position: absolute;
   inset: 0;
@@ -439,3 +382,30 @@
 .beatality-skin .mix-slider > input[type="range"] {
   position: absolute; left: -6px; top: -2px; width: calc(100% + 12px); height: 18px; margin: 0; opacity: 0; cursor: pointer;
 }
+
+/* Bank list covers the sample grid. SELECT, LOAD FILE, and X cover the sample panel.
+   .picking-bank greys the five round buttons and swaps those two screens. */
+.beatality-skin .bank-view { display: none; padding: 16px 8px 10px; font: 700 13px/16px Consolas, "Courier New", monospace; }
+.beatality-skin.picking-bank .bank-view { display: block; }
+.beatality-skin.picking-bank .sample-grid,
+.beatality-skin.picking-bank .sample-panel { display: none; }
+.beatality-skin .bank-view .header { text-align: center; color: #e2ff7a; letter-spacing: 0.5px; margin-bottom: 8px; }
+.beatality-skin .bank-list { margin: 0; padding: 0; list-style: none; }
+.beatality-skin .bank-list > li { padding: 0 4px; color: #c8ff3a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.beatality-skin .bank-list > li[aria-selected="true"] { background: #050d02; color: #f0ff9a; }
+
+.beatality-skin .bank-panel {
+  display: none; position: absolute; left: 236px; top: 198px; width: 234px; height: 52px;
+  background: url("../shapes/bottom_panel.png") 0 0 / 100% 100% no-repeat;
+  align-items: center; justify-content: center; gap: 6px;
+}
+.beatality-skin.picking-bank .bank-panel { display: flex; }
+.beatality-skin .bank-btn {
+  height: 24px; margin: 0; padding: 0 7px; cursor: pointer;
+  border: 1px solid #c9d0b4; outline: 1px solid #020600; border-radius: 0;
+  background: #030a01; color: #d6ff3c;
+  font: 700 13px/22px Consolas, "Courier New", monospace; letter-spacing: 0.5px;
+}
+.beatality-skin .bank-btn:active { background: #0f2a04; }
+.beatality-skin .bank-btn:disabled { cursor: default; background: #6f7166; border-color: #8a8c80; color: #d2d98a; }
+.beatality-skin .bank-btn.close { width: 24px; padding: 0; }

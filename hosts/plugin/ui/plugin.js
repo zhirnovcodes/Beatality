@@ -5,6 +5,10 @@ const state = {
     loopBeats: 8,
     sliceExp: 0,
     attackMs: 2,
+    globalPower: 1,
+    globalBeat: 0,
+    reverbPower: 1,
+    reverbChance: 0,
     playhead: 0,
     playTrack: -1,
     playSlot: -1,
@@ -486,6 +490,26 @@ function applyBankSettings(bank) {
         state.attackMs = attack
         setRange('attack', attack)
     }
+    if (bank.globalPower != null && Number.isFinite(Number(bank.globalPower))) {
+        state.globalPower = Number(bank.globalPower)
+        setRange('global-power', state.globalPower)
+    }
+    if (bank.globalBeat != null && Number.isInteger(Number(bank.globalBeat))) {
+        state.globalBeat = Number(bank.globalBeat)
+        setRange('global-beat', state.globalBeat)
+        const beat = document.getElementById('global-beat-value')
+        if (beat) {
+            beat.textContent = sliceLabel(state.globalBeat)
+        }
+    }
+    if (bank.reverbPower != null && Number.isFinite(Number(bank.reverbPower))) {
+        state.reverbPower = Number(bank.reverbPower)
+        setRange('reverb-power', state.reverbPower)
+    }
+    if (bank.reverbChance != null && Number.isFinite(Number(bank.reverbChance))) {
+        state.reverbChance = Number(bank.reverbChance)
+        setRange('reverb-chance', state.reverbChance)
+    }
     const volume = Number(bank.volume)
     const pan = Number(bank.pan)
     if (Number.isFinite(volume)) {
@@ -505,20 +529,11 @@ function paintBankList() {
         return
     }
     list.replaceChildren()
-    const header = document.createElement('div')
-    header.className = 'bank-header'
-    header.textContent = 'SELECT BANK'
-    list.append(header)
     banks.forEach((bank, index) => {
-        const row = document.createElement('button')
-        row.type = 'button'
-        row.className = index === bankIndex ? 'bank-row selected' : 'bank-row'
-        const plate = document.createElement('span')
-        plate.className = 'plate'
-        const label = document.createElement('span')
-        label.className = 'label'
-        label.textContent = String(index + 1) + ' ' + bank.name
-        row.append(plate, label)
+        const row = document.createElement('li')
+        row.setAttribute('role', 'option')
+        row.setAttribute('aria-selected', index === bankIndex ? 'true' : 'false')
+        row.textContent = String(index + 1) + '. ' + bank.name
         row.addEventListener('click', () => {
             bankIndex = index
             paintBankList()
@@ -529,22 +544,7 @@ function paintBankList() {
 
 function setBankOpen(open) {
     bankOpen = open
-    const grid = document.getElementById('sample-grid')
-    const list = document.getElementById('bank-list')
-    const actions = document.getElementById('bank-actions')
-    const panel = document.getElementById('selected-sample')
-    if (grid) {
-        grid.hidden = open
-    }
-    if (list) {
-        list.hidden = !open
-    }
-    if (actions) {
-        actions.hidden = !open
-    }
-    if (panel instanceof HTMLElement) {
-        panel.hidden = open
-    }
+    document.querySelector('.beatality-skin')?.classList.toggle('picking-bank', open)
     if (open) {
         paintBankList()
         const viewport = document.getElementById('sample-viewport')
@@ -683,6 +683,10 @@ function wire() {
     document.getElementById('loop')?.addEventListener('input', onLoop)
     document.getElementById('slice')?.addEventListener('input', onSlice)
     document.getElementById('attack')?.addEventListener('input', onAttack)
+    document.getElementById('global-power')?.addEventListener('input', onGlobalPower)
+    document.getElementById('global-beat')?.addEventListener('input', onGlobalBeat)
+    document.getElementById('reverb-power')?.addEventListener('input', onReverbPower)
+    document.getElementById('reverb-chance')?.addEventListener('input', onReverbChance)
 
     document.getElementById('master-volume')?.addEventListener('input', onMaster)
     document.getElementById('master-pan')?.addEventListener('input', onMaster)
@@ -871,6 +875,62 @@ function onAttack() {
     state.attackMs = ms
     syncCaptions()
     void native('setAttack', ms)
+}
+
+function onGlobalPower() {
+    const input = document.getElementById('global-power')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const power = input.valueAsNumber
+    if (power === state.globalPower) {
+        return
+    }
+    state.globalPower = power
+    void native('setGlobalPower', power)
+}
+
+function onGlobalBeat() {
+    const input = document.getElementById('global-beat')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const exponent = input.valueAsNumber
+    const beat = document.getElementById('global-beat-value')
+    if (beat) {
+        beat.textContent = sliceLabel(exponent)
+    }
+    if (exponent === state.globalBeat) {
+        return
+    }
+    state.globalBeat = exponent
+    void native('setGlobalBeat', exponent)
+}
+
+function onReverbPower() {
+    const input = document.getElementById('reverb-power')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const power = input.valueAsNumber
+    if (power === state.reverbPower) {
+        return
+    }
+    state.reverbPower = power
+    void native('setReverbPower', power)
+}
+
+function onReverbChance() {
+    const input = document.getElementById('reverb-chance')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const chance = input.valueAsNumber
+    if (chance === state.reverbChance) {
+        return
+    }
+    state.reverbChance = chance
+    void native('setReverbChance', chance)
 }
 
 function onMaster(event) {

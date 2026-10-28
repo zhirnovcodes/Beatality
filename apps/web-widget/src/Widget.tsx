@@ -158,7 +158,7 @@ export function Widget({
 
     return (
         <>
-            <div className="beatality-skin" ref={skin}>
+            <div className={bankOpen ? 'beatality-skin picking-bank' : 'beatality-skin'} ref={skin}>
                 <section className="part top" aria-label="Main controls">
                     <div className="window" />
                     <div className="content">
@@ -314,22 +314,21 @@ export function Widget({
                     <div className="content">
                         <div className="viewport" id="sample-viewport" tabIndex={0}>
                             <div className="scroll-content">
-                                <div ref={placeGrid} style={{ display: bankOpen ? 'none' : undefined }} />
-                                <div className="bank-list" role="listbox" aria-label="Banks" style={{ display: bankOpen ? undefined : 'none' }}>
-                                    <div className="bank-header">SELECT BANK</div>
-                                    {model.factoryBanks.map((bank, index) => (
-                                        <button
-                                            type="button"
-                                            key={bank.file}
-                                            className={index === bankIndex ? 'bank-row selected' : 'bank-row'}
-                                            onClick={() => setBankIndex(index)}
-                                        >
-                                            <span className="plate" />
-                                            <span className="label">
-                                                {index + 1} {bank.name}
-                                            </span>
-                                        </button>
-                                    ))}
+                                <div ref={placeGrid} />
+                                <div className="bank-view" id="bank-view">
+                                    <div className="header">SELECT BANK</div>
+                                    <ol className="bank-list" role="listbox" aria-label="Banks">
+                                        {model.factoryBanks.map((bank, index) => (
+                                            <li
+                                                key={bank.file}
+                                                role="option"
+                                                aria-selected={index === bankIndex}
+                                                onClick={() => setBankIndex(index)}
+                                            >
+                                                {index + 1}. {bank.name}
+                                            </li>
+                                        ))}
+                                    </ol>
                                 </div>
                             </div>
                         </div>
@@ -407,24 +406,18 @@ export function Widget({
                             onChange={onFiles}
                         />
 
-                        <div className="bank-actions" style={{ display: bankOpen ? undefined : 'none' }}>
-                            <button type="button" id="bank-select" disabled={loadingPack || model.factoryBanks.length === 0} onClick={onSelectBank}>
+                        <div className="bank-panel" id="bank-panel">
+                            <button type="button" className="bank-btn" id="bank-select" disabled={loadingPack || model.factoryBanks.length === 0} onClick={onSelectBank}>
                                 SELECT
                             </button>
-                            <button type="button" id="bank-load-file" disabled={!model.canLoadFile} onClick={() => model.loadFile()}>
+                            <button type="button" className="bank-btn" id="bank-load-file" disabled={!model.canLoadFile} onClick={() => model.loadFile()}>
                                 LOAD FILE
                             </button>
-                            <button type="button" id="bank-close" onClick={() => setBankOpen(false)}>
+                            <button type="button" className="bank-btn close" id="bank-close" aria-label="Close" onClick={() => setBankOpen(false)}>
                                 X
                             </button>
                         </div>
-                        <fieldset
-                            className="sample-panel"
-                            id="selected-sample"
-                            style={{ display: bankOpen ? 'none' : undefined }}
-                            disabled={chosenIndex < 0}
-                            ref={onPanel}
-                        >
+                        <fieldset className="sample-panel" id="selected-sample" disabled={chosenIndex < 0} ref={onPanel}>
                             <div className="col c1">
                                 <span className="name top">VOLUME</span>
                                 <div className="slider top">
@@ -496,6 +489,60 @@ export function Widget({
             <p id="error">{model.error}</p>
         </>
     )
+}
+
+export function EffectControls({ model }: { model: WebViewModel }) {
+    const [, setTick] = useState(0)
+    useEffect(() => model.subscribe(() => setTick((tick) => tick + 1)), [model])
+
+    const onPower = (event: Event) => {
+        const input = event.currentTarget as HTMLInputElement
+        model.setGlobalPower(input.valueAsNumber)
+    }
+
+    const onBeat = (event: Event) => {
+        const input = event.currentTarget as HTMLInputElement
+        model.setGlobalBeat(input.valueAsNumber)
+    }
+
+    const onReverbPower = (event: Event) => {
+        const input = event.currentTarget as HTMLInputElement
+        model.setReverbPower(input.valueAsNumber)
+    }
+
+    const onReverbChance = (event: Event) => {
+        const input = event.currentTarget as HTMLInputElement
+        model.setReverbChance(input.valueAsNumber)
+    }
+
+    return (
+        <>
+            <label>
+                Power
+                <input type="range" id="global-power" min={0} max={1} step={0.01} value={model.globalPower} onInput={onPower} />
+            </label>
+            <label>
+                Beat
+                <input type="range" id="global-beat" min={-4} max={1} step={1} value={model.globalBeatExp} onInput={onBeat} />
+                <span>{beatLabel(model.globalBeatExp)}</span>
+            </label>
+            <label>
+                Reverb
+                <input type="range" id="reverb-power" min={0} max={1} step={0.01} value={model.reverbPower} onInput={onReverbPower} />
+            </label>
+            <label>
+                Chance
+                <input type="range" id="reverb-chance" min={0} max={1} step={0.01} value={model.reverbChance} onInput={onReverbChance} />
+            </label>
+        </>
+    )
+}
+
+function beatLabel(exponent: number): string {
+    if (exponent >= 0) {
+        return String(2 ** exponent)
+    }
+    return `1/${2 ** -exponent}`
 }
 
 function clampBpm(value: number): number | null {

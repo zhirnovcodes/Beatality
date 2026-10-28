@@ -87,7 +87,7 @@ Editor::Editor(Processor& processorIn) : juce::AudioProcessorEditor(processorIn)
         missing.setColour(juce::Label::textColourId, juce::Colours::white);
         addAndMakeVisible(missing);
     }
-    setSize(496, 488);
+    setSize(496, 608);
 }
 
 Editor::~Editor() {
@@ -243,6 +243,30 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
             }
             completion(true);
         })
+        .withNativeFunction("setGlobalPower", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setGlobalPower(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setGlobalBeat", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setGlobalBeat(static_cast<int>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setReverbPower", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setReverbPower(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setReverbChance", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setReverbChance(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
         .withNativeFunction("setOutput", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
             if (args.size() >= 2) {
                 processor.setOutput(static_cast<double>(args[0]), static_cast<double>(args[1]));
@@ -372,6 +396,10 @@ void Editor::pushBank() {
     object->setProperty("loop", processor.loopBeats());
     object->setProperty("slices", processor.sliceExponent());
     object->setProperty("attack", processor.attackMs());
+    object->setProperty("globalPower", processor.globalPower());
+    object->setProperty("globalBeat", processor.globalBeat());
+    object->setProperty("reverbPower", processor.reverbPower());
+    object->setProperty("reverbChance", processor.reverbChance());
     object->setProperty("volume", processor.outputVolume());
     object->setProperty("pan", processor.outputPan());
     deliver("onBank", juce::var(object));

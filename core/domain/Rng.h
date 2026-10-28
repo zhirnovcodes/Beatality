@@ -11,6 +11,8 @@ public:
 
     // Uniform integer in [0, n). n must be positive.
     int nextInt(int n);
+    // Uniform float in [0, 1).
+    float nextFloat();
 
 private:
     std::uint64_t state_;

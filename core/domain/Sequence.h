@@ -28,9 +28,12 @@ public:
     // The stored index at that slot, mapped onto trackCount.
     // Same count: the stored index. Otherwise floor(stored / savedCount * trackCount).
     int indexAt(int slot, int trackCount) const;
+    // Drawn in [0, 1) by generate and append. assign stores 1, which fails every chance.
+    float rollAt(int slot) const;
 
 private:
     std::uint16_t slots_[kMaxSlots]{};
+    float rolls_[kMaxSlots]{};
     int size_ = 0;
     int savedCount_ = 0;
 };
