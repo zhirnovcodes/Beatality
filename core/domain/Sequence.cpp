@@ -50,6 +50,18 @@ void Sequence::crop(int slotCount) {
     size_ = slotCount;
 }
 
+void Sequence::assign(const std::uint16_t* slots, int size, int savedCount) {
+    const int previous = size_;
+    for (int i = 0; i < size; ++i) {
+        slots_[i] = slots[i];
+    }
+    if (size < previous) {
+        clearFrom(slots_, size, previous);
+    }
+    size_ = size;
+    savedCount_ = savedCount;
+}
+
 int Sequence::indexAt(int slot, int trackCount) const {
     const int stored = slots_[slot];
     if (trackCount == savedCount_) {

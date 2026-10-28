@@ -455,8 +455,8 @@ void testPlayheadIsTheFractionOfTheLoop() {
     CHECK(snapshot.playhead == 0.0);
 
     // 120 BPM and 8 beats is a 4 second loop: 40000 frames at this rate.
-    std::vector<float> left(10000);
-    std::vector<float> right(10000);
+    std::vector<float> left(30000);
+    std::vector<float> right(30000);
     engine.render(left.data(), right.data(), 10000);
     engine.fillSnapshot(snapshot);
     CHECK(near(snapshot.playhead, 0.25));
@@ -468,6 +468,43 @@ void testPlayheadIsTheFractionOfTheLoop() {
     engine.stop();
     engine.fillSnapshot(snapshot);
     CHECK(snapshot.playhead == 0.0);
+}
+
+void testSetTrackKeepsGain() {
+    constexpr int kRate = 10000;
+    std::vector<float> samples(8000, 0.5f);
+    bt::SliceEngine engine(kRate, 1);
+    engine.append(bufferOf(1, samples));
+    engine.setIndexedTrack(0, 0.0, 1.0, false, 0.5, 0.0);
+    engine.setTrack(0, 0.0, 1.0, false);
+    engine.play();
+    std::vector<float> left(80);
+    std::vector<float> right(80);
+    engine.render(left.data(), right.data(), 80);
+    CHECK(near(left[40], 0.25));
+    CHECK(near(right[40], 0.25));
+}
+
+void testEmptyTrackIsSilent() {
+    bt::SliceEngine engine(10000, 1);
+    engine.append({1, nullptr, nullptr, 0});
+    const std::uint16_t slot = 0;
+    engine.installSequence(&slot, 1, 1);
+    engine.play();
+    float left[64];
+    float right[64];
+    engine.render(left, right, 64);
+    for (int i = 0; i < 64; ++i) {
+        CHECK(left[i] == 0.0f);
+        CHECK(right[i] == 0.0f);
+    }
+    bt::SliceSnapshot snapshot;
+    engine.fillSnapshot(snapshot);
+    CHECK(snapshot.playing);
+    CHECK(snapshot.playTrack == 0);
+    CHECK(engine.sequenceSize() == 1);
+    CHECK(engine.sequenceSavedCount() == 1);
+    CHECK(engine.sequenceSlot(0) == 0);
 }
 
 void testClearWhileStoppedReleasesEveryTrack() {
@@ -559,6 +596,8 @@ int main() {
     testIndexedTrackKeepsTheSliceGrid();
     testOutputVolumeAndPan();
     testPlayheadIsTheFractionOfTheLoop();
+    testSetTrackKeepsGain();
+    testEmptyTrackIsSilent();
     testClearWhileStoppedReleasesEveryTrack();
     testClearWhilePlayingFadesTheHeardTrack();
 

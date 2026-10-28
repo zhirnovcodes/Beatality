@@ -70,11 +70,11 @@ export class WebPresenter {
         private readonly model: WebViewModel,
         private readonly client: EngineClient,
         private readonly list: HTMLElement,
-        loadPack: () => Promise<void>,
+        loadPack: (file: string) => Promise<void>,
     ) {
         model.bind({
             midi: (status, note, velocity) => void this.perform(() => this.client.midi(status, note, velocity)),
-            loadPack: () => this.perform(loadPack),
+            loadPack: (file) => this.perform(() => loadPack(file)),
             append: (files) => void this.perform(() => this.append(files)),
             remove: (index) => void this.perform(() => this.remove(index)),
             clear: () => void this.perform(() => this.clear()),
@@ -90,6 +90,7 @@ export class WebPresenter {
             this.playTrack = snapshot.playing ? snapshot.playTrack : -1
             model.show({
                 names: snapshot.names,
+                missing: snapshot.missing,
                 playing: snapshot.playing,
                 sliceExp: snapshot.sliceExp,
                 playhead: snapshot.playhead,
@@ -171,7 +172,7 @@ export class WebPresenter {
     }
 
     private followSample() {
-        const waves: { samples: Float32Array; right: Float32Array; sampleRate: number; name: string }[] = []
+        const waves: { samples: Float32Array; right: Float32Array; sampleRate: number; index: number }[] = []
         for (let index = 0; index < this.model.tracks.length; index++) {
             const wave = this.client.registry.wave(index)
             if (!wave) {
@@ -181,7 +182,7 @@ export class WebPresenter {
                 samples: wave.samples,
                 right: wave.right,
                 sampleRate: wave.sampleRate,
-                name: this.model.tracks[index].name,
+                index,
             })
         }
         const kept = new Set(waves.map((wave) => wave.samples))
@@ -200,14 +201,17 @@ export class WebPresenter {
                 row = this.createRow(wave.samples)
                 this.rows.push(row)
             }
-            row.presenter.follow({
-                samples: wave.samples,
-                right: wave.right,
-                sampleRate: wave.sampleRate,
-                bpm: this.model.bpm,
-                loopBeats: this.model.loopBeats,
-                sliceBeats,
-            })
+            row.presenter.follow(
+                {
+                    samples: wave.samples,
+                    right: wave.right,
+                    sampleRate: wave.sampleRate,
+                    bpm: this.model.bpm,
+                    loopBeats: this.model.loopBeats,
+                    sliceBeats,
+                },
+                this.client.registry.playAt(wave.index) ?? undefined,
+            )
         }
         if (this.selected >= this.model.tracks.length) {
             this.selected = -1
@@ -225,6 +229,7 @@ export class WebPresenter {
             if (index < 0) {
                 return
             }
+            this.client.registry.setPlay(index, play)
             void this.client.setTrack(index, play.start, play.length, play.loop, play.volume, play.pan)
             if (index === this.selected) {
                 this.syncPanel()
@@ -262,7 +267,11 @@ export class WebPresenter {
         }
         const items = this.list.children
         for (let index = 0; index < tracks.length; index++) {
-            if (items[index].getAttribute('data-name') !== tracks[index].name) {
+            const item = items[index]
+            if (item.getAttribute('data-name') !== tracks[index].name) {
+                return false
+            }
+            if ((item.getAttribute('data-missing') === '1') !== tracks[index].missing) {
                 return false
             }
         }
@@ -289,11 +298,19 @@ export class WebPresenter {
             row.className = 'row'
             row.setAttribute('role', 'option')
             row.setAttribute('data-name', tracks[index].name)
+            row.setAttribute('data-missing', tracks[index].missing ? '1' : '0')
             row.title = tracks[index].name
             const data = this.rowAt(index)
             if (data) {
+                data.spectrum.querySelector('.missing-label')?.remove()
                 row.append(data.spectrum)
                 data.presenter.refit()
+                if (tracks[index].missing) {
+                    const label = document.createElement('div')
+                    label.className = 'missing-label'
+                    label.textContent = 'error loading track'
+                    data.spectrum.append(label)
+                }
             }
             for (let column = 0; column < cols; column++) {
                 const cell = document.createElement('div')
@@ -474,3 +491,7 @@ export class WebPresenter {
         }
     }
 }
+
+}
+
+

@@ -77,6 +77,24 @@ BT_EXPORT int bt_append(Instance* instance, std::uint32_t id, const float* plana
     return 1;
 }
 
+// A slot with no audio. The sequence index still points here. Playback is silent.
+BT_EXPORT int bt_append_empty(Instance* instance, std::uint32_t id) {
+    if (instance == nullptr || instance->engine.count() >= bt::SliceEngine::kMaxTracks) {
+        return 0;
+    }
+    const bt::SampleBuffer buffer{id, nullptr, nullptr, 0};
+    instance->engine.append(buffer);
+    return 1;
+}
+
+// Replaces the sequence after bpm, loop, and slice have been set.
+BT_EXPORT void bt_install_sequence(Instance* instance, const std::uint16_t* slots, int size, int savedCount) {
+    if (instance == nullptr || size < 0 || size > bt::Sequence::kMaxSlots || (size > 0 && slots == nullptr)) {
+        return;
+    }
+    instance->engine.installSequence(slots, size, savedCount);
+}
+
 // status is note-off, note-on, or all-off. Note is unused.
 // Velocity is 0..1. It scales the mix after output volume.
 BT_EXPORT void bt_midi(Instance* instance, int status, int, double velocity) {

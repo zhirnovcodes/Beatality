@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 
+#include "PackFile.h"
 #include "PluginEditor.h"
 
 #include "BinaryData.h"
@@ -88,6 +89,48 @@ void freePayload(AppendPayload* payload) {
     delete payload;
 }
 
+struct PackTrackPayload {
+    AppendPayload* audio = nullptr;
+    double start = 0;
+    double length = 1;
+    bool loop = false;
+    double volume = 1;
+    double pan = 0;
+};
+
+struct PackPayload {
+    double bpm = 120;
+    int loop = 8;
+    int slices = 0;
+    int attack = 2;
+    double volume = 1;
+    double pan = 0;
+    int savedCount = 0;
+    std::vector<std::uint16_t> slots;
+    std::vector<PackTrackPayload> tracks;
+};
+
+void freePack(PackPayload* pack) {
+    if (pack == nullptr) {
+        return;
+    }
+    for (PackTrackPayload& track : pack->tracks) {
+        freePayload(track.audio);
+        track.audio = nullptr;
+    }
+    delete pack;
+}
+
+const char* resourceBytes(const juce::String& filename, int& bytes) {
+    for (int i = 0; i < BinaryData::namedResourceListSize; ++i) {
+        if (filename.equalsIgnoreCase(BinaryData::originalFilenames[i])) {
+            return BinaryData::getNamedResource(BinaryData::namedResourceList[i], bytes);
+        }
+    }
+    bytes = 0;
+    return nullptr;
+}
+
 struct Stereo {
     int frames = 0;
     std::unique_ptr<float[]> left;
@@ -151,9 +194,10 @@ AppendPayload* payloadFromReader(juce::AudioFormatReader& reader, double rate, s
 class CommandQueue {
 public:
     struct Slot {
-        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, Track, Output };
+        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, Track, Output, Pack };
         Kind kind = Kind::Randomize;
         AppendPayload* append = nullptr;
+        PackPayload* pack = nullptr;
         int index = 0;
         int number = 0;
         double first = 0;
@@ -196,7 +240,10 @@ public:
     }
 
     void discard() {
-        drain([](Slot slot) { freePayload(slot.append); });
+        drain([](Slot slot) {
+            freePayload(slot.append);
+            freePack(slot.pack);
+        });
     }
 
 private:
@@ -267,6 +314,41 @@ struct Processor::Impl {
             std::erase_if(devices, [id](const DeviceAudio& device) { return device.id == id; });
         }
         publish();
+        publishSequence();
+    }
+
+    void publishSequence() {
+        int size = 0;
+        int savedCount = 0;
+        std::uint16_t slots[bt::Sequence::kMaxSlots]{};
+        if (engine != nullptr) {
+            size = engine->sequenceSize();
+            savedCount = engine->sequenceSavedCount();
+            for (int i = 0; i < size; ++i) {
+                slots[i] = engine->sequenceSlot(i);
+            }
+        }
+        std::lock_guard<std::mutex> lock(sequenceMirror.mutex);
+        sequenceMirror.size = size;
+        sequenceMirror.savedCount = savedCount;
+        for (int i = 0; i < size; ++i) {
+            sequenceMirror.slots[i] = slots[i];
+        }
+    }
+
+    void storeSequence(const std::vector<std::uint16_t>& slots, int savedCount) {
+        std::lock_guard<std::mutex> lock(sequenceMirror.mutex);
+        sequenceMirror.size = static_cast<int>(slots.size());
+        sequenceMirror.savedCount = savedCount;
+        for (int i = 0; i < sequenceMirror.size; ++i) {
+            sequenceMirror.slots[i] = slots[static_cast<std::size_t>(i)];
+        }
+    }
+
+    void copySequence(std::vector<std::uint16_t>& slots, int& savedCount) {
+        std::lock_guard<std::mutex> lock(sequenceMirror.mutex);
+        savedCount = sequenceMirror.savedCount;
+        slots.assign(sequenceMirror.slots, sequenceMirror.slots + sequenceMirror.size);
     }
 
     void restoreGrid() {
@@ -441,7 +523,89 @@ struct Processor::Impl {
         case CommandQueue::Slot::Kind::Output:
             applyOutput(slot.first, slot.second);
             break;
+        case CommandQueue::Slot::Kind::Pack:
+            applyPack(slot.pack);
+            break;
         }
+    }
+
+    void applyPack(PackPayload* pack) {
+        if (pack == nullptr) {
+            return;
+        }
+        gate = {};
+        if (engine != nullptr) {
+            engine->stop();
+            engine->clear();
+        }
+        sources.clear();
+        bpm = pack->bpm;
+        loopBeats = pack->loop;
+        sliceExp = pack->slices;
+        attackMs = pack->attack;
+        outputVolume = pack->volume;
+        outputPan = pack->pan;
+        if (engine != nullptr) {
+            engine->setBpm(bpm);
+            engine->setLoop(loopBeats);
+            engine->setSlice(sliceExp);
+            engine->setAttack(attackMs);
+            engine->setOutput(outputVolume, outputPan);
+        }
+        int index = 0;
+        for (PackTrackPayload& track : pack->tracks) {
+            SourceTrack source;
+            source.start = track.start;
+            source.length = track.length;
+            source.loop = track.loop;
+            source.volume = track.volume;
+            source.pan = track.pan;
+            bool placed = false;
+            if (track.audio != nullptr) {
+                source.rate = track.audio->sourceRate;
+                source.frames = track.audio->sourceFrames;
+                source.left.reset(track.audio->sourceLeft);
+                source.right.reset(track.audio->sourceRight);
+                track.audio->sourceLeft = nullptr;
+                track.audio->sourceRight = nullptr;
+                if (track.audio->deviceLeft == nullptr && rate > 0.0 && source.frames > 0) {
+                    auto resampled = resampleStereo(source.left.get(), source.right.get(), source.frames, source.rate, rate);
+                    track.audio->deviceFrames = resampled.frames;
+                    track.audio->deviceLeft = resampled.left.release();
+                    track.audio->deviceRight = resampled.right.release();
+                }
+                if (engine != nullptr && track.audio->deviceLeft != nullptr && track.audio->deviceFrames > 0) {
+                    DeviceAudio device;
+                    device.id = track.audio->id;
+                    device.frames = track.audio->deviceFrames;
+                    device.left.reset(track.audio->deviceLeft);
+                    device.right.reset(track.audio->deviceRight);
+                    track.audio->deviceLeft = nullptr;
+                    track.audio->deviceRight = nullptr;
+                    const bt::SampleBuffer buffer{device.id, device.left.get(), device.right.get(), device.frames};
+                    engine->append(buffer);
+                    engine->setIndexedTrack(index, source.start, source.length, source.loop, source.volume, source.pan);
+                    devices.push_back(std::move(device));
+                    placed = true;
+                }
+                freePayload(track.audio);
+                track.audio = nullptr;
+            }
+            // A missing file, or audio that could not be prepared, still occupies its slot.
+            if (engine != nullptr && !placed) {
+                const std::uint32_t id = nextId.fetch_add(1, std::memory_order_relaxed);
+                const bt::SampleBuffer buffer{id, nullptr, nullptr, 0};
+                engine->append(buffer);
+                engine->setIndexedTrack(index, source.start, source.length, source.loop, source.volume, source.pan);
+            }
+            sources.push_back(std::move(source));
+            ++index;
+        }
+        if (engine != nullptr) {
+            engine->installSequence(pack->slots.data(), static_cast<int>(pack->slots.size()), pack->savedCount);
+        }
+        delete pack;
+        remember();
     }
 
     void drain() {
@@ -506,6 +670,17 @@ struct Processor::Impl {
         captureRandomize = false;
         const bool pick = randomizeRequested;
 
+        std::vector<std::uint16_t> keptSlots;
+        int keptCount = 0;
+        if (engine != nullptr) {
+            keptCount = engine->sequenceSavedCount();
+            const int keptSize = engine->sequenceSize();
+            keptSlots.resize(static_cast<std::size_t>(keptSize));
+            for (int i = 0; i < keptSize; ++i) {
+                keptSlots[static_cast<std::size_t>(i)] = engine->sequenceSlot(i);
+            }
+        }
+
         engine.reset();
         devices.clear();
         if (!(rate > 0.0)) {
@@ -520,6 +695,16 @@ struct Processor::Impl {
         restoreGrid();
         int index = 0;
         for (const SourceTrack& source : sources) {
+            if (source.frames <= 0 || source.left == nullptr || source.right == nullptr) {
+                DeviceAudio device;
+                device.id = nextId.fetch_add(1, std::memory_order_relaxed);
+                const bt::SampleBuffer buffer{device.id, nullptr, nullptr, 0};
+                engine->append(buffer);
+                engine->setIndexedTrack(index, source.start, source.length, source.loop, source.volume, source.pan);
+                devices.push_back(std::move(device));
+                ++index;
+                continue;
+            }
             auto resampled = resampleStereo(source.left.get(), source.right.get(), source.frames, source.rate, rate);
             if (resampled.frames <= 0) {
                 continue;
@@ -537,9 +722,12 @@ struct Processor::Impl {
         }
         remember();
         // The new engine has an empty sequence. A randomize that arrived with
-        // this rebuild builds one. A note that is still held starts the playhead.
+        // this rebuild builds one. Otherwise the sequence copied above is put back.
+        // A note that is still held starts the playhead.
         if (pick && trackCount > 0) {
             engine->randomize();
+        } else if (!keptSlots.empty() && trackCount > 0) {
+            engine->installSequence(keptSlots.data(), static_cast<int>(keptSlots.size()), keptCount);
         }
         if (gate.held() > 0 && trackCount > 0) {
             engine->play();
@@ -567,6 +755,12 @@ struct Processor::Impl {
     bt::NoteGate gate;
     bool captureRandomize = false;
     bool randomizeRequested = false;
+    struct SequenceMirror {
+        std::mutex mutex;
+        int size = 0;
+        int savedCount = 0;
+        std::uint16_t slots[bt::Sequence::kMaxSlots]{};
+    } sequenceMirror;
     double bpm = 120;
     int loopBeats = 8;
     int sliceExp = 0;
@@ -665,6 +859,7 @@ void Processor::appendFiles(const juce::Array<juce::File>& files) {
         picture.rate = payload->sourceRate;
         picture.frames = payload->sourceFrames;
         picture.peaks = peakColumns(payload->sourceLeft, payload->sourceRight, payload->sourceFrames);
+        picture.address = file.getFullPathName();
         CommandQueue::Slot slot;
         slot.kind = CommandQueue::Slot::Kind::Append;
         slot.append = payload;
@@ -748,6 +943,7 @@ bool Processor::clearBank() {
     }
     names.clear();
     pictures.clear();
+    impl->storeSequence({}, 0);
     error.clear();
     return true;
 }
@@ -778,6 +974,7 @@ void Processor::setBpm(double bpm) {
     if (!(bpm > 0.0) || !std::isfinite(bpm)) {
         return;
     }
+    savedBpm = bpm;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::Bpm;
     slot.first = bpm;
@@ -788,6 +985,7 @@ void Processor::setLoop(int beats) {
     if (beats < bt::SliceGrid::kMinLoop || beats > bt::SliceGrid::kMaxLoop) {
         return;
     }
+    savedLoop = beats;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::Loop;
     slot.number = beats;
@@ -798,6 +996,7 @@ void Processor::setSlice(int exponent) {
     if (exponent < bt::SliceGrid::kExpMin || exponent > bt::SliceGrid::kExpMax) {
         return;
     }
+    savedSlice = exponent;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::Slice;
     slot.number = exponent;
@@ -808,6 +1007,7 @@ void Processor::setAttack(int ms) {
     if (ms < bt::SliceEngine::kAttackMinMs || ms > bt::SliceEngine::kAttackMaxMs) {
         return;
     }
+    savedAttack = ms;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::Attack;
     slot.number = ms;
@@ -818,6 +1018,8 @@ void Processor::setOutput(double volume, double pan) {
     if (!std::isfinite(volume) || !std::isfinite(pan)) {
         return;
     }
+    savedVolume = volume;
+    savedPan = pan;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::Output;
     slot.first = volume;
@@ -830,6 +1032,14 @@ void Processor::setTrack(int index, double start, double length, bool loop, doub
         !std::isfinite(pan)) {
         return;
     }
+    if (index < static_cast<int>(pictures.size())) {
+        TrackPicture& picture = pictures[static_cast<std::size_t>(index)];
+        picture.start = start;
+        picture.length = length;
+        picture.loop = loop;
+        picture.volume = volume;
+        picture.pan = pan;
+    }
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::Track;
     slot.index = index;
@@ -841,71 +1051,171 @@ void Processor::setTrack(int index, double start, double length, bool loop, doub
     impl->queue.push(slot);
 }
 
-bool Processor::loadBank() {
-    const double rate = impl->publishedRate.load(std::memory_order_relaxed);
-    struct Item {
-        AppendPayload* payload = nullptr;
-        juce::String name;
-    };
-    std::vector<Item> items;
-    for (int i = 0; i < BinaryData::namedResourceListSize && static_cast<int>(items.size()) < bt::SliceEngine::kMaxTracks; ++i) {
-        int bytes = 0;
-        const char* data = BinaryData::getNamedResource(BinaryData::namedResourceList[i], bytes);
-        const char* filename = BinaryData::originalFilenames[i];
-        if (data == nullptr || bytes <= 0 || filename == nullptr) {
-            continue;
-        }
-        auto stream = std::make_unique<juce::MemoryInputStream>(data, static_cast<std::size_t>(bytes), false);
-        std::unique_ptr<juce::AudioFormatReader> reader(impl->formats.createReaderFor(std::move(stream)));
-        if (reader == nullptr) {
-            continue;
-        }
-        auto* payload = payloadFromReader(*reader, rate, impl->nextId.fetch_add(1, std::memory_order_relaxed));
-        if (payload == nullptr) {
-            continue;
-        }
-        items.push_back(Item{payload, filename});
+juce::Array<juce::var> Processor::factoryBanks() const {
+    juce::Array<juce::var> list;
+    int bytes = 0;
+    const char* data = resourceBytes("banks.json", bytes);
+    if (data == nullptr || bytes <= 0) {
+        return list;
     }
-    if (items.empty()) {
-        error = "Could not read the Demo bank.";
-        return false;
+    const auto banks = decodeBanks(juce::String::fromUTF8(data, bytes));
+    for (const auto& bank : banks) {
+        auto* object = new juce::DynamicObject();
+        object->setProperty("name", bank.first);
+        object->setProperty("file", bank.second);
+        list.add(juce::var(object));
     }
+    return list;
+}
 
-    CommandQueue::Slot clear;
-    clear.kind = CommandQueue::Slot::Kind::Clear;
-    if (!impl->queue.push(clear)) {
-        for (const Item& item : items) {
-            freePayload(item.payload);
-        }
-        error = "Could not load the Demo bank.";
+bool Processor::loadFactory(const juce::String& file) {
+    int bytes = 0;
+    const char* data = resourceBytes(file, bytes);
+    if (data == nullptr || bytes <= 0) {
+        error = "Could not read that pack.";
         return false;
     }
+    return loadPackText(juce::String::fromUTF8(data, bytes));
+}
+
+bool Processor::loadPackText(const juce::String& text) {
+    const auto decoded = decodePack(text);
+    if (!decoded.has_value()) {
+        error = "Could not read that pack.";
+        return false;
+    }
+    const double rate = impl->publishedRate.load(std::memory_order_relaxed);
+    auto* payload = new PackPayload;
+    payload->bpm = decoded->bpm;
+    payload->loop = decoded->loop;
+    payload->slices = decoded->slices;
+    payload->attack = decoded->attack;
+    payload->volume = decoded->volume;
+    payload->pan = decoded->pan;
+    payload->savedCount = decoded->savedCount;
+    payload->slots = decoded->slots;
 
     juce::StringArray loaded;
     std::vector<TrackPicture> loadedPictures;
-    for (const Item& item : items) {
+    for (const PackTrack& track : decoded->tracks) {
+        PackTrackPayload item;
+        item.start = track.start;
+        item.length = track.length;
+        item.loop = track.loop;
+        item.volume = track.volume;
+        item.pan = track.pan;
+
         TrackPicture picture;
-        picture.rate = item.payload->sourceRate;
-        picture.frames = item.payload->sourceFrames;
-        picture.peaks = peakColumns(item.payload->sourceLeft, item.payload->sourceRight, item.payload->sourceFrames);
-        CommandQueue::Slot slot;
-        slot.kind = CommandQueue::Slot::Kind::Append;
-        slot.append = item.payload;
-        if (!impl->queue.push(slot)) {
-            freePayload(item.payload);
-            continue;
+        picture.internal = track.internal;
+        picture.address = track.address;
+        picture.start = track.start;
+        picture.length = track.length;
+        picture.loop = track.loop;
+        picture.volume = track.volume;
+        picture.pan = track.pan;
+        picture.missing = true;
+
+        juce::String display = track.internal ? track.address : juce::File(track.address).getFileName();
+        if (display.isEmpty()) {
+            display = "track";
         }
-        loaded.add(item.name);
+        std::unique_ptr<juce::AudioFormatReader> reader;
+        if (track.internal) {
+            int bytes = 0;
+            const char* data = resourceBytes(track.address, bytes);
+            if (data != nullptr && bytes > 0) {
+                auto stream = std::make_unique<juce::MemoryInputStream>(data, static_cast<std::size_t>(bytes), false);
+                reader.reset(impl->formats.createReaderFor(std::move(stream)));
+            }
+        } else if (track.address.isNotEmpty()) {
+            reader.reset(impl->formats.createReaderFor(juce::File(track.address)));
+        }
+        if (reader != nullptr) {
+            auto* audio = payloadFromReader(*reader, rate, impl->nextId.fetch_add(1, std::memory_order_relaxed));
+            if (audio != nullptr) {
+                picture.missing = false;
+                picture.rate = audio->sourceRate;
+                picture.frames = audio->sourceFrames;
+                picture.peaks = peakColumns(audio->sourceLeft, audio->sourceRight, audio->sourceFrames);
+                item.audio = audio;
+            }
+        }
+        payload->tracks.push_back(item);
+        loaded.add(display);
         loadedPictures.push_back(std::move(picture));
     }
-    names = loaded;
-    pictures = std::move(loadedPictures);
-    if (names.isEmpty()) {
-        error = "Could not load the Demo bank.";
+
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::Pack;
+    slot.pack = payload;
+    if (!impl->queue.push(slot)) {
+        freePack(payload);
+        error = "Could not load that pack.";
         return false;
     }
+    names = std::move(loaded);
+    pictures = std::move(loadedPictures);
+    savedName = decoded->name;
+    savedBpm = decoded->bpm;
+    savedLoop = decoded->loop;
+    savedSlice = decoded->slices;
+    savedAttack = decoded->attack;
+    savedVolume = decoded->volume;
+    savedPan = decoded->pan;
+    impl->storeSequence(decoded->slots, decoded->savedCount);
     error.clear();
     return true;
+}
+
+juce::String Processor::packText() {
+    PackDocument pack;
+    pack.name = savedName;
+    pack.bpm = savedBpm;
+    pack.loop = savedLoop;
+    pack.slices = savedSlice;
+    pack.attack = savedAttack;
+    pack.volume = savedVolume;
+    pack.pan = savedPan;
+    impl->copySequence(pack.slots, pack.savedCount);
+    const int count = std::min(names.size(), static_cast<int>(pictures.size()));
+    pack.tracks.reserve(static_cast<std::size_t>(count));
+    for (int i = 0; i < count; ++i) {
+        const TrackPicture& picture = pictures[static_cast<std::size_t>(i)];
+        PackTrack track;
+        track.internal = picture.internal;
+        track.address = picture.address;
+        track.start = picture.start;
+        track.length = picture.length;
+        track.loop = picture.loop;
+        track.volume = picture.volume;
+        track.pan = picture.pan;
+        pack.tracks.push_back(track);
+    }
+    return encodePack(pack);
+}
+
+double Processor::trackStart(int index) const {
+    return index >= 0 && index < static_cast<int>(pictures.size()) ? pictures[static_cast<std::size_t>(index)].start : 0;
+}
+
+double Processor::trackLength(int index) const {
+    return index >= 0 && index < static_cast<int>(pictures.size()) ? pictures[static_cast<std::size_t>(index)].length : 1;
+}
+
+bool Processor::trackLoop(int index) const {
+    return index >= 0 && index < static_cast<int>(pictures.size()) && pictures[static_cast<std::size_t>(index)].loop;
+}
+
+double Processor::trackVolume(int index) const {
+    return index >= 0 && index < static_cast<int>(pictures.size()) ? pictures[static_cast<std::size_t>(index)].volume : 1;
+}
+
+double Processor::trackPan(int index) const {
+    return index >= 0 && index < static_cast<int>(pictures.size()) ? pictures[static_cast<std::size_t>(index)].pan : 0;
+}
+
+bool Processor::trackMissing(int index) const {
+    return index >= 0 && index < static_cast<int>(pictures.size()) && pictures[static_cast<std::size_t>(index)].missing;
 }
 
 juce::String Processor::errorText() const {

@@ -1,17 +1,12 @@
 import { render } from 'preact'
 import { EngineClient } from '../../../hosts/web/client/EngineClient'
 import { MidiStatus } from '../../../hosts/web/messages'
+import { decodeBanks, decodePack } from '../../../hosts/web/pack'
 import { WebPresenter } from '../../../presenters/web/WebPresenter'
 import { WebViewModel } from '../../../viewmodels/web/WebViewModel'
 import { Widget } from './Widget'
 import './widget.css'
 import wasmUrl from '../../../build-wasm/beatality.wasm?url'
-
-const demoPack = [
-    '/packs/demo/178381__snapper4298__115bpm-boom-zap-breakbeat.wav',
-    '/packs/demo/685110__snapper4298__115bpm_let-the-bass-kick-loop_808.wav',
-    '/packs/demo/797799__snapper4298__break-beat-115-bpm.wav',
-]
 
 const model = new WebViewModel()
 const client = new EngineClient({
@@ -23,7 +18,16 @@ grid.className = 'sample-grid'
 grid.id = 'sample-grid'
 grid.setAttribute('role', 'listbox')
 grid.setAttribute('aria-label', 'Samples')
-const presenter = new WebPresenter(model, client, grid, loadDemo)
+const presenter = new WebPresenter(model, client, grid, loadFactory)
+
+void fetch('/packs/banks.json')
+    .then(async (response) => {
+        if (!response.ok) {
+            return
+        }
+        model.setFactoryBanks(decodeBanks(await response.json()))
+    })
+    .catch(() => {})
 
 const app = document.querySelector('#app')
 if (!app) {
@@ -62,24 +66,37 @@ preview.addEventListener('click', () => {
     void client.midi(previewHeld ? MidiStatus.On : MidiStatus.Off, previewNote, previewVelocity)
 })
 
-async function loadDemo(): Promise<void> {
-    const unlocking = client.start()
-    const files = await Promise.all(demoPack.map(fetchPackFile))
-    await unlocking
-    const loaded = await client.replace(files)
-    if (loaded === 0) {
-        model.fail('could not load Demo')
+async function loadFactory(file: string): Promise<void> {
+    if (previewHeld) {
+        previewHeld = false
+        showPreview()
+        await client.midi(MidiStatus.Off, previewNote, previewVelocity)
     }
-}
-
-async function fetchPackFile(url: string): Promise<File> {
-    const response = await fetch(url)
+    const response = await fetch('/packs/' + file)
     if (!response.ok) {
-        throw new Error(`could not load ${url}`)
+        model.fail('could not load pack')
+        return
     }
-    const slash = url.lastIndexOf('/')
-    const name = slash >= 0 ? url.slice(slash + 1) : url
-    return new File([await response.arrayBuffer()], name)
+    const doc = decodePack(await response.text())
+    if (!doc) {
+        model.fail('could not load pack')
+        return
+    }
+    model.adopt({
+        bpm: doc.bpm,
+        loopBeats: doc.loop,
+        sliceExp: doc.slices,
+        attackMs: doc.attack,
+        outputVolume: doc.volume,
+        outputPan: doc.pan,
+    })
+    await client.loadDocument(doc, async (id) => {
+        const sample = await fetch('/packs/demo/' + encodeURIComponent(id))
+        if (!sample.ok) {
+            return null
+        }
+        return new File([await sample.arrayBuffer()], id)
+    })
 }
 
 // The same client the buttons use, so the page can be driven from the console.

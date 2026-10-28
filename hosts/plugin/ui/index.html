@@ -71,6 +71,7 @@
       <div class="viewport" id="sample-viewport" tabindex="0">
         <div class="scroll-content">
           <div class="sample-grid" id="sample-grid" role="listbox" aria-label="Samples"></div>
+          <div class="bank-list" id="bank-list" role="listbox" aria-label="Banks" hidden></div>
         </div>
       </div>
     </div>
@@ -86,6 +87,11 @@
       <button type="button" class="round-btn clear" id="clear" disabled>Clear</button>
       <button type="button" class="round-btn load" id="load-bank">Load</button>
       <button type="button" class="round-btn save" id="save">Save</button>
+      <div class="bank-actions" id="bank-actions" hidden>
+        <button type="button" id="bank-select">SELECT</button>
+        <button type="button" id="bank-load-file">LOAD FILE</button>
+        <button type="button" id="bank-close">X</button>
+      </div>
       <fieldset class="sample-panel" id="selected-sample" disabled>
         <div class="col c1">
           <span class="name top">VOLUME</span>

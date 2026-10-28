@@ -92,7 +92,15 @@ void SliceEngine::setTrack(int index, double start, double length, bool loop) {
     if (index < 0 || index >= bank_.count()) {
         return;
     }
-    bank_.setPlay(index, TrackPlay{unit(start), unit(length), loop});
+    TrackPlay play = bank_.play(index);
+    play.start = unit(start);
+    play.length = unit(length);
+    play.loop = loop;
+    bank_.setPlay(index, play);
+}
+
+void SliceEngine::installSequence(const std::uint16_t* slots, int size, int savedCount) {
+    sequence_.assign(slots, size, savedCount);
 }
 
 void SliceEngine::setIndexedTrack(int index, double start, double length, bool loop, double volume, double pan) {

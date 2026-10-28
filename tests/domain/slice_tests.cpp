@@ -185,6 +185,22 @@ void testGenerateDrawsEveryTrack() {
     }
 }
 
+void testAssignReplacesThePrefix() {
+    bt::Rng rng(1);
+    bt::Sequence sequence;
+    sequence.generate(4, 3, rng);
+    const std::uint16_t slots[] = {2, 0, 1};
+    sequence.assign(slots, 3, 3);
+    CHECK(sequence.size() == 3);
+    CHECK(sequence.savedCount() == 3);
+    CHECK(sequence.indexAt(0, 3) == 2);
+    CHECK(sequence.indexAt(1, 3) == 0);
+    CHECK(sequence.indexAt(2, 3) == 1);
+    sequence.assign(nullptr, 0, 0);
+    CHECK(sequence.empty());
+    CHECK(sequence.savedCount() == 0);
+}
+
 void testSameSeedSameSequence() {
     bt::Rng aRng(42);
     bt::Rng bRng(42);
@@ -209,6 +225,7 @@ int main() {
     testSequenceAppendAndCrop();
     testIndexMapsOntoTheCurrentCount();
     testGenerateDrawsEveryTrack();
+    testAssignReplacesThePrefix();
     testSameSeedSameSequence();
 
     if (g_failed != 0) {

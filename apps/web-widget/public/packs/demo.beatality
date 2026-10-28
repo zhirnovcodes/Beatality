@@ -1,0 +1,41 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "Demo",
+  "bpm": 120,
+  "loop": 8,
+  "slices": 0,
+  "attack": 2,
+  "volume": 1,
+  "pan": 0,
+  "sequence": {
+    "savedCount": 3,
+    "slots": [0, 1, 2, 0, 1, 2, 0, 1]
+  },
+  "tracks": [
+    {
+      "source": { "type": "internal", "id": "178381__snapper4298__115bpm-boom-zap-breakbeat.wav" },
+      "volume": 1,
+      "start": 0,
+      "pan": 0,
+      "length": 1,
+      "loop": false
+    },
+    {
+      "source": { "type": "internal", "id": "685110__snapper4298__115bpm_let-the-bass-kick-loop_808.wav" },
+      "volume": 1,
+      "start": 0,
+      "pan": 0,
+      "length": 1,
+      "loop": false
+    },
+    {
+      "source": { "type": "internal", "id": "797799__snapper4298__break-beat-115-bpm.wav" },
+      "volume": 1,
+      "start": 0,
+      "pan": 0,
+      "length": 1,
+      "loop": false
+    }
+  ]
+}

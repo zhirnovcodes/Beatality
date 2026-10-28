@@ -19,6 +19,9 @@ let selected = -1
 let epoch = -1
 let pendingRemove = -1
 let builtKey = ''
+let bankOpen = false
+let bankIndex = 0
+let banks = []
 
 const pending = new Map()
 let nextId = 0
@@ -134,15 +137,23 @@ function syncButtons() {
     const append = document.getElementById('append')
     const remove = document.getElementById('remove')
     const clear = document.getElementById('clear')
+    const load = document.getElementById('load-bank')
+    const save = document.getElementById('save')
     const randomize = document.getElementById('randomize')
     if (append instanceof HTMLButtonElement) {
-        append.disabled = !state.canAppend
+        append.disabled = bankOpen || !state.canAppend
     }
     if (remove instanceof HTMLButtonElement) {
-        remove.disabled = !has
+        remove.disabled = bankOpen || !has
     }
     if (clear instanceof HTMLButtonElement) {
-        clear.disabled = !has
+        clear.disabled = bankOpen || !has
+    }
+    if (load instanceof HTMLButtonElement) {
+        load.disabled = bankOpen
+    }
+    if (save instanceof HTMLButtonElement) {
+        save.disabled = bankOpen
     }
     if (randomize instanceof HTMLButtonElement) {
         randomize.disabled = !has
@@ -316,7 +327,7 @@ function syncPanel() {
 }
 
 function structureKey() {
-    return columns() + '|' + plays.map((play) => play.name).join('\n')
+    return columns() + '|' + plays.map((play) => (play.missing ? '!' : '') + play.name).join('\n')
 }
 
 function rebuildRows() {
@@ -336,6 +347,12 @@ function rebuildRows() {
         spectrum.className = 'spectrum'
         const canvas = document.createElement('canvas')
         spectrum.append(canvas)
+        if (play.missing) {
+            const label = document.createElement('div')
+            label.className = 'missing-label'
+            label.textContent = 'error loading track'
+            spectrum.append(label)
+        }
         row.append(spectrum)
         for (let column = 0; column < cols; column++) {
             const cell = document.createElement('div')
@@ -367,7 +384,24 @@ function paintGrid() {
 }
 
 function freshPlay(name) {
-    return { name, start: 0, length: 1, loop: false, volume: 1, pan: 0 }
+    return { name, start: 0, length: 1, loop: false, volume: 1, pan: 0, missing: false }
+}
+
+function playFromBank(name, bank, index) {
+    const at = (list, fallback) => {
+        const value = list && list[index]
+        const number = Number(value)
+        return value == null || !Number.isFinite(number) ? fallback : number
+    }
+    return {
+        name,
+        start: at(bank.starts, 0),
+        length: at(bank.lengths, 1),
+        loop: !!(bank.loops && bank.loops[index]),
+        volume: at(bank.volumes, 1),
+        pan: at(bank.pans, 0),
+        missing: !!(bank.missing && bank.missing[index]),
+    }
 }
 
 function replacePlays(names) {
@@ -380,7 +414,9 @@ function onBank(bank) {
     if (bank.epoch !== epoch) {
         epoch = bank.epoch
         pendingRemove = -1
-        replacePlays(names)
+        plays.splice(0, plays.length, ...names.map((name, index) => playFromBank(name, bank, index)))
+        selected = -1
+        applyBankSettings(bank)
     } else if (pendingRemove >= 0 && names.length === plays.length - 1) {
         const index = pendingRemove
         pendingRemove = -1
@@ -423,6 +459,102 @@ function onLive(live) {
     markRows()
 }
 
+function applyBankSettings(bank) {
+    if (bank.bpm == null) {
+        return
+    }
+    const bpm = clampBpm(Number(bank.bpm))
+    if (bpm !== null) {
+        state.bpm = bpm
+        const input = document.getElementById('bpm')
+        if (input instanceof HTMLInputElement) {
+            input.value = String(bpm)
+        }
+    }
+    const loop = Number(bank.loop)
+    const slices = Number(bank.slices)
+    const attack = Number(bank.attack)
+    if (Number.isInteger(loop)) {
+        state.loopBeats = loop
+        setRange('loop', loop)
+    }
+    if (Number.isInteger(slices)) {
+        state.sliceExp = fitSlice(slices, state.loopBeats)
+        setRange('slice', state.sliceExp)
+    }
+    if (Number.isInteger(attack)) {
+        state.attackMs = attack
+        setRange('attack', attack)
+    }
+    const volume = Number(bank.volume)
+    const pan = Number(bank.pan)
+    if (Number.isFinite(volume)) {
+        state.outputVolume = volume
+        setRange('master-volume', volume)
+    }
+    if (Number.isFinite(pan)) {
+        state.outputPan = pan
+        setRange('master-pan', pan)
+    }
+    syncCaptions()
+}
+
+function paintBankList() {
+    const list = document.getElementById('bank-list')
+    if (!list) {
+        return
+    }
+    list.replaceChildren()
+    const header = document.createElement('div')
+    header.className = 'bank-header'
+    header.textContent = 'SELECT BANK'
+    list.append(header)
+    banks.forEach((bank, index) => {
+        const row = document.createElement('button')
+        row.type = 'button'
+        row.className = index === bankIndex ? 'bank-row selected' : 'bank-row'
+        const plate = document.createElement('span')
+        plate.className = 'plate'
+        const label = document.createElement('span')
+        label.className = 'label'
+        label.textContent = String(index + 1) + ' ' + bank.name
+        row.append(plate, label)
+        row.addEventListener('click', () => {
+            bankIndex = index
+            paintBankList()
+        })
+        list.append(row)
+    })
+}
+
+function setBankOpen(open) {
+    bankOpen = open
+    const grid = document.getElementById('sample-grid')
+    const list = document.getElementById('bank-list')
+    const actions = document.getElementById('bank-actions')
+    const panel = document.getElementById('selected-sample')
+    if (grid) {
+        grid.hidden = open
+    }
+    if (list) {
+        list.hidden = !open
+    }
+    if (actions) {
+        actions.hidden = !open
+    }
+    if (panel instanceof HTMLElement) {
+        panel.hidden = open
+    }
+    if (open) {
+        paintBankList()
+        const viewport = document.getElementById('sample-viewport')
+        if (viewport) {
+            viewport.scrollTop = 0
+        }
+    }
+    syncButtons()
+}
+
 function commitTrack() {
     const play = plays[selected]
     if (!play || selected < 0) {
@@ -455,7 +587,7 @@ function attachSampleScroll() {
     viewport.addEventListener('scroll', sync, { passive: true })
     const observer = new ResizeObserver(sync)
     observer.observe(viewport)
-    const content = document.getElementById('sample-grid')
+    const content = viewport.querySelector('.scroll-content')
     if (content) {
         observer.observe(content)
     }
@@ -599,15 +731,39 @@ function wire() {
         void native('clear')
     })
     document.getElementById('load-bank')?.addEventListener('click', () => {
-        const button = document.getElementById('load-bank')
-        if (button instanceof HTMLButtonElement) {
-            button.disabled = true
+        if (bankOpen) {
+            return
         }
-        void native('loadBank').finally(() => {
-            if (button instanceof HTMLButtonElement) {
-                button.disabled = false
+        bankIndex = 0
+        setBankOpen(true)
+    })
+    document.getElementById('save')?.addEventListener('click', () => {
+        if (bankOpen) {
+            return
+        }
+        void native('savePack')
+    })
+    document.getElementById('bank-select')?.addEventListener('click', () => {
+        const bank = banks[bankIndex]
+        const button = document.getElementById('bank-select')
+        if (!bank || !(button instanceof HTMLButtonElement) || button.disabled) {
+            return
+        }
+        button.disabled = true
+        void native('loadFactory', bank.file).finally(() => {
+            button.disabled = banks.length === 0
+            setBankOpen(false)
+        })
+    })
+    document.getElementById('bank-load-file')?.addEventListener('click', () => {
+        void native('loadPackFile').then((ok) => {
+            if (ok) {
+                setBankOpen(false)
             }
         })
+    })
+    document.getElementById('bank-close')?.addEventListener('click', () => {
+        setBankOpen(false)
     })
     document.getElementById('randomize')?.addEventListener('click', () => {
         if (plays.length === 0) {
@@ -624,6 +780,9 @@ function wire() {
     setRange('playhead', 0)
     syncCaptions()
     attachSampleScroll()
+    void native('banks').then((list) => {
+        banks = Array.isArray(list) ? list : []
+    })
     void native('ready')
 }
 

@@ -158,14 +158,62 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
             }
             completion(ok);
         })
-        .withNativeFunction("loadBank", [this](const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
-            const bool ok = processor.loadBank();
+        .withNativeFunction("banks", [this](const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            completion(processor.factoryBanks());
+        })
+        .withNativeFunction("loadFactory", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            const bool ok = !args.isEmpty() && processor.loadFactory(args[0].toString());
             if (ok) {
                 noteBank(true);
             } else {
                 pushLive();
             }
             completion(ok);
+        })
+        .withNativeFunction("loadPackFile", [this](const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            chooser = std::make_unique<juce::FileChooser>("Load pack", juce::File(), "*.beatality");
+            const auto flags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
+            juce::Component::SafePointer<Editor> safe(this);
+            chooser->launchAsync(flags, [safe, completion](const juce::FileChooser& dialog) {
+                if (safe == nullptr) {
+                    completion(false);
+                    return;
+                }
+                const juce::File file = dialog.getResult();
+                if (file == juce::File()) {
+                    completion(false);
+                    return;
+                }
+                const bool ok = safe->processor.loadPackText(file.loadFileAsString());
+                if (ok) {
+                    safe->noteBank(true);
+                } else {
+                    safe->pushLive();
+                }
+                completion(ok);
+            });
+        })
+        .withNativeFunction("savePack", [this](const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            const juce::String text = processor.packText();
+            chooser = std::make_unique<juce::FileChooser>("Save pack", juce::File(), "*.beatality");
+            const auto flags = juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles |
+                               juce::FileBrowserComponent::warnAboutOverwriting;
+            juce::Component::SafePointer<Editor> safe(this);
+            chooser->launchAsync(flags, [safe, completion, text](const juce::FileChooser& dialog) {
+                if (safe == nullptr) {
+                    completion(false);
+                    return;
+                }
+                juce::File file = dialog.getResult();
+                if (file == juce::File()) {
+                    completion(false);
+                    return;
+                }
+                if (!file.hasFileExtension(".beatality")) {
+                    file = file.withFileExtension(".beatality");
+                }
+                completion(file.replaceWithText(text));
+            });
         })
         .withNativeFunction("randomize", [this](const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
             processor.randomizeTracks();
@@ -284,10 +332,22 @@ void Editor::pushBank() {
     juce::Array<juce::var> rates;
     juce::Array<juce::var> frames;
     juce::Array<juce::var> peaks;
+    juce::Array<juce::var> starts;
+    juce::Array<juce::var> lengths;
+    juce::Array<juce::var> loops;
+    juce::Array<juce::var> volumes;
+    juce::Array<juce::var> pans;
+    juce::Array<juce::var> missingTracks;
     for (int i = 0; i < count; ++i) {
         names.add(processor.trackName(i));
         rates.add(processor.trackRate(i));
         frames.add(processor.trackFrames(i));
+        starts.add(processor.trackStart(i));
+        lengths.add(processor.trackLength(i));
+        loops.add(processor.trackLoop(i));
+        volumes.add(processor.trackVolume(i));
+        pans.add(processor.trackPan(i));
+        missingTracks.add(processor.trackMissing(i));
         juce::Array<juce::var> columns;
         const auto& row = processor.trackPeaks(i);
         for (float peak : row) {
@@ -302,5 +362,17 @@ void Editor::pushBank() {
     object->setProperty("rates", rates);
     object->setProperty("frames", frames);
     object->setProperty("peaks", peaks);
+    object->setProperty("starts", starts);
+    object->setProperty("lengths", lengths);
+    object->setProperty("loops", loops);
+    object->setProperty("volumes", volumes);
+    object->setProperty("pans", pans);
+    object->setProperty("missing", missingTracks);
+    object->setProperty("bpm", processor.bpm());
+    object->setProperty("loop", processor.loopBeats());
+    object->setProperty("slices", processor.sliceExponent());
+    object->setProperty("attack", processor.attackMs());
+    object->setProperty("volume", processor.outputVolume());
+    object->setProperty("pan", processor.outputPan());
     deliver("onBank", juce::var(object));
 }

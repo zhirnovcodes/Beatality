@@ -1,10 +1,18 @@
 export interface TrackRow {
     name: string
+    missing: boolean
+}
+
+export interface FactoryBank {
+    name: string
+    file: string
 }
 
 export interface ViewActions {
     midi: (status: number, note: number, velocity: number) => void
-    loadPack: () => Promise<void>
+    loadPack: (file: string) => Promise<void>
+    save?: () => void
+    loadFile?: () => void
     append: (files: File[]) => void
     remove: (index: number) => void
     clear: () => void
@@ -18,6 +26,7 @@ export interface ViewActions {
 
 export interface ViewState {
     names: string[]
+    missing?: boolean[]
     playing: boolean
     // Null keeps the slice the page already shows.
     sliceExp: number | null
@@ -85,6 +94,7 @@ export class WebViewModel {
     attackMs = 2
     outputVolume = 1
     outputPan = 0
+    factoryBanks: FactoryBank[] = []
 
     private actions: ViewActions | null = null
     private listeners = new Set<() => void>()
@@ -104,6 +114,14 @@ export class WebViewModel {
         return this.tracks.length > 0
     }
 
+    get canSave(): boolean {
+        return this.actions?.save != null
+    }
+
+    get canLoadFile(): boolean {
+        return this.actions?.loadFile != null
+    }
+
     get sliceChoices(): SliceChoice[] {
         const choices: SliceChoice[] = []
         for (let exponent = expMin; exponent <= expMax; exponent++) {
@@ -118,8 +136,32 @@ export class WebViewModel {
         this.actions?.midi(status, note, velocity)
     }
 
-    loadPack(): Promise<void> {
-        return this.actions?.loadPack() ?? Promise.resolve()
+    setFactoryBanks(banks: FactoryBank[]) {
+        this.factoryBanks = banks
+        this.notify()
+    }
+
+    loadPack(file: string): Promise<void> {
+        return this.actions?.loadPack(file) ?? Promise.resolve()
+    }
+
+    save() {
+        this.actions?.save?.()
+    }
+
+    loadFile() {
+        this.actions?.loadFile?.()
+    }
+
+    // Pack settings, without sending them back to the engine.
+    adopt(settings: { bpm: number; loopBeats: number; sliceExp: number; attackMs: number; outputVolume: number; outputPan: number }) {
+        this.bpm = settings.bpm
+        this.loopBeats = settings.loopBeats
+        this.sliceExp = fitSlice(settings.sliceExp, settings.loopBeats)
+        this.attackMs = settings.attackMs
+        this.outputVolume = settings.outputVolume
+        this.outputPan = settings.outputPan
+        this.notify()
     }
 
     append(files: File[]) {
@@ -207,11 +249,12 @@ export class WebViewModel {
     }
 
     show(state: ViewState) {
-        const tracks = state.names.map((name) => ({ name }))
+        const tracks = state.names.map((name, index) => ({ name, missing: state.missing?.[index] ?? false }))
         const sliceExp = fitSlice(state.sliceExp ?? this.sliceExp, this.loopBeats)
         const playhead = unit(state.playhead)
         const sameTracks =
-            tracks.length === this.tracks.length && tracks.every((track, i) => track.name === this.tracks[i].name)
+            tracks.length === this.tracks.length &&
+            tracks.every((track, i) => track.name === this.tracks[i].name && track.missing === this.tracks[i].missing)
         const same = sameTracks && this.playing === state.playing && this.sliceExp === sliceExp
         if (same && this.playhead === playhead) {
             return

@@ -125,7 +125,7 @@ export class SampleBufferPresenter {
     }
 
     // Tempo and audio from the page. Start, length, and the strip's Loop stay as the user left them.
-    follow(input: SampleFollow): void {
+    follow(input: SampleFollow, play?: TrackEdit): void {
         const sameAudio = this.picture?.samples === input.samples
         if (!this.picture || !sameAudio) {
             this.picture = {
@@ -135,11 +135,11 @@ export class SampleBufferPresenter {
                 bpm: input.bpm,
                 loopBeats: input.loopBeats,
                 sliceBeats: input.sliceBeats,
-                start: 0,
-                length: 1,
-                loop: false,
-                volume: 1,
-                pan: 0,
+                start: play?.start ?? 0,
+                length: play?.length ?? 1,
+                loop: play?.loop ?? false,
+                volume: play?.volume ?? 1,
+                pan: play?.pan ?? 0,
                 playheadBeats: -1,
             }
             this.publish()

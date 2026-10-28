@@ -83,6 +83,31 @@ export interface FreeMessage {
     id: number
 }
 
+export interface PackTrackMessage {
+    id: number
+    missing: boolean
+    frames: number
+    planar: Float32Array
+    start: number
+    length: number
+    loop: boolean
+    volume: number
+    pan: number
+}
+
+export interface PackMessage {
+    type: 'pack'
+    bpm: number
+    loop: number
+    slices: number
+    attack: number
+    volume: number
+    pan: number
+    savedCount: number
+    slots: number[]
+    tracks: PackTrackMessage[]
+}
+
 export type HostMessage =
     | InitMessage
     | AppendMessage
@@ -97,6 +122,7 @@ export type HostMessage =
     | TrackMessage
     | OutputMessage
     | FreeMessage
+    | PackMessage
 
 export interface ReadyMessage {
     type: 'ready'

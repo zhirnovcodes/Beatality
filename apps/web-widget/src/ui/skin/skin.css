@@ -257,6 +257,80 @@
 .beatality-skin .round-btn.save:active   { background-image: url("../shapes/btn_save_pressed.png"); }
 .beatality-skin .round-btn:disabled { cursor: default; filter: saturate(0) brightness(0.85); }
 
+.beatality-skin .bank-list {
+  width: 424px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.beatality-skin .bank-header {
+  height: 28px;
+  color: #c1fd31;
+  font: 700 12px/28px "Orbitron", sans-serif;
+  letter-spacing: 1px;
+  text-align: center;
+}
+.beatality-skin .bank-row {
+  position: relative;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: #d7d7d7;
+  font: 700 11px/28px "Orbitron", sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+.beatality-skin .bank-row .plate {
+  position: absolute;
+  z-index: 0;
+  inset: 2px 0;
+}
+.beatality-skin .bank-row.selected .plate {
+  background: rgba(193, 253, 49, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(193, 253, 49, 0.65);
+}
+.beatality-skin .bank-row .label { position: relative; z-index: 1; }
+.beatality-skin .bank-actions {
+  position: absolute;
+  left: 236px;
+  top: 198px;
+  width: 234px;
+  height: 52px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 4px 6px;
+  background: url("../shapes/bottom_panel.png") 0 0 / 100% 100% no-repeat;
+}
+.beatality-skin .bank-actions button {
+  flex: 1 1 0;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: #1a1c18;
+  color: #c1fd31;
+  font: 700 8px/28px "Orbitron", sans-serif;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+}
+.beatality-skin .bank-actions button:disabled { cursor: default; filter: saturate(0) brightness(0.85); }
+.beatality-skin .missing-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffb4b4;
+  font: 700 9px/12px "Orbitron", sans-serif;
+  letter-spacing: 0.3px;
+  text-align: center;
+  pointer-events: none;
+}
+
 .beatality-skin .sample-panel {
   position: absolute; left: 236px; top: 198px; width: 234px; height: 52px;
   margin: 0; padding: 0; border: 0; min-width: 0;

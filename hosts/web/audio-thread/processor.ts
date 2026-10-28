@@ -10,6 +10,8 @@ interface Core {
     bt_free: (ptr: number) => void
     bt_create: (sampleRate: number, seed: number) => number
     bt_append: (engine: number, id: number, planar: number, frames: number) => number
+    bt_append_empty: (engine: number, id: number) => number
+    bt_install_sequence: (engine: number, slots: number, size: number, savedCount: number) => void
     bt_midi: (engine: number, status: number, note: number, velocity: number) => void
     bt_randomize: (engine: number) => void
     bt_remove: (engine: number, index: number) => void
@@ -124,6 +126,31 @@ interface FreeMessage {
     id: number
 }
 
+interface PackTrackMessage {
+    id: number
+    missing: boolean
+    frames: number
+    planar: Float32Array
+    start: number
+    length: number
+    loop: boolean
+    volume: number
+    pan: number
+}
+
+interface PackMessage {
+    type: 'pack'
+    bpm: number
+    loop: number
+    slices: number
+    attack: number
+    volume: number
+    pan: number
+    savedCount: number
+    slots: number[]
+    tracks: PackTrackMessage[]
+}
+
 type HostMessage =
     | InitMessage
     | AppendMessage
@@ -138,6 +165,7 @@ type HostMessage =
     | TrackMessage
     | OutputMessage
     | FreeMessage
+    | PackMessage
 
 interface WorkletPort {
     onmessage: ((event: { data: HostMessage }) => void) | null
@@ -336,7 +364,49 @@ class BeatalityProcessor extends AudioWorkletProcessor {
             this.core!.bt_set_output(this.engine, message.volume, message.pan)
         } else if (message.type === 'free') {
             this.freeId(message.id)
+        } else if (message.type === 'pack') {
+            this.applyPack(message)
         }
+    }
+
+    private applyPack(message: PackMessage) {
+        const core = this.core!
+        core.bt_midi(this.engine, 2, 0, 0)
+        core.bt_clear(this.engine)
+        this.postSnapshot(0)
+        message.tracks.forEach((track, index) => {
+            if (track.missing || track.frames <= 0) {
+                if (core.bt_append_empty(this.engine, track.id) === 0) {
+                    this.port.postMessage({ type: 'error', message: 'append rejected' })
+                    return
+                }
+            } else {
+                this.append({ type: 'append', id: track.id, frames: track.frames, planar: track.planar })
+            }
+            core.bt_set_track(
+                this.engine,
+                index,
+                track.start,
+                track.length,
+                track.loop ? 1 : 0,
+                track.volume,
+                track.pan,
+            )
+        })
+        core.bt_set_bpm(this.engine, message.bpm)
+        core.bt_set_loop(this.engine, message.loop)
+        core.bt_set_slice(this.engine, message.slices)
+        core.bt_set_attack(this.engine, message.attack)
+        core.bt_set_output(this.engine, message.volume, message.pan)
+        if (message.slots.length > 0) {
+            const ptr = core.bt_alloc(message.slots.length * 2)
+            if (ptr !== 0) {
+                new Uint16Array(core.memory.buffer, ptr, message.slots.length).set(message.slots)
+                core.bt_install_sequence(this.engine, ptr, message.slots.length, message.savedCount)
+                core.bt_free(ptr)
+            }
+        }
+        this.postSnapshot(0)
     }
 
     private append(message: AppendMessage) {

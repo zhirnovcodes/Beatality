@@ -48,10 +48,29 @@ public:
     void setAttack(int ms);
     void setOutput(double volume, double pan);
     void setTrack(int index, double start, double length, bool loop, double volume, double pan);
-    // Replaces the track list with the stored Demo bank. Does not move the playhead.
-    bool loadBank();
+    // Factory banks shipped with the plugin. Each entry is a name and a .beatality file name.
+    juce::Array<juce::var> factoryBanks() const;
+    // Loads a factory pack by its file name. Stops playback.
+    bool loadFactory(const juce::String& file);
+    // Loads pack text. A missing sample stays in the list with no audio.
+    bool loadPackText(const juce::String& text);
+    // The current bank, controls, and sequence, as pack text.
+    juce::String packText();
     // Empties the current bank. A sounding voice fades out, and the playhead returns to 0.
     bool clearBank();
+
+    double bpm() const { return savedBpm; }
+    int loopBeats() const { return savedLoop; }
+    int sliceExponent() const { return savedSlice; }
+    int attackMs() const { return savedAttack; }
+    double outputVolume() const { return savedVolume; }
+    double outputPan() const { return savedPan; }
+    double trackStart(int index) const;
+    double trackLength(int index) const;
+    bool trackLoop(int index) const;
+    double trackVolume(int index) const;
+    double trackPan(int index) const;
+    bool trackMissing(int index) const;
 
     int numTracks() const;
     bool canAppend() const;
@@ -71,6 +90,14 @@ private:
         double rate = 0;
         int frames = 0;
         std::vector<float> peaks;
+        bool missing = false;
+        bool internal = false;
+        juce::String address;
+        double start = 0;
+        double length = 1;
+        bool loop = false;
+        double volume = 1;
+        double pan = 0;
     };
 
     struct Impl;
@@ -78,6 +105,13 @@ private:
     juce::StringArray names;
     std::vector<TrackPicture> pictures;
     juce::String error;
+    juce::String savedName = "Pack";
+    double savedBpm = 120;
+    int savedLoop = 8;
+    int savedSlice = 0;
+    int savedAttack = 2;
+    double savedVolume = 1;
+    double savedPan = 0;
     std::atomic<std::uint32_t> view{0};
     std::atomic<int> slot{-1};
     std::atomic<double> head{0};

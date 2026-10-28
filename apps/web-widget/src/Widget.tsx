@@ -18,6 +18,8 @@ export function Widget({
 }) {
     const [, setTick] = useState(0)
     const [loadingPack, setLoadingPack] = useState(false)
+    const [bankOpen, setBankOpen] = useState(false)
+    const [bankIndex, setBankIndex] = useState(0)
     const [chosenIndex, setChosenIndex] = useState(-1)
     const skin = useRef<HTMLDivElement>(null)
     const bpmRef = useRef<HTMLInputElement>(null)
@@ -132,9 +134,16 @@ export function Widget({
         placeThumb(input)
     }
 
-    const onLoadPack = () => {
+    const onSelectBank = () => {
+        const bank = model.factoryBanks[bankIndex]
+        if (!bank || loadingPack) {
+            return
+        }
         setLoadingPack(true)
-        void model.loadPack().finally(() => setLoadingPack(false))
+        void model.loadPack(bank.file).finally(() => {
+            setLoadingPack(false)
+            setBankOpen(false)
+        })
     }
 
     const onRemove = () => {
@@ -304,7 +313,25 @@ export function Widget({
                     <div className="window" />
                     <div className="content">
                         <div className="viewport" id="sample-viewport" tabIndex={0}>
-                            <div className="scroll-content" ref={placeGrid} />
+                            <div className="scroll-content">
+                                <div ref={placeGrid} style={{ display: bankOpen ? 'none' : undefined }} />
+                                <div className="bank-list" role="listbox" aria-label="Banks" style={{ display: bankOpen ? undefined : 'none' }}>
+                                    <div className="bank-header">SELECT BANK</div>
+                                    {model.factoryBanks.map((bank, index) => (
+                                        <button
+                                            type="button"
+                                            key={bank.file}
+                                            className={index === bankIndex ? 'bank-row selected' : 'bank-row'}
+                                            onClick={() => setBankIndex(index)}
+                                        >
+                                            <span className="plate" />
+                                            <span className="label">
+                                                {index + 1} {bank.name}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div className="case" />
@@ -321,19 +348,52 @@ export function Widget({
                         <button type="button" className="scroll-arrow up" aria-label="Scroll up" />
                         <button type="button" className="scroll-arrow down" aria-label="Scroll down" />
 
-                        <button type="button" className="round-btn append" id="append" onClick={() => files.current?.click()}>
+                        <button
+                            type="button"
+                            className="round-btn append"
+                            id="append"
+                            disabled={bankOpen}
+                            onClick={() => files.current?.click()}
+                        >
                             Add
                         </button>
-                        <button type="button" className="round-btn remove" id="remove" disabled={!model.hasTracks} onClick={onRemove}>
+                        <button
+                            type="button"
+                            className="round-btn remove"
+                            id="remove"
+                            disabled={bankOpen || !model.hasTracks}
+                            onClick={onRemove}
+                        >
                             Remove
                         </button>
-                        <button type="button" className="round-btn clear" id="clear" disabled={!model.hasTracks} onClick={() => model.clear()}>
+                        <button
+                            type="button"
+                            className="round-btn clear"
+                            id="clear"
+                            disabled={bankOpen || !model.hasTracks}
+                            onClick={() => model.clear()}
+                        >
                             Clear
                         </button>
-                        <button type="button" className="round-btn load" id="load-bank" disabled={loadingPack} onClick={onLoadPack}>
+                        <button
+                            type="button"
+                            className="round-btn load"
+                            id="load-bank"
+                            disabled={bankOpen}
+                            onClick={() => {
+                                setBankIndex(0)
+                                setBankOpen(true)
+                            }}
+                        >
                             Load
                         </button>
-                        <button type="button" className="round-btn save" id="save">
+                        <button
+                            type="button"
+                            className="round-btn save"
+                            id="save"
+                            disabled={bankOpen || !model.canSave}
+                            onClick={() => model.save()}
+                        >
                             Save
                         </button>
                         <input
@@ -347,7 +407,24 @@ export function Widget({
                             onChange={onFiles}
                         />
 
-                        <fieldset className="sample-panel" id="selected-sample" disabled={chosenIndex < 0} ref={onPanel}>
+                        <div className="bank-actions" style={{ display: bankOpen ? undefined : 'none' }}>
+                            <button type="button" id="bank-select" disabled={loadingPack || model.factoryBanks.length === 0} onClick={onSelectBank}>
+                                SELECT
+                            </button>
+                            <button type="button" id="bank-load-file" disabled={!model.canLoadFile} onClick={() => model.loadFile()}>
+                                LOAD FILE
+                            </button>
+                            <button type="button" id="bank-close" onClick={() => setBankOpen(false)}>
+                                X
+                            </button>
+                        </div>
+                        <fieldset
+                            className="sample-panel"
+                            id="selected-sample"
+                            style={{ display: bankOpen ? 'none' : undefined }}
+                            disabled={chosenIndex < 0}
+                            ref={onPanel}
+                        >
                             <div className="col c1">
                                 <span className="name top">VOLUME</span>
                                 <div className="slider top">
@@ -477,7 +554,7 @@ function attachSampleScroll(root: ParentNode): () => void {
     viewport.addEventListener('scroll', sync, { passive: true, signal })
     const observer = new ResizeObserver(sync)
     observer.observe(viewport)
-    const content = viewport.querySelector('.sample-grid')
+    const content = viewport.querySelector('.scroll-content')
     if (content) {
         observer.observe(content)
     }

@@ -22,6 +22,8 @@ public:
     void generate(int slotCount, int trackCount, Rng& rng);
     void append(int slotCount, Rng& rng); // grow to slotCount, drawing from the saved count
     void crop(int slotCount);             // keep the prefix, clear the dropped tail
+    // Replaces the live prefix. size 0 clears. The caller keeps slots for the copy.
+    void assign(const std::uint16_t* slots, int size, int savedCount);
 
     // The stored index at that slot, mapped onto trackCount.
     // Same count: the stored index. Otherwise floor(stored / savedCount * trackCount).

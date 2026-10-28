@@ -52,11 +52,17 @@ public:
     // volume is 0..1.2 and scales the mix. The host multiplies that by note velocity.
     // pan is -1..1 and balances the two channels.
     void setOutput(double volume, double pan);
+    // Keeps the volume and pan already on that slot.
     void setTrack(int index, double start, double length, bool loop);
     // Web track. start is a fraction of the file, 0..1.
     void setIndexedTrack(int index, double start, double length, bool loop, double volume, double pan);
+    // Written after bpm, loop, and slice, which would otherwise build a new sequence.
+    void installSequence(const std::uint16_t* slots, int size, int savedCount);
 
     int count() const { return bank_.count(); }
+    int sequenceSize() const { return sequence_.size(); }
+    int sequenceSavedCount() const { return sequence_.savedCount(); }
+    std::uint16_t sequenceSlot(int index) const { return sequence_.data()[index]; }
 
     void render(float* left, float* right, int frames);
     void fillSnapshot(SliceSnapshot& out);
