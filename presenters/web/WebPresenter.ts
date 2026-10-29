@@ -94,6 +94,10 @@ export class WebPresenter {
             setReverseChance: (chance) => void this.perform(() => this.client.setReverseChance(chance)),
             setFilterPower: (power) => void this.perform(() => this.client.setFilterPower(power)),
             setFilterChance: (chance) => void this.perform(() => this.client.setFilterChance(chance)),
+            setFlangerPower: (power) => void this.perform(() => this.client.setFlangerPower(power)),
+            setFlangerChance: (chance) => void this.perform(() => this.client.setFlangerChance(chance)),
+            setTrancePower: (power) => void this.perform(() => this.client.setTrancePower(power)),
+            setTranceChance: (chance) => void this.perform(() => this.client.setTranceChance(chance)),
             setOutput: (volume, pan) => void this.perform(() => this.client.setOutput(volume, pan)),
         })
         client.onSnapshot = (snapshot) => {

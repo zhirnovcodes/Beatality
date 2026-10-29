@@ -686,6 +686,105 @@ void testFilterFollowsPowerAndBeat() {
     CHECK(rmsOf(slowMid, 1000, 1400) > rmsOf(fastMid, 1000, 1400) * 2.0);
 }
 
+void testFlangerFollowsPowerAndBeat() {
+    // 120 BPM at 48 kHz. The sweep starts halfway between 0.5 ms and 8 ms, so the first echo is still silent here.
+    constexpr int kRate = 48000;
+    constexpr int kFrames = 4000;
+    constexpr double kPi = 3.14159265358979323846;
+
+    const std::vector<float> held(kFrames, 1.0f);
+    std::vector<float> tone(kFrames);
+    for (int i = 0; i < kFrames; ++i) {
+        tone[i] = static_cast<float>(std::sin(2.0 * kPi * 1000.0 * static_cast<double>(i) / static_cast<double>(kRate)));
+    }
+
+    auto play = [&](const std::vector<float>& samples, double power, double chance, int beat) {
+        bt::SliceEngine engine(kRate, 1);
+        engine.setGlobalChance(chance);
+        engine.setFlangerChance(1);
+        engine.setFlangerPower(power);
+        engine.setGlobalBeat(beat);
+        engine.append(bufferOf(1, samples));
+        engine.play();
+        std::vector<float> left(kFrames);
+        std::vector<float> right(kFrames);
+        engine.render(left.data(), right.data(), kFrames);
+        CHECK(left[2500] == right[2500]);
+        return left;
+    };
+
+    const std::vector<float> dry = play(held, 0, 1, 0);
+    CHECK(dry[2500] == 1.0f);
+
+    const std::vector<float> gated = play(held, 1, 0, 0);
+    CHECK(gated[2500] == 1.0f);
+
+    // Full power is an even mix. The delay line is still empty, so only the dry half is heard.
+    const std::vector<float> open = play(held, 1, 1, 0);
+    CHECK(open[150] == 0.5f);
+    // Feedback has filled the line, so a constant sits above that dry half.
+    CHECK(open[2500] > 1.5f);
+
+    // Two beats barely move the delay. A sixteenth sweeps it across the tone.
+    const std::vector<float> slow = play(tone, 1, 1, 1);
+    const std::vector<float> fast = play(tone, 1, 1, -4);
+    double diff = 0.0;
+    for (int i = 1500; i < 3500; ++i) {
+        diff += std::fabs(static_cast<double>(slow[i]) - static_cast<double>(fast[i]));
+    }
+    CHECK(diff > 50.0);
+}
+
+void testTranceFollowsPowerAndBeat() {
+    // 120 BPM at 48 kHz. Seed 1 draws 11101010 first: three half-beats of sustain, then a gap.
+    // A 1/16 beat is 1500 frames, so one step is 750. The attack is 4 ms, 192 frames.
+    constexpr int kRate = 48000;
+    constexpr int kFrames = 4000;
+
+    const std::vector<float> held(kFrames, 1.0f);
+
+    auto play = [&](double power, double chance, int beat) {
+        bt::SliceEngine engine(kRate, 1);
+        engine.setGlobalChance(chance);
+        engine.setTranceChance(1);
+        engine.setTrancePower(power);
+        engine.setGlobalBeat(beat);
+        engine.append(bufferOf(1, held));
+        engine.play();
+        std::vector<float> left(kFrames);
+        std::vector<float> right(kFrames);
+        engine.render(left.data(), right.data(), kFrames);
+        CHECK(left[2000] == right[2000]);
+        return left;
+    };
+
+    const std::vector<float> dry = play(0, 1, -4);
+    CHECK(dry[2800] == 1.0f);
+
+    const std::vector<float> gated = play(1, 0, -4);
+    CHECK(gated[2800] == 1.0f);
+
+    // The slice fade has finished. The gate is halfway up its attack, then holding, then shut.
+    const std::vector<float> open = play(1, 1, -4);
+    CHECK(near(open[96], 0.5));
+    CHECK(open[2000] == 1.0f);
+    CHECK(open[2400] == 1.0f);
+    CHECK(open[2500] > 0.4f);
+    CHECK(open[2500] < 0.9f);
+    CHECK(open[2800] == 0.0f);
+
+    // Half power leaves half of the dry signal in the gap and the whole sustain.
+    const std::vector<float> mixed = play(0.5, 1, -4);
+    CHECK(mixed[2000] == 1.0f);
+    CHECK(mixed[2800] == 0.5f);
+
+    // One beat is four times the step, so this same moment is still inside the sustain.
+    const std::vector<float> wide = play(1, 1, 0);
+    CHECK(wide[400] == 1.0f);
+    CHECK(wide[2800] == 1.0f);
+    CHECK(wide[96] < 0.4f);
+}
+
 } // namespace
 
 int main() {
@@ -709,6 +808,8 @@ int main() {
     testClearWhilePlayingFadesTheHeardTrack();
     testReverseSplitsTheSlice();
     testFilterFollowsPowerAndBeat();
+    testFlangerFollowsPowerAndBeat();
+    testTranceFollowsPowerAndBeat();
 
     if (g_failed != 0) {
         std::printf("%d check(s) failed\n", g_failed);

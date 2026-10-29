@@ -32,6 +32,10 @@ export interface ViewActions {
     setReverseChance: (chance: number) => void
     setFilterPower: (power: number) => void
     setFilterChance: (chance: number) => void
+    setFlangerPower: (power: number) => void
+    setFlangerChance: (chance: number) => void
+    setTrancePower: (power: number) => void
+    setTranceChance: (chance: number) => void
     setOutput: (volume: number, pan: number) => void
 }
 
@@ -116,6 +120,10 @@ export class WebViewModel {
     reverseChance = 0
     filterPower = 1
     filterChance = 0
+    flangerPower = 1
+    flangerChance = 0
+    trancePower = 1
+    tranceChance = 0
     outputVolume = 1
     outputPan = 0
     factoryBanks: FactoryBank[] = []
@@ -386,6 +394,54 @@ export class WebViewModel {
         this.filterChance = chance
         this.notify()
         this.actions?.setFilterChance(chance)
+    }
+
+    setFlangerPower(power: number) {
+        if (!Number.isFinite(power) || power < 0 || power > 1) {
+            return
+        }
+        if (power === this.flangerPower) {
+            return
+        }
+        this.flangerPower = power
+        this.notify()
+        this.actions?.setFlangerPower(power)
+    }
+
+    setFlangerChance(chance: number) {
+        if (!Number.isFinite(chance) || chance < 0 || chance > 1) {
+            return
+        }
+        if (chance === this.flangerChance) {
+            return
+        }
+        this.flangerChance = chance
+        this.notify()
+        this.actions?.setFlangerChance(chance)
+    }
+
+    setTrancePower(power: number) {
+        if (!Number.isFinite(power) || power < 0 || power > 1) {
+            return
+        }
+        if (power === this.trancePower) {
+            return
+        }
+        this.trancePower = power
+        this.notify()
+        this.actions?.setTrancePower(power)
+    }
+
+    setTranceChance(chance: number) {
+        if (!Number.isFinite(chance) || chance < 0 || chance > 1) {
+            return
+        }
+        if (chance === this.tranceChance) {
+            return
+        }
+        this.tranceChance = chance
+        this.notify()
+        this.actions?.setTranceChance(chance)
     }
 
     // Master mix. Volume is 0..1.2 and snaps to 1. Pan is -1..1 and snaps to 0.

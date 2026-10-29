@@ -54,6 +54,14 @@ public:
     static constexpr double kFilterPowerMax = 1;
     static constexpr double kFilterChanceMin = 0;
     static constexpr double kFilterChanceMax = 1;
+    static constexpr double kFlangerPowerMin = 0;
+    static constexpr double kFlangerPowerMax = 1;
+    static constexpr double kFlangerChanceMin = 0;
+    static constexpr double kFlangerChanceMax = 1;
+    static constexpr double kTrancePowerMin = 0;
+    static constexpr double kTrancePowerMax = 1;
+    static constexpr double kTranceChanceMin = 0;
+    static constexpr double kTranceChanceMax = 1;
     static constexpr double kGlobalChanceMin = 0;
     static constexpr double kGlobalChanceMax = 1;
     // Global beat is 2^exponent beats. -4 is 1/16, 1 is 2.
@@ -95,6 +103,14 @@ public:
     void setFilterPower(double power);
     // chance is 0..1. Default 0. The filter's share of the effect chosen when the sequence is written.
     void setFilterChance(double chance);
+    // power is 0..1 and scales the flanger. Default 1. Flanger.cpp maps this onto feedback and dry/wet.
+    void setFlangerPower(double power);
+    // chance is 0..1. Default 0. The flanger's share of the effect chosen when the sequence is written.
+    void setFlangerChance(double chance);
+    // power is 0..1 and scales the trance gate. Default 1. This is the dry/wet mix.
+    void setTrancePower(double power);
+    // chance is 0..1. Default 0. The trance gate's share of the effect chosen when the sequence is written.
+    void setTranceChance(double chance);
     // volume is 0..1.2 and scales the mix. The host multiplies that by note velocity.
     // pan is -1..1 and balances the two channels.
     void setOutput(double volume, double pan);
@@ -154,6 +170,10 @@ private:
     double reverseChance_ = 0;
     double filterPower_ = 1;
     double filterChance_ = 0;
+    double flangerPower_ = 1;
+    double flangerChance_ = 0;
+    double trancePower_ = 1;
+    double tranceChance_ = 0;
     double volume_ = 1;
     double pan_ = 0;
     EffectsBank currentBank_;

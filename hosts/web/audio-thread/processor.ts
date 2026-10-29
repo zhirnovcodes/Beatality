@@ -31,6 +31,10 @@ interface Core {
     bt_set_reverse_chance: (engine: number, chance: number) => void
     bt_set_filter_power: (engine: number, power: number) => void
     bt_set_filter_chance: (engine: number, chance: number) => void
+    bt_set_flanger_power: (engine: number, power: number) => void
+    bt_set_flanger_chance: (engine: number, chance: number) => void
+    bt_set_trance_power: (engine: number, power: number) => void
+    bt_set_trance_chance: (engine: number, chance: number) => void
     bt_set_track: (
         engine: number,
         index: number,
@@ -171,6 +175,26 @@ interface FilterChanceMessage {
     chance: number
 }
 
+interface FlangerPowerMessage {
+    type: 'flangerPower'
+    power: number
+}
+
+interface FlangerChanceMessage {
+    type: 'flangerChance'
+    chance: number
+}
+
+interface TrancePowerMessage {
+    type: 'trancePower'
+    power: number
+}
+
+interface TranceChanceMessage {
+    type: 'tranceChance'
+    chance: number
+}
+
 interface TrackMessage {
     type: 'track'
     index: number
@@ -239,6 +263,10 @@ type HostMessage =
     | ReverseChanceMessage
     | FilterPowerMessage
     | FilterChanceMessage
+    | FlangerPowerMessage
+    | FlangerChanceMessage
+    | TrancePowerMessage
+    | TranceChanceMessage
     | TrackMessage
     | OutputMessage
     | FreeMessage
@@ -459,6 +487,18 @@ class BeatalityProcessor extends AudioWorkletProcessor {
             this.postSnapshot(0)
         } else if (message.type === 'filterChance') {
             this.core!.bt_set_filter_chance(this.engine, message.chance)
+            this.postSnapshot(0)
+        } else if (message.type === 'flangerPower') {
+            this.core!.bt_set_flanger_power(this.engine, message.power)
+            this.postSnapshot(0)
+        } else if (message.type === 'flangerChance') {
+            this.core!.bt_set_flanger_chance(this.engine, message.chance)
+            this.postSnapshot(0)
+        } else if (message.type === 'trancePower') {
+            this.core!.bt_set_trance_power(this.engine, message.power)
+            this.postSnapshot(0)
+        } else if (message.type === 'tranceChance') {
+            this.core!.bt_set_trance_chance(this.engine, message.chance)
             this.postSnapshot(0)
         } else if (message.type === 'track') {
             this.core!.bt_set_track(

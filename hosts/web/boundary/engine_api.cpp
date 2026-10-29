@@ -242,6 +242,34 @@ BT_EXPORT void bt_set_filter_chance(Instance* instance, double chance) {
     instance->engine.setFilterChance(chance);
 }
 
+BT_EXPORT void bt_set_flanger_power(Instance* instance, double power) {
+    if (instance == nullptr || !(power >= bt::SliceEngine::kFlangerPowerMin) || power > bt::SliceEngine::kFlangerPowerMax) {
+        return;
+    }
+    instance->engine.setFlangerPower(power);
+}
+
+BT_EXPORT void bt_set_flanger_chance(Instance* instance, double chance) {
+    if (instance == nullptr || !(chance >= bt::SliceEngine::kFlangerChanceMin) || chance > bt::SliceEngine::kFlangerChanceMax) {
+        return;
+    }
+    instance->engine.setFlangerChance(chance);
+}
+
+BT_EXPORT void bt_set_trance_power(Instance* instance, double power) {
+    if (instance == nullptr || !(power >= bt::SliceEngine::kTrancePowerMin) || power > bt::SliceEngine::kTrancePowerMax) {
+        return;
+    }
+    instance->engine.setTrancePower(power);
+}
+
+BT_EXPORT void bt_set_trance_chance(Instance* instance, double chance) {
+    if (instance == nullptr || !(chance >= bt::SliceEngine::kTranceChanceMin) || chance > bt::SliceEngine::kTranceChanceMax) {
+        return;
+    }
+    instance->engine.setTranceChance(chance);
+}
+
 // start is a fraction of the file, 0..1. length is 0..1. loop is 0 or 1.
 // volume is 0..1.2. pan is -1..1.
 BT_EXPORT void bt_set_track(Instance* instance, int index, double start, double length, int loop, double volume, double pan) {

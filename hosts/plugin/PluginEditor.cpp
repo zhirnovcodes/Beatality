@@ -309,6 +309,30 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
             }
             completion(true);
         })
+        .withNativeFunction("setFlangerPower", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setFlangerPower(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setFlangerChance", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setFlangerChance(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setTrancePower", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setTrancePower(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setTranceChance", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setTranceChance(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
         .withNativeFunction("setOutput", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
             if (args.size() >= 2) {
                 processor.setOutput(static_cast<double>(args[0]), static_cast<double>(args[1]));
@@ -449,6 +473,10 @@ void Editor::pushBank() {
     object->setProperty("reverseChance", processor.reverseChance());
     object->setProperty("filterPower", processor.filterPower());
     object->setProperty("filterChance", processor.filterChance());
+    object->setProperty("flangerPower", processor.flangerPower());
+    object->setProperty("flangerChance", processor.flangerChance());
+    object->setProperty("trancePower", processor.trancePower());
+    object->setProperty("tranceChance", processor.tranceChance());
     object->setProperty("volume", processor.outputVolume());
     object->setProperty("pan", processor.outputPan());
     deliver("onBank", juce::var(object));

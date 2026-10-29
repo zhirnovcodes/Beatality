@@ -158,6 +158,26 @@ export class EngineClient {
         this.node?.port.postMessage({ type: 'filterChance', chance })
     }
 
+    async setFlangerPower(power: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'flangerPower', power })
+    }
+
+    async setFlangerChance(chance: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'flangerChance', chance })
+    }
+
+    async setTrancePower(power: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'trancePower', power })
+    }
+
+    async setTranceChance(chance: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'tranceChance', chance })
+    }
+
     async setTrack(
         index: number,
         start: number,

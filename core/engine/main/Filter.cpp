@@ -19,7 +19,7 @@ struct Settings {
 };
 
 constexpr Settings kPower0{0.0f, 1.0f, 0.0f, 1.0f};
-constexpr Settings kPower1{0.5f, 0.1f, 0.9f, 0.75f};
+constexpr Settings kPower1{0.5f, 0.1f, 0.9f, 1.0f};
 
 float blend(float from, float to, float power) {
     return from + (to - from) * power;

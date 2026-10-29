@@ -117,6 +117,26 @@ export interface FilterChanceMessage {
     chance: number
 }
 
+export interface FlangerPowerMessage {
+    type: 'flangerPower'
+    power: number
+}
+
+export interface FlangerChanceMessage {
+    type: 'flangerChance'
+    chance: number
+}
+
+export interface TrancePowerMessage {
+    type: 'trancePower'
+    power: number
+}
+
+export interface TranceChanceMessage {
+    type: 'tranceChance'
+    chance: number
+}
+
 export interface TrackMessage {
     type: 'track'
     index: number
@@ -185,6 +205,10 @@ export type HostMessage =
     | ReverseChanceMessage
     | FilterPowerMessage
     | FilterChanceMessage
+    | FlangerPowerMessage
+    | FlangerChanceMessage
+    | TrancePowerMessage
+    | TranceChanceMessage
     | TrackMessage
     | OutputMessage
     | FreeMessage

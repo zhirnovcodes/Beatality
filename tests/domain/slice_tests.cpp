@@ -241,6 +241,20 @@ void testEffectIdsFollowTheWeights() {
     for (int i = 0; i < 4; ++i) {
         CHECK(filter.effectAt(i) == bt::EffectId::Filter);
     }
+
+    bt::Rng flangerRng(9);
+    bt::Sequence flanger;
+    flanger.generate(4, 1, flangerRng, 0.0, 0.0, 0.0, 0.0, 1.0);
+    for (int i = 0; i < 4; ++i) {
+        CHECK(flanger.effectAt(i) == bt::EffectId::Flanger);
+    }
+
+    bt::Rng tranceRng(9);
+    bt::Sequence trance;
+    trance.generate(4, 1, tranceRng, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+    for (int i = 0; i < 4; ++i) {
+        CHECK(trance.effectAt(i) == bt::EffectId::Trance);
+    }
     CHECK(reversed.effectAt(4) == bt::EffectId::Delay);
     CHECK(reversed.effectAt(5) == bt::EffectId::Delay);
 

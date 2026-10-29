@@ -194,7 +194,7 @@ AppendPayload* payloadFromReader(juce::AudioFormatReader& reader, double rate, s
 class CommandQueue {
 public:
     struct Slot {
-        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, GlobalPower, GlobalBeat, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, ReversePower, ReverseChance, FilterPower, FilterChance, Track, Output, Pack };
+        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, GlobalPower, GlobalBeat, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, ReversePower, ReverseChance, FilterPower, FilterChance, FlangerPower, FlangerChance, TrancePower, TranceChance, Track, Output, Pack };
         Kind kind = Kind::Randomize;
         AppendPayload* append = nullptr;
         PackPayload* pack = nullptr;
@@ -367,6 +367,10 @@ struct Processor::Impl {
         engine->setReverseChance(reverseChance);
         engine->setFilterPower(filterPower);
         engine->setFilterChance(filterChance);
+        engine->setFlangerPower(flangerPower);
+        engine->setFlangerChance(flangerChance);
+        engine->setTrancePower(trancePower);
+        engine->setTranceChance(tranceChance);
         engine->setOutput(outputVolume, outputPan);
     }
 
@@ -566,6 +570,38 @@ struct Processor::Impl {
         engine->setFilterChance(chance);
     }
 
+    void applyFlangerPower(double power) {
+        flangerPower = power;
+        if (engine == nullptr) {
+            return;
+        }
+        engine->setFlangerPower(power);
+    }
+
+    void applyFlangerChance(double chance) {
+        flangerChance = chance;
+        if (engine == nullptr) {
+            return;
+        }
+        engine->setFlangerChance(chance);
+    }
+
+    void applyTrancePower(double power) {
+        trancePower = power;
+        if (engine == nullptr) {
+            return;
+        }
+        engine->setTrancePower(power);
+    }
+
+    void applyTranceChance(double chance) {
+        tranceChance = chance;
+        if (engine == nullptr) {
+            return;
+        }
+        engine->setTranceChance(chance);
+    }
+
     void applyOutput(double volume, double pan) {
         outputVolume = volume;
         outputPan = pan;
@@ -648,6 +684,18 @@ struct Processor::Impl {
             break;
         case CommandQueue::Slot::Kind::FilterChance:
             applyFilterChance(slot.first);
+            break;
+        case CommandQueue::Slot::Kind::FlangerPower:
+            applyFlangerPower(slot.first);
+            break;
+        case CommandQueue::Slot::Kind::FlangerChance:
+            applyFlangerChance(slot.first);
+            break;
+        case CommandQueue::Slot::Kind::TrancePower:
+            applyTrancePower(slot.first);
+            break;
+        case CommandQueue::Slot::Kind::TranceChance:
+            applyTranceChance(slot.first);
             break;
         case CommandQueue::Slot::Kind::Track:
             applyTrack(slot.index, slot.first, slot.second, slot.flag, slot.third, slot.fourth);
@@ -908,6 +956,10 @@ struct Processor::Impl {
     double reverseChance = 0;
     double filterPower = 1;
     double filterChance = 0;
+    double flangerPower = 1;
+    double flangerChance = 0;
+    double trancePower = 1;
+    double tranceChance = 0;
     double outputVolume = 1;
     double outputPan = 0;
 };
@@ -1274,6 +1326,50 @@ void Processor::setFilterChance(double chance) {
     savedFilterChance = chance;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::FilterChance;
+    slot.first = chance;
+    impl->queue.push(slot);
+}
+
+void Processor::setFlangerPower(double power) {
+    if (!std::isfinite(power) || power < bt::SliceEngine::kFlangerPowerMin || power > bt::SliceEngine::kFlangerPowerMax) {
+        return;
+    }
+    savedFlangerPower = power;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::FlangerPower;
+    slot.first = power;
+    impl->queue.push(slot);
+}
+
+void Processor::setFlangerChance(double chance) {
+    if (!std::isfinite(chance) || chance < bt::SliceEngine::kFlangerChanceMin || chance > bt::SliceEngine::kFlangerChanceMax) {
+        return;
+    }
+    savedFlangerChance = chance;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::FlangerChance;
+    slot.first = chance;
+    impl->queue.push(slot);
+}
+
+void Processor::setTrancePower(double power) {
+    if (!std::isfinite(power) || power < bt::SliceEngine::kTrancePowerMin || power > bt::SliceEngine::kTrancePowerMax) {
+        return;
+    }
+    savedTrancePower = power;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::TrancePower;
+    slot.first = power;
+    impl->queue.push(slot);
+}
+
+void Processor::setTranceChance(double chance) {
+    if (!std::isfinite(chance) || chance < bt::SliceEngine::kTranceChanceMin || chance > bt::SliceEngine::kTranceChanceMax) {
+        return;
+    }
+    savedTranceChance = chance;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::TranceChance;
     slot.first = chance;
     impl->queue.push(slot);
 }

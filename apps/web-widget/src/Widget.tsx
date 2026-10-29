@@ -153,6 +153,10 @@ export function Widget({
         model.setReverseChance(randomUnit())
         model.setFilterPower(randomUnit())
         model.setFilterChance(randomUnit())
+        model.setFlangerPower(randomUnit())
+        model.setFlangerChance(randomUnit())
+        model.setTrancePower(randomUnit())
+        model.setTranceChance(randomUnit())
     }
 
     const onSelectBank = () => {
@@ -342,6 +346,8 @@ export function Widget({
                             <FxCap name="REVERB" left={180} />
                             <FxCap name="REVERSE" left={228} />
                             <FxCap name="FILTER" left={276} />
+                            <FxCap name="FLANGER" left={324} />
+                            <FxCap name="TRANCE" left={372} />
                             {laterEffects.map((effect) => (
                                 <FxCap key={effect.id} name={effect.name} left={effect.cap} />
                             ))}
@@ -458,6 +464,46 @@ export function Widget({
                                 step={0.01}
                                 value={model.filterChance}
                                 onInput={onFx((value) => model.setFilterChance(value))}
+                            />
+                            <FxSlider
+                                id="fx-flanger-power"
+                                label="Flanger power"
+                                left={325}
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={model.flangerPower}
+                                onInput={onFx((value) => model.setFlangerPower(value))}
+                            />
+                            <FxSlider
+                                id="fx-flanger-chance"
+                                label="Flanger chance (%)"
+                                left={343}
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={model.flangerChance}
+                                onInput={onFx((value) => model.setFlangerChance(value))}
+                            />
+                            <FxSlider
+                                id="fx-trance-power"
+                                label="Trance power"
+                                left={373}
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={model.trancePower}
+                                onInput={onFx((value) => model.setTrancePower(value))}
+                            />
+                            <FxSlider
+                                id="fx-trance-chance"
+                                label="Trance chance (%)"
+                                left={391}
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={model.tranceChance}
+                                onInput={onFx((value) => model.setTranceChance(value))}
                             />
                             {laterEffects.map((effect) => (
                                 <Fragment key={effect.id}>
@@ -681,8 +727,6 @@ export function Widget({
 }
 
 const laterEffects = [
-    { id: 'flanger', name: 'FLANGER', cap: 324, power: 325, chance: 343 },
-    { id: 'trance', name: 'TRANCE', cap: 372, power: 373, chance: 391 },
     { id: 'shift', name: 'SHIFT', cap: 420, power: 421, chance: 439 },
 ]
 

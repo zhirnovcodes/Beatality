@@ -6,13 +6,13 @@
 namespace bt {
 
 SliceEngine::SliceEngine(double sampleRate, std::uint64_t seed)
-    : sampleRate_(sampleRate), currentBank_(sampleRate), decayingBank_(sampleRate), rng_(seed) {
+    : sampleRate_(sampleRate), currentBank_(sampleRate, seed), decayingBank_(sampleRate, seed + 1), rng_(seed) {
     listen();
 }
 
 void SliceEngine::play() {
     if (sequence_.empty()) {
-        sequence_.generate(grid_.slotCount(), bank_.count(), rng_, reverbChance_, delayChance_, reverseChance_, filterChance_);
+        sequence_.generate(grid_.slotCount(), bank_.count(), rng_, reverbChance_, delayChance_, reverseChance_, filterChance_, flangerChance_, tranceChance_);
     }
     listen();
     if (playing_ || play_.fadingOut()) {
@@ -49,7 +49,7 @@ void SliceEngine::randomize() {
     if (live) {
         from = bufferForSlot(position_ / sliceFrames());
     }
-    sequence_.generate(grid_.slotCount(), bank_.count(), rng_, reverbChance_, delayChance_, reverseChance_, filterChance_);
+    sequence_.generate(grid_.slotCount(), bank_.count(), rng_, reverbChance_, delayChance_, reverseChance_, filterChance_, flangerChance_, tranceChance_);
     if (live) {
         handoff(from);
     }
@@ -280,6 +280,14 @@ void SliceEngine::setFilterPower(double power) { filterPower_ = power; }
 
 void SliceEngine::setFilterChance(double chance) { filterChance_ = chance; }
 
+void SliceEngine::setFlangerPower(double power) { flangerPower_ = power; }
+
+void SliceEngine::setFlangerChance(double chance) { flangerChance_ = chance; }
+
+void SliceEngine::setTrancePower(double power) { trancePower_ = power; }
+
+void SliceEngine::setTranceChance(double chance) { tranceChance_ = chance; }
+
 void SliceEngine::setOutput(double volume, double pan) {
     volume_ = clamp(volume, 0.0, 1.2);
     pan_ = clamp(pan, -1.0, 1.0);
@@ -403,6 +411,10 @@ void SliceEngine::affect(EffectsBank& bank, int slot, int position, float& left,
         localPower = delayPower_;
     } else if (effect == EffectId::Filter) {
         localPower = filterPower_;
+    } else if (effect == EffectId::Flanger) {
+        localPower = flangerPower_;
+    } else if (effect == EffectId::Trance) {
+        localPower = trancePower_;
     }
     const float wet = static_cast<float>(unit(localPower * globalPower_));
     float outL = 0.0f;
@@ -546,9 +558,9 @@ void SliceEngine::syncSequence(int oldExp, int oldSlots) {
     const int exp = grid_.sliceExp();
     const int slots = grid_.slotCount();
     if (exp != oldExp) {
-        sequence_.generate(slots, bank_.count(), rng_, reverbChance_, delayChance_, reverseChance_, filterChance_);
+        sequence_.generate(slots, bank_.count(), rng_, reverbChance_, delayChance_, reverseChance_, filterChance_, flangerChance_, tranceChance_);
     } else if (slots > oldSlots) {
-        sequence_.append(slots, rng_, reverbChance_, delayChance_, reverseChance_, filterChance_);
+        sequence_.append(slots, rng_, reverbChance_, delayChance_, reverseChance_, filterChance_, flangerChance_, tranceChance_);
     } else if (slots < oldSlots) {
         sequence_.crop(slots);
     }

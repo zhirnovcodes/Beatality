@@ -57,6 +57,10 @@ public:
     void setReverseChance(double chance);
     void setFilterPower(double power);
     void setFilterChance(double chance);
+    void setFlangerPower(double power);
+    void setFlangerChance(double chance);
+    void setTrancePower(double power);
+    void setTranceChance(double chance);
     void setOutput(double volume, double pan);
     void setTrack(int index, double start, double length, bool loop, double volume, double pan);
     // Factory banks shipped with the plugin. Each entry is a name and a .beatality file name.
@@ -85,6 +89,10 @@ public:
     double reverseChance() const { return savedReverseChance; }
     double filterPower() const { return savedFilterPower; }
     double filterChance() const { return savedFilterChance; }
+    double flangerPower() const { return savedFlangerPower; }
+    double flangerChance() const { return savedFlangerChance; }
+    double trancePower() const { return savedTrancePower; }
+    double tranceChance() const { return savedTranceChance; }
     double outputVolume() const { return savedVolume; }
     double outputPan() const { return savedPan; }
     double trackStart(int index) const;
@@ -143,6 +151,10 @@ private:
     double savedReverseChance = 0;
     double savedFilterPower = 1;
     double savedFilterChance = 0;
+    double savedFlangerPower = 1;
+    double savedFlangerChance = 0;
+    double savedTrancePower = 1;
+    double savedTranceChance = 0;
     double savedVolume = 1;
     double savedPan = 0;
     std::atomic<std::uint32_t> view{0};

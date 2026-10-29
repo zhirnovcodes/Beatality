@@ -13,6 +13,8 @@ enum class EffectId : std::uint8_t {
     Delay = 2,
     Reverse = 3,
     Filter = 4,
+    Flanger = 5,
+    Trance = 6,
 };
 
 // One buffer of kMaxSlots indices, allocated with the object.
@@ -28,9 +30,9 @@ public:
     const std::uint16_t* data() const;
 
     void clear();
-    // reverbChance, delayChance, reverseChance, and filterChance weight the effect id. A sum of 0 stores none.
-    void generate(int slotCount, int trackCount, Rng& rng, double reverbChance = 0, double delayChance = 0, double reverseChance = 0, double filterChance = 0);
-    void append(int slotCount, Rng& rng, double reverbChance = 0, double delayChance = 0, double reverseChance = 0, double filterChance = 0); // grow to slotCount
+    // reverbChance, delayChance, reverseChance, filterChance, flangerChance, and tranceChance weight the effect id. A sum of 0 stores none.
+    void generate(int slotCount, int trackCount, Rng& rng, double reverbChance = 0, double delayChance = 0, double reverseChance = 0, double filterChance = 0, double flangerChance = 0, double tranceChance = 0);
+    void append(int slotCount, Rng& rng, double reverbChance = 0, double delayChance = 0, double reverseChance = 0, double filterChance = 0, double flangerChance = 0, double tranceChance = 0); // grow to slotCount
     void crop(int slotCount); // keep the prefix, clear the dropped tail
     // Replaces the live prefix. size 0 clears. The caller keeps slots for the copy.
     void assign(const std::uint16_t* slots, int size, int savedCount);

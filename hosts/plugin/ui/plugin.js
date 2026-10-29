@@ -16,6 +16,10 @@ const state = {
     reverseChance: 0,
     filterPower: 1,
     filterChance: 0,
+    flangerPower: 1,
+    flangerChance: 0,
+    trancePower: 1,
+    tranceChance: 0,
     playhead: 0,
     playTrack: -1,
     playSlot: -1,
@@ -545,6 +549,22 @@ function applyBankSettings(bank) {
         state.filterChance = Number(bank.filterChance)
         setRange('filter-chance', state.filterChance)
     }
+    if (bank.flangerPower != null && Number.isFinite(Number(bank.flangerPower))) {
+        state.flangerPower = Number(bank.flangerPower)
+        setRange('flanger-power', state.flangerPower)
+    }
+    if (bank.flangerChance != null && Number.isFinite(Number(bank.flangerChance))) {
+        state.flangerChance = Number(bank.flangerChance)
+        setRange('flanger-chance', state.flangerChance)
+    }
+    if (bank.trancePower != null && Number.isFinite(Number(bank.trancePower))) {
+        state.trancePower = Number(bank.trancePower)
+        setRange('trance-power', state.trancePower)
+    }
+    if (bank.tranceChance != null && Number.isFinite(Number(bank.tranceChance))) {
+        state.tranceChance = Number(bank.tranceChance)
+        setRange('trance-chance', state.tranceChance)
+    }
     const volume = Number(bank.volume)
     const pan = Number(bank.pan)
     if (Number.isFinite(volume)) {
@@ -729,6 +749,10 @@ function wire() {
     document.getElementById('reverse-chance')?.addEventListener('input', onReverseChance)
     document.getElementById('filter-power')?.addEventListener('input', onFilterPower)
     document.getElementById('filter-chance')?.addEventListener('input', onFilterChance)
+    document.getElementById('flanger-power')?.addEventListener('input', onFlangerPower)
+    document.getElementById('flanger-chance')?.addEventListener('input', onFlangerChance)
+    document.getElementById('trance-power')?.addEventListener('input', onTrancePower)
+    document.getElementById('trance-chance')?.addEventListener('input', onTranceChance)
 
     document.getElementById('master-volume')?.addEventListener('input', onMaster)
     document.getElementById('master-pan')?.addEventListener('input', onMaster)
@@ -1064,6 +1088,58 @@ function onFilterChance() {
     }
     state.filterChance = chance
     void native('setFilterChance', chance)
+}
+
+function onFlangerPower() {
+    const input = document.getElementById('flanger-power')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const power = input.valueAsNumber
+    if (power === state.flangerPower) {
+        return
+    }
+    state.flangerPower = power
+    void native('setFlangerPower', power)
+}
+
+function onFlangerChance() {
+    const input = document.getElementById('flanger-chance')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const chance = input.valueAsNumber
+    if (chance === state.flangerChance) {
+        return
+    }
+    state.flangerChance = chance
+    void native('setFlangerChance', chance)
+}
+
+function onTrancePower() {
+    const input = document.getElementById('trance-power')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const power = input.valueAsNumber
+    if (power === state.trancePower) {
+        return
+    }
+    state.trancePower = power
+    void native('setTrancePower', power)
+}
+
+function onTranceChance() {
+    const input = document.getElementById('trance-chance')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const chance = input.valueAsNumber
+    if (chance === state.tranceChance) {
+        return
+    }
+    state.tranceChance = chance
+    void native('setTranceChance', chance)
 }
 
 function onMaster(event) {

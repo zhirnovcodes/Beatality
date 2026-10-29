@@ -22,17 +22,17 @@ void clearEffects(EffectId* effects, int first, int last) {
     }
 }
 
-// Walk reverb, then delay, then reverse, then filter. The pick is compared with the running total over the sum.
-EffectId pickEffect(Rng& rng, double reverbChance, double delayChance, double reverseChance, double filterChance) {
-    const double sum = reverbChance + delayChance + reverseChance + filterChance;
+// Walk reverb, then delay, then reverse, then filter, then flanger, then trance. The pick is compared with the running total over the sum.
+EffectId pickEffect(Rng& rng, double reverbChance, double delayChance, double reverseChance, double filterChance, double flangerChance, double tranceChance) {
+    const double sum = reverbChance + delayChance + reverseChance + filterChance + flangerChance + tranceChance;
     if (sum == 0.0) {
         return EffectId::None;
     }
     const float pick = rng.nextFloat();
-    const double weights[] = {reverbChance, delayChance, reverseChance, filterChance};
-    const EffectId ids[] = {EffectId::Reverb, EffectId::Delay, EffectId::Reverse, EffectId::Filter};
+    const double weights[] = {reverbChance, delayChance, reverseChance, filterChance, flangerChance, tranceChance};
+    const EffectId ids[] = {EffectId::Reverb, EffectId::Delay, EffectId::Reverse, EffectId::Filter, EffectId::Flanger, EffectId::Trance};
     double current = 0.0;
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 6; ++i) {
         current += weights[i];
         if (pick < current / sum) {
             return ids[i];
@@ -59,7 +59,7 @@ void Sequence::clear() {
     savedCount_ = 0;
 }
 
-void Sequence::generate(int slotCount, int trackCount, Rng& rng, double reverbChance, double delayChance, double reverseChance, double filterChance) {
+void Sequence::generate(int slotCount, int trackCount, Rng& rng, double reverbChance, double delayChance, double reverseChance, double filterChance, double flangerChance, double tranceChance) {
     const int previous = size_;
     for (int i = 0; i < slotCount; ++i) {
         slots_[i] = static_cast<std::uint16_t>(rng.nextInt(trackCount));
@@ -69,7 +69,7 @@ void Sequence::generate(int slotCount, int trackCount, Rng& rng, double reverbCh
         rolls_[i] = rng.nextFloat();
     }
     for (int i = 0; i < slotCount; ++i) {
-        effects_[i] = pickEffect(rng, reverbChance, delayChance, reverseChance, filterChance);
+        effects_[i] = pickEffect(rng, reverbChance, delayChance, reverseChance, filterChance, flangerChance, tranceChance);
     }
     if (slotCount < previous) {
         clearFrom(slots_, slotCount, previous);
@@ -80,7 +80,7 @@ void Sequence::generate(int slotCount, int trackCount, Rng& rng, double reverbCh
     savedCount_ = trackCount;
 }
 
-void Sequence::append(int slotCount, Rng& rng, double reverbChance, double delayChance, double reverseChance, double filterChance) {
+void Sequence::append(int slotCount, Rng& rng, double reverbChance, double delayChance, double reverseChance, double filterChance, double flangerChance, double tranceChance) {
     const int from = size_;
     for (int i = from; i < slotCount; ++i) {
         slots_[i] = static_cast<std::uint16_t>(rng.nextInt(savedCount_));
@@ -89,7 +89,7 @@ void Sequence::append(int slotCount, Rng& rng, double reverbChance, double delay
         rolls_[i] = rng.nextFloat();
     }
     for (int i = from; i < slotCount; ++i) {
-        effects_[i] = pickEffect(rng, reverbChance, delayChance, reverseChance, filterChance);
+        effects_[i] = pickEffect(rng, reverbChance, delayChance, reverseChance, filterChance, flangerChance, tranceChance);
     }
     size_ = slotCount;
 }
