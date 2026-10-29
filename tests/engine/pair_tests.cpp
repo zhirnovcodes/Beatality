@@ -579,6 +579,53 @@ void testClearWhilePlayingFadesTheHeardTrack() {
     CHECK(near(restarted[30], 0.8f));
 }
 
+void testReverseSplitsTheSlice() {
+    // 120 BPM at 12 kHz is 6000 frames per beat. Half a beat makes two parts.
+    constexpr int kRate = 12000;
+    constexpr int kSlice = 6000;
+    std::vector<float> samples(kSlice * 2);
+    for (int i = 0; i < static_cast<int>(samples.size()); ++i) {
+        samples[i] = 0.0001f * static_cast<float>(i + 1);
+    }
+
+    auto play = [&](double power, double chance, int beat) {
+        bt::SliceEngine engine(kRate, 1);
+        engine.setGlobalChance(chance);
+        engine.setReverseChance(1);
+        engine.setReversePower(power);
+        engine.setGlobalBeat(beat);
+        engine.append(bufferOf(1, samples));
+        engine.play();
+        std::vector<float> left(kSlice);
+        std::vector<float> right(kSlice);
+        engine.render(left.data(), right.data(), kSlice);
+        return left;
+    };
+
+    const std::vector<float> wet = play(1, 1, -1);
+    CHECK(near(wet[100], samples[2899]));
+    CHECK(near(wet[3100], samples[5899]));
+    const int attack = bt::attackFrames(0.5, kRate);
+    const int opening = attack / 2;
+    const float open = static_cast<float>(opening) / static_cast<float>(attack);
+    CHECK(near(wet[opening], samples[opening] + (samples[2999 - opening] - samples[opening]) * open));
+    CHECK(near(wet[2999], samples[2999]));
+
+    const std::vector<float> mixed = play(0.5, 1, -1);
+    CHECK(near(mixed[100], 0.5f * (samples[100] + samples[2899])));
+
+    const std::vector<float> dry = play(0, 1, -1);
+    CHECK(near(dry[100], samples[100]));
+
+    const std::vector<float> gated = play(1, 0, -1);
+    CHECK(near(gated[100], samples[100]));
+
+    const std::vector<float> whole = play(1, 1, 1);
+    const int longAttack = bt::attackFrames(2.0, kRate);
+    const float longOpen = 100.0f / static_cast<float>(longAttack);
+    CHECK(near(whole[100], samples[100] + (samples[5899] - samples[100]) * longOpen));
+}
+
 } // namespace
 
 int main() {
@@ -600,6 +647,7 @@ int main() {
     testEmptyTrackIsSilent();
     testClearWhileStoppedReleasesEveryTrack();
     testClearWhilePlayingFadesTheHeardTrack();
+    testReverseSplitsTheSlice();
 
     if (g_failed != 0) {
         std::printf("%d check(s) failed\n", g_failed);

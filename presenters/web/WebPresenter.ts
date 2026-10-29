@@ -90,6 +90,8 @@ export class WebPresenter {
             setReverbChance: (chance) => void this.perform(() => this.client.setReverbChance(chance)),
             setDelayPower: (power) => void this.perform(() => this.client.setDelayPower(power)),
             setDelayChance: (chance) => void this.perform(() => this.client.setDelayChance(chance)),
+            setReversePower: (power) => void this.perform(() => this.client.setReversePower(power)),
+            setReverseChance: (chance) => void this.perform(() => this.client.setReverseChance(chance)),
             setOutput: (volume, pan) => void this.perform(() => this.client.setOutput(volume, pan)),
         })
         client.onSnapshot = (snapshot) => {

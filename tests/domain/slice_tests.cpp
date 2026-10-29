@@ -226,6 +226,17 @@ void testEffectIdsFollowTheWeights() {
         CHECK(reverb.effectAt(i) == bt::EffectId::Reverb);
     }
 
+    bt::Rng reverseRng(9);
+    bt::Sequence reversed;
+    reversed.generate(4, 1, reverseRng, 0.0, 0.0, 1.0);
+    for (int i = 0; i < 4; ++i) {
+        CHECK(reversed.effectAt(i) == bt::EffectId::Reverse);
+    }
+    reversed.append(6, reverseRng, 0.0, 1.0, 0.0);
+    CHECK(reversed.effectAt(0) == bt::EffectId::Reverse);
+    CHECK(reversed.effectAt(4) == bt::EffectId::Delay);
+    CHECK(reversed.effectAt(5) == bt::EffectId::Delay);
+
     bt::Rng walkRng(2);
     bt::Sequence walked;
     walked.generate(1, 1, walkRng, 0.25, 0.75);

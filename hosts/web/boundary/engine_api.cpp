@@ -214,6 +214,20 @@ BT_EXPORT void bt_set_delay_chance(Instance* instance, double chance) {
     instance->engine.setDelayChance(chance);
 }
 
+BT_EXPORT void bt_set_reverse_power(Instance* instance, double power) {
+    if (instance == nullptr || !(power >= bt::SliceEngine::kReversePowerMin) || power > bt::SliceEngine::kReversePowerMax) {
+        return;
+    }
+    instance->engine.setReversePower(power);
+}
+
+BT_EXPORT void bt_set_reverse_chance(Instance* instance, double chance) {
+    if (instance == nullptr || !(chance >= bt::SliceEngine::kReverseChanceMin) || chance > bt::SliceEngine::kReverseChanceMax) {
+        return;
+    }
+    instance->engine.setReverseChance(chance);
+}
+
 // start is a fraction of the file, 0..1. length is 0..1. loop is 0 or 1.
 // volume is 0..1.2. pan is -1..1.
 BT_EXPORT void bt_set_track(Instance* instance, int index, double start, double length, int loop, double volume, double pan) {

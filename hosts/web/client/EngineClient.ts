@@ -138,6 +138,16 @@ export class EngineClient {
         this.node?.port.postMessage({ type: 'delayChance', chance })
     }
 
+    async setReversePower(power: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'reversePower', power })
+    }
+
+    async setReverseChance(chance: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'reverseChance', chance })
+    }
+
     async setTrack(
         index: number,
         start: number,

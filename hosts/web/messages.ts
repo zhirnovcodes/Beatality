@@ -97,6 +97,16 @@ export interface DelayChanceMessage {
     chance: number
 }
 
+export interface ReversePowerMessage {
+    type: 'reversePower'
+    power: number
+}
+
+export interface ReverseChanceMessage {
+    type: 'reverseChance'
+    chance: number
+}
+
 export interface TrackMessage {
     type: 'track'
     index: number
@@ -161,6 +171,8 @@ export type HostMessage =
     | ReverbChanceMessage
     | DelayPowerMessage
     | DelayChanceMessage
+    | ReversePowerMessage
+    | ReverseChanceMessage
     | TrackMessage
     | OutputMessage
     | FreeMessage

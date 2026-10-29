@@ -194,7 +194,7 @@ AppendPayload* payloadFromReader(juce::AudioFormatReader& reader, double rate, s
 class CommandQueue {
 public:
     struct Slot {
-        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, GlobalPower, GlobalBeat, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, Track, Output, Pack };
+        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, GlobalPower, GlobalBeat, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, ReversePower, ReverseChance, Track, Output, Pack };
         Kind kind = Kind::Randomize;
         AppendPayload* append = nullptr;
         PackPayload* pack = nullptr;
@@ -363,6 +363,8 @@ struct Processor::Impl {
         engine->setReverbChance(reverbChance);
         engine->setDelayPower(delayPower);
         engine->setDelayChance(delayChance);
+        engine->setReversePower(reversePower);
+        engine->setReverseChance(reverseChance);
         engine->setOutput(outputVolume, outputPan);
     }
 
@@ -530,6 +532,22 @@ struct Processor::Impl {
         engine->setDelayChance(chance);
     }
 
+    void applyReversePower(double power) {
+        reversePower = power;
+        if (engine == nullptr) {
+            return;
+        }
+        engine->setReversePower(power);
+    }
+
+    void applyReverseChance(double chance) {
+        reverseChance = chance;
+        if (engine == nullptr) {
+            return;
+        }
+        engine->setReverseChance(chance);
+    }
+
     void applyOutput(double volume, double pan) {
         outputVolume = volume;
         outputPan = pan;
@@ -600,6 +618,12 @@ struct Processor::Impl {
             break;
         case CommandQueue::Slot::Kind::DelayChance:
             applyDelayChance(slot.first);
+            break;
+        case CommandQueue::Slot::Kind::ReversePower:
+            applyReversePower(slot.first);
+            break;
+        case CommandQueue::Slot::Kind::ReverseChance:
+            applyReverseChance(slot.first);
             break;
         case CommandQueue::Slot::Kind::Track:
             applyTrack(slot.index, slot.first, slot.second, slot.flag, slot.third, slot.fourth);
@@ -856,6 +880,8 @@ struct Processor::Impl {
     double reverbChance = 0;
     double delayPower = 1;
     double delayChance = 0;
+    double reversePower = 1;
+    double reverseChance = 0;
     double outputVolume = 1;
     double outputPan = 0;
 };
@@ -1178,6 +1204,28 @@ void Processor::setDelayChance(double chance) {
     savedDelayChance = chance;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::DelayChance;
+    slot.first = chance;
+    impl->queue.push(slot);
+}
+
+void Processor::setReversePower(double power) {
+    if (!std::isfinite(power) || power < bt::SliceEngine::kReversePowerMin || power > bt::SliceEngine::kReversePowerMax) {
+        return;
+    }
+    savedReversePower = power;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::ReversePower;
+    slot.first = power;
+    impl->queue.push(slot);
+}
+
+void Processor::setReverseChance(double chance) {
+    if (!std::isfinite(chance) || chance < bt::SliceEngine::kReverseChanceMin || chance > bt::SliceEngine::kReverseChanceMax) {
+        return;
+    }
+    savedReverseChance = chance;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::ReverseChance;
     slot.first = chance;
     impl->queue.push(slot);
 }

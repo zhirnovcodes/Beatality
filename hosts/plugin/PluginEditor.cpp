@@ -285,6 +285,18 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
             }
             completion(true);
         })
+        .withNativeFunction("setReversePower", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setReversePower(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setReverseChance", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setReverseChance(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
         .withNativeFunction("setOutput", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
             if (args.size() >= 2) {
                 processor.setOutput(static_cast<double>(args[0]), static_cast<double>(args[1]));
@@ -421,6 +433,8 @@ void Editor::pushBank() {
     object->setProperty("reverbChance", processor.reverbChance());
     object->setProperty("delayPower", processor.delayPower());
     object->setProperty("delayChance", processor.delayChance());
+    object->setProperty("reversePower", processor.reversePower());
+    object->setProperty("reverseChance", processor.reverseChance());
     object->setProperty("volume", processor.outputVolume());
     object->setProperty("pan", processor.outputPan());
     deliver("onBank", juce::var(object));

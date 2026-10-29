@@ -14,6 +14,8 @@ constexpr double kAttackBeatMax = 2.0;
 constexpr double kAttackMsMin = 4.0;
 constexpr double kAttackMsMax = 10.0;
 
+} // namespace
+
 // 4 ms at 1/16, 10 ms at 2. Inverse lerp of the beat length, then the fade length.
 int attackFrames(double beats, double sampleRate) {
     double t = (beats - kAttackBeatMin) / (kAttackBeatMax - kAttackBeatMin);
@@ -26,8 +28,6 @@ int attackFrames(double beats, double sampleRate) {
     const int frames = static_cast<int>(std::llround(ms * 0.001 * sampleRate));
     return frames > 0 ? frames : 1;
 }
-
-} // namespace
 
 Delay::Delay(double sampleRate) {
     const int frames = static_cast<int>(std::llround(sampleRate * 4.0));

@@ -53,6 +53,8 @@ public:
     void setReverbChance(double chance);
     void setDelayPower(double power);
     void setDelayChance(double chance);
+    void setReversePower(double power);
+    void setReverseChance(double chance);
     void setOutput(double volume, double pan);
     void setTrack(int index, double start, double length, bool loop, double volume, double pan);
     // Factory banks shipped with the plugin. Each entry is a name and a .beatality file name.
@@ -77,6 +79,8 @@ public:
     double reverbChance() const { return savedReverbChance; }
     double delayPower() const { return savedDelayPower; }
     double delayChance() const { return savedDelayChance; }
+    double reversePower() const { return savedReversePower; }
+    double reverseChance() const { return savedReverseChance; }
     double outputVolume() const { return savedVolume; }
     double outputPan() const { return savedPan; }
     double trackStart(int index) const;
@@ -131,6 +135,8 @@ private:
     double savedReverbChance = 0;
     double savedDelayPower = 1;
     double savedDelayChance = 0;
+    double savedReversePower = 1;
+    double savedReverseChance = 0;
     double savedVolume = 1;
     double savedPan = 0;
     std::atomic<std::uint32_t> view{0};

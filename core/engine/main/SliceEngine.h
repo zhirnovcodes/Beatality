@@ -46,6 +46,10 @@ public:
     static constexpr double kDelayPowerMax = 1;
     static constexpr double kDelayChanceMin = 0;
     static constexpr double kDelayChanceMax = 1;
+    static constexpr double kReversePowerMin = 0;
+    static constexpr double kReversePowerMax = 1;
+    static constexpr double kReverseChanceMin = 0;
+    static constexpr double kReverseChanceMax = 1;
     static constexpr double kGlobalChanceMin = 0;
     static constexpr double kGlobalChanceMax = 1;
     // Global beat is 2^exponent beats. -4 is 1/16, 1 is 2.
@@ -79,6 +83,10 @@ public:
     void setDelayPower(double power);
     // chance is 0..1. Default 0. The delay's share of the effect chosen when the sequence is written.
     void setDelayChance(double chance);
+    // power is 0..1 and scales the reverse. Default 1. This is the dry/wet lerp.
+    void setReversePower(double power);
+    // chance is 0..1. Default 0. The reverse's share of the effect chosen when the sequence is written.
+    void setReverseChance(double chance);
     // volume is 0..1.2 and scales the mix. The host multiplies that by note velocity.
     // pan is -1..1 and balances the two channels.
     void setOutput(double volume, double pan);
@@ -113,7 +121,9 @@ private:
     int heard() const;
 
     const SampleBuffer& bufferForSlot(int slot) const;
+    int frameAt(const SampleBuffer& buffer, const TrackPlay& play, int slot, int local) const;
     int frameIn(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position) const;
+    void readReversed(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position, float& left, float& right) const;
     void remember(const SampleBuffer& buffer);
     void take(const SampleBuffer& buffer, int frame, float& left, float& right) const;
     void hear(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position, float& left, float& right) const;
@@ -132,6 +142,8 @@ private:
     double reverbChance_ = 0;
     double delayPower_ = 1;
     double delayChance_ = 0;
+    double reversePower_ = 1;
+    double reverseChance_ = 0;
     double volume_ = 1;
     double pan_ = 0;
     EffectsBank currentBank_;

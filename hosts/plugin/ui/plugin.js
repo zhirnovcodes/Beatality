@@ -12,6 +12,8 @@ const state = {
     reverbChance: 0,
     delayPower: 1,
     delayChance: 0,
+    reversePower: 1,
+    reverseChance: 0,
     playhead: 0,
     playTrack: -1,
     playSlot: -1,
@@ -525,6 +527,14 @@ function applyBankSettings(bank) {
         state.delayChance = Number(bank.delayChance)
         setRange('delay-chance', state.delayChance)
     }
+    if (bank.reversePower != null && Number.isFinite(Number(bank.reversePower))) {
+        state.reversePower = Number(bank.reversePower)
+        setRange('reverse-power', state.reversePower)
+    }
+    if (bank.reverseChance != null && Number.isFinite(Number(bank.reverseChance))) {
+        state.reverseChance = Number(bank.reverseChance)
+        setRange('reverse-chance', state.reverseChance)
+    }
     const volume = Number(bank.volume)
     const pan = Number(bank.pan)
     if (Number.isFinite(volume)) {
@@ -705,6 +715,8 @@ function wire() {
     document.getElementById('reverb-chance')?.addEventListener('input', onReverbChance)
     document.getElementById('delay-power')?.addEventListener('input', onDelayPower)
     document.getElementById('delay-chance')?.addEventListener('input', onDelayChance)
+    document.getElementById('reverse-power')?.addEventListener('input', onReversePower)
+    document.getElementById('reverse-chance')?.addEventListener('input', onReverseChance)
 
     document.getElementById('master-volume')?.addEventListener('input', onMaster)
     document.getElementById('master-pan')?.addEventListener('input', onMaster)
@@ -988,6 +1000,32 @@ function onDelayChance() {
     }
     state.delayChance = chance
     void native('setDelayChance', chance)
+}
+
+function onReversePower() {
+    const input = document.getElementById('reverse-power')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const power = input.valueAsNumber
+    if (power === state.reversePower) {
+        return
+    }
+    state.reversePower = power
+    void native('setReversePower', power)
+}
+
+function onReverseChance() {
+    const input = document.getElementById('reverse-chance')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const chance = input.valueAsNumber
+    if (chance === state.reverseChance) {
+        return
+    }
+    state.reverseChance = chance
+    void native('setReverseChance', chance)
 }
 
 function onMaster(event) {

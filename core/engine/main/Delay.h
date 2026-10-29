@@ -4,6 +4,9 @@
 
 namespace bt {
 
+// 4 ms at a 1/16 beat, 10 ms at 2 beats. The delay echo and the reversed copy both use this.
+int attackFrames(double beats, double sampleRate);
+
 // Circular delay of the dry frames received since clean().
 // The buffer holds 4 seconds, which is 2 beats at 30 BPM. Allocated with the engine.
 // The beat length is the time offset. The wet mix is also the feedback, so a higher
