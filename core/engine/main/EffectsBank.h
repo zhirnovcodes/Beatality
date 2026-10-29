@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Delay.h"
+#include "Filter.h"
 #include "Reverb.h"
 #include "Reverse.h"
 #include "Sequence.h"
@@ -21,6 +22,7 @@ private:
     Reverb reverb_;
     Delay delay_;
     Reverse reverse_;
+    Filter filter_;
 };
 
 } // namespace bt

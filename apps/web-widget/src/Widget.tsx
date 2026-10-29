@@ -151,6 +151,8 @@ export function Widget({
         model.setReverbChance(randomUnit())
         model.setReversePower(randomUnit())
         model.setReverseChance(randomUnit())
+        model.setFilterPower(randomUnit())
+        model.setFilterChance(randomUnit())
     }
 
     const onSelectBank = () => {
@@ -339,6 +341,7 @@ export function Widget({
                             <FxCap name="DELAY" left={132} />
                             <FxCap name="REVERB" left={180} />
                             <FxCap name="REVERSE" left={228} />
+                            <FxCap name="FILTER" left={276} />
                             {laterEffects.map((effect) => (
                                 <FxCap key={effect.id} name={effect.name} left={effect.cap} />
                             ))}
@@ -435,6 +438,26 @@ export function Widget({
                                 step={0.01}
                                 value={model.reverseChance}
                                 onInput={onFx((value) => model.setReverseChance(value))}
+                            />
+                            <FxSlider
+                                id="fx-filter-power"
+                                label="Filter power"
+                                left={277}
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={model.filterPower}
+                                onInput={onFx((value) => model.setFilterPower(value))}
+                            />
+                            <FxSlider
+                                id="fx-filter-chance"
+                                label="Filter chance (%)"
+                                left={295}
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={model.filterChance}
+                                onInput={onFx((value) => model.setFilterChance(value))}
                             />
                             {laterEffects.map((effect) => (
                                 <Fragment key={effect.id}>
@@ -658,7 +681,6 @@ export function Widget({
 }
 
 const laterEffects = [
-    { id: 'filter', name: 'FILTER', cap: 276, power: 277, chance: 295 },
     { id: 'flanger', name: 'FLANGER', cap: 324, power: 325, chance: 343 },
     { id: 'trance', name: 'TRANCE', cap: 372, power: 373, chance: 391 },
     { id: 'shift', name: 'SHIFT', cap: 420, power: 421, chance: 439 },

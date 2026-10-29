@@ -30,6 +30,8 @@ export interface ViewActions {
     setDelayChance: (chance: number) => void
     setReversePower: (power: number) => void
     setReverseChance: (chance: number) => void
+    setFilterPower: (power: number) => void
+    setFilterChance: (chance: number) => void
     setOutput: (volume: number, pan: number) => void
 }
 
@@ -112,6 +114,8 @@ export class WebViewModel {
     delayChance = 0
     reversePower = 1
     reverseChance = 0
+    filterPower = 1
+    filterChance = 0
     outputVolume = 1
     outputPan = 0
     factoryBanks: FactoryBank[] = []
@@ -358,6 +362,30 @@ export class WebViewModel {
         this.reverseChance = chance
         this.notify()
         this.actions?.setReverseChance(chance)
+    }
+
+    setFilterPower(power: number) {
+        if (!Number.isFinite(power) || power < 0 || power > 1) {
+            return
+        }
+        if (power === this.filterPower) {
+            return
+        }
+        this.filterPower = power
+        this.notify()
+        this.actions?.setFilterPower(power)
+    }
+
+    setFilterChance(chance: number) {
+        if (!Number.isFinite(chance) || chance < 0 || chance > 1) {
+            return
+        }
+        if (chance === this.filterChance) {
+            return
+        }
+        this.filterChance = chance
+        this.notify()
+        this.actions?.setFilterChance(chance)
     }
 
     // Master mix. Volume is 0..1.2 and snaps to 1. Pan is -1..1 and snaps to 0.

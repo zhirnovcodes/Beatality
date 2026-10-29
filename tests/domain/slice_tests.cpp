@@ -234,6 +234,13 @@ void testEffectIdsFollowTheWeights() {
     }
     reversed.append(6, reverseRng, 0.0, 1.0, 0.0);
     CHECK(reversed.effectAt(0) == bt::EffectId::Reverse);
+
+    bt::Rng filterRng(9);
+    bt::Sequence filter;
+    filter.generate(4, 1, filterRng, 0.0, 0.0, 0.0, 1.0);
+    for (int i = 0; i < 4; ++i) {
+        CHECK(filter.effectAt(i) == bt::EffectId::Filter);
+    }
     CHECK(reversed.effectAt(4) == bt::EffectId::Delay);
     CHECK(reversed.effectAt(5) == bt::EffectId::Delay);
 

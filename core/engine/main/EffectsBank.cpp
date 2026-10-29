@@ -17,6 +17,7 @@ void EffectsBank::clean() {
     reverb_.clean();
     delay_.clean();
     reverse_.clean();
+    filter_.clean();
 }
 
 void EffectsBank::apply(EffectId effect, float dryL, float dryR, float revL, float revR, int pos, float wet, double beats, double sampleRate, double bpm, float& outL, float& outR) {
@@ -30,6 +31,10 @@ void EffectsBank::apply(EffectId effect, float dryL, float dryR, float revL, flo
     }
     if (effect == EffectId::Reverse) {
         reverse_.apply(dryL, dryR, revL, revR, wet, outL, outR);
+        return;
+    }
+    if (effect == EffectId::Filter) {
+        filter_.apply(dryL, dryR, pos, wet, beats, sampleRate, bpm, outL, outR);
         return;
     }
     outL = dryL;

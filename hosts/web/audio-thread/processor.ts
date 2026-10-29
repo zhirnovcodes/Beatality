@@ -29,6 +29,8 @@ interface Core {
     bt_set_delay_chance: (engine: number, chance: number) => void
     bt_set_reverse_power: (engine: number, power: number) => void
     bt_set_reverse_chance: (engine: number, chance: number) => void
+    bt_set_filter_power: (engine: number, power: number) => void
+    bt_set_filter_chance: (engine: number, chance: number) => void
     bt_set_track: (
         engine: number,
         index: number,
@@ -159,6 +161,16 @@ interface ReverseChanceMessage {
     chance: number
 }
 
+interface FilterPowerMessage {
+    type: 'filterPower'
+    power: number
+}
+
+interface FilterChanceMessage {
+    type: 'filterChance'
+    chance: number
+}
+
 interface TrackMessage {
     type: 'track'
     index: number
@@ -225,6 +237,8 @@ type HostMessage =
     | DelayChanceMessage
     | ReversePowerMessage
     | ReverseChanceMessage
+    | FilterPowerMessage
+    | FilterChanceMessage
     | TrackMessage
     | OutputMessage
     | FreeMessage
@@ -439,6 +453,12 @@ class BeatalityProcessor extends AudioWorkletProcessor {
             this.postSnapshot(0)
         } else if (message.type === 'reverseChance') {
             this.core!.bt_set_reverse_chance(this.engine, message.chance)
+            this.postSnapshot(0)
+        } else if (message.type === 'filterPower') {
+            this.core!.bt_set_filter_power(this.engine, message.power)
+            this.postSnapshot(0)
+        } else if (message.type === 'filterChance') {
+            this.core!.bt_set_filter_chance(this.engine, message.chance)
             this.postSnapshot(0)
         } else if (message.type === 'track') {
             this.core!.bt_set_track(

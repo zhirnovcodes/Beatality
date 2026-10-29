@@ -626,6 +626,66 @@ void testReverseSplitsTheSlice() {
     CHECK(near(whole[100], samples[100] + (samples[5899] - samples[100]) * longOpen));
 }
 
+double rmsOf(const std::vector<float>& samples, int from, int to) {
+    double sum = 0.0;
+    const int count = to - from;
+    for (int i = from; i < to; ++i) {
+        sum += static_cast<double>(samples[i]) * static_cast<double>(samples[i]);
+    }
+    return std::sqrt(sum / static_cast<double>(count));
+}
+
+void testFilterFollowsPowerAndBeat() {
+    // 120 BPM at 48 kHz. The sweep starts at 1000 Hz, the middle of 100..10000.
+    constexpr int kRate = 48000;
+    constexpr int kFrames = 4000;
+    constexpr double kPi = 3.14159265358979323846;
+
+    auto tone = [&](double hz) {
+        std::vector<float> samples(kFrames);
+        for (int i = 0; i < kFrames; ++i) {
+            samples[i] = static_cast<float>(std::sin(2.0 * kPi * hz * static_cast<double>(i) / static_cast<double>(kRate)));
+        }
+        return samples;
+    };
+    const std::vector<float> held(kFrames, 1.0f);
+    const std::vector<float> mid = tone(1000.0);
+    const std::vector<float> low = tone(80.0);
+
+    auto play = [&](const std::vector<float>& samples, double power, double chance, int beat) {
+        bt::SliceEngine engine(kRate, 1);
+        engine.setGlobalChance(chance);
+        engine.setFilterChance(1);
+        engine.setFilterPower(power);
+        engine.setGlobalBeat(beat);
+        engine.append(bufferOf(1, samples));
+        engine.play();
+        std::vector<float> left(kFrames);
+        std::vector<float> right(kFrames);
+        engine.render(left.data(), right.data(), kFrames);
+        CHECK(left[2500] == right[2500]);
+        return left;
+    };
+
+    const std::vector<float> dry = play(held, 0, 1, 1);
+    CHECK(dry[2500] == 1.0f);
+
+    const std::vector<float> gated = play(held, 1, 0, 1);
+    CHECK(gated[2500] == 1.0f);
+
+    // Full power keeps a tenth of a constant and multiplies by the output velocity. The moving band leaves a small remainder.
+    const std::vector<float> open = play(held, 1, 1, 1);
+    CHECK(std::fabs(open[2500] - 0.08) < 0.002);
+
+    const std::vector<float> slowMid = play(mid, 1, 1, 1);
+    const std::vector<float> slowLow = play(low, 1, 1, 1);
+    CHECK(rmsOf(slowMid, 1200, 2000) > rmsOf(slowLow, 1200, 2000) * 4.0);
+
+    // A sixteenth sits near 100 Hz here. Two beats are still near 1000.
+    const std::vector<float> fastMid = play(mid, 1, 1, -4);
+    CHECK(rmsOf(slowMid, 1000, 1400) > rmsOf(fastMid, 1000, 1400) * 2.0);
+}
+
 } // namespace
 
 int main() {
@@ -648,6 +708,7 @@ int main() {
     testClearWhileStoppedReleasesEveryTrack();
     testClearWhilePlayingFadesTheHeardTrack();
     testReverseSplitsTheSlice();
+    testFilterFollowsPowerAndBeat();
 
     if (g_failed != 0) {
         std::printf("%d check(s) failed\n", g_failed);

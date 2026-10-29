@@ -14,6 +14,8 @@ const state = {
     delayChance: 0,
     reversePower: 1,
     reverseChance: 0,
+    filterPower: 1,
+    filterChance: 0,
     playhead: 0,
     playTrack: -1,
     playSlot: -1,
@@ -535,6 +537,14 @@ function applyBankSettings(bank) {
         state.reverseChance = Number(bank.reverseChance)
         setRange('reverse-chance', state.reverseChance)
     }
+    if (bank.filterPower != null && Number.isFinite(Number(bank.filterPower))) {
+        state.filterPower = Number(bank.filterPower)
+        setRange('filter-power', state.filterPower)
+    }
+    if (bank.filterChance != null && Number.isFinite(Number(bank.filterChance))) {
+        state.filterChance = Number(bank.filterChance)
+        setRange('filter-chance', state.filterChance)
+    }
     const volume = Number(bank.volume)
     const pan = Number(bank.pan)
     if (Number.isFinite(volume)) {
@@ -717,6 +727,8 @@ function wire() {
     document.getElementById('delay-chance')?.addEventListener('input', onDelayChance)
     document.getElementById('reverse-power')?.addEventListener('input', onReversePower)
     document.getElementById('reverse-chance')?.addEventListener('input', onReverseChance)
+    document.getElementById('filter-power')?.addEventListener('input', onFilterPower)
+    document.getElementById('filter-chance')?.addEventListener('input', onFilterChance)
 
     document.getElementById('master-volume')?.addEventListener('input', onMaster)
     document.getElementById('master-pan')?.addEventListener('input', onMaster)
@@ -1026,6 +1038,32 @@ function onReverseChance() {
     }
     state.reverseChance = chance
     void native('setReverseChance', chance)
+}
+
+function onFilterPower() {
+    const input = document.getElementById('filter-power')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const power = input.valueAsNumber
+    if (power === state.filterPower) {
+        return
+    }
+    state.filterPower = power
+    void native('setFilterPower', power)
+}
+
+function onFilterChance() {
+    const input = document.getElementById('filter-chance')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const chance = input.valueAsNumber
+    if (chance === state.filterChance) {
+        return
+    }
+    state.filterChance = chance
+    void native('setFilterChance', chance)
 }
 
 function onMaster(event) {

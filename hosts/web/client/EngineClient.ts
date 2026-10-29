@@ -148,6 +148,16 @@ export class EngineClient {
         this.node?.port.postMessage({ type: 'reverseChance', chance })
     }
 
+    async setFilterPower(power: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'filterPower', power })
+    }
+
+    async setFilterChance(chance: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'filterChance', chance })
+    }
+
     async setTrack(
         index: number,
         start: number,
