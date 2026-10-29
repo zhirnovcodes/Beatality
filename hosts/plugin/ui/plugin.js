@@ -20,6 +20,8 @@ const state = {
     flangerChance: 0,
     trancePower: 1,
     tranceChance: 0,
+    shiftPower: 1,
+    shiftChance: 0,
     playhead: 0,
     playTrack: -1,
     playSlot: -1,
@@ -565,6 +567,14 @@ function applyBankSettings(bank) {
         state.tranceChance = Number(bank.tranceChance)
         setRange('trance-chance', state.tranceChance)
     }
+    if (bank.shiftPower != null && Number.isFinite(Number(bank.shiftPower))) {
+        state.shiftPower = Number(bank.shiftPower)
+        setRange('shift-power', state.shiftPower)
+    }
+    if (bank.shiftChance != null && Number.isFinite(Number(bank.shiftChance))) {
+        state.shiftChance = Number(bank.shiftChance)
+        setRange('shift-chance', state.shiftChance)
+    }
     const volume = Number(bank.volume)
     const pan = Number(bank.pan)
     if (Number.isFinite(volume)) {
@@ -753,6 +763,8 @@ function wire() {
     document.getElementById('flanger-chance')?.addEventListener('input', onFlangerChance)
     document.getElementById('trance-power')?.addEventListener('input', onTrancePower)
     document.getElementById('trance-chance')?.addEventListener('input', onTranceChance)
+    document.getElementById('shift-power')?.addEventListener('input', onShiftPower)
+    document.getElementById('shift-chance')?.addEventListener('input', onShiftChance)
 
     document.getElementById('master-volume')?.addEventListener('input', onMaster)
     document.getElementById('master-pan')?.addEventListener('input', onMaster)
@@ -1140,6 +1152,32 @@ function onTranceChance() {
     }
     state.tranceChance = chance
     void native('setTranceChance', chance)
+}
+
+function onShiftPower() {
+    const input = document.getElementById('shift-power')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const power = input.valueAsNumber
+    if (power === state.shiftPower) {
+        return
+    }
+    state.shiftPower = power
+    void native('setShiftPower', power)
+}
+
+function onShiftChance() {
+    const input = document.getElementById('shift-chance')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const chance = input.valueAsNumber
+    if (chance === state.shiftChance) {
+        return
+    }
+    state.shiftChance = chance
+    void native('setShiftChance', chance)
 }
 
 function onMaster(event) {

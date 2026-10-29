@@ -137,6 +137,16 @@ export interface TranceChanceMessage {
     chance: number
 }
 
+export interface ShiftPowerMessage {
+    type: 'shiftPower'
+    power: number
+}
+
+export interface ShiftChanceMessage {
+    type: 'shiftChance'
+    chance: number
+}
+
 export interface TrackMessage {
     type: 'track'
     index: number
@@ -209,6 +219,8 @@ export type HostMessage =
     | FlangerChanceMessage
     | TrancePowerMessage
     | TranceChanceMessage
+    | ShiftPowerMessage
+    | ShiftChanceMessage
     | TrackMessage
     | OutputMessage
     | FreeMessage

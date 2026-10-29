@@ -35,6 +35,8 @@ interface Core {
     bt_set_flanger_chance: (engine: number, chance: number) => void
     bt_set_trance_power: (engine: number, power: number) => void
     bt_set_trance_chance: (engine: number, chance: number) => void
+    bt_set_shift_power: (engine: number, power: number) => void
+    bt_set_shift_chance: (engine: number, chance: number) => void
     bt_set_track: (
         engine: number,
         index: number,
@@ -195,6 +197,16 @@ interface TranceChanceMessage {
     chance: number
 }
 
+interface ShiftPowerMessage {
+    type: 'shiftPower'
+    power: number
+}
+
+interface ShiftChanceMessage {
+    type: 'shiftChance'
+    chance: number
+}
+
 interface TrackMessage {
     type: 'track'
     index: number
@@ -267,6 +279,8 @@ type HostMessage =
     | FlangerChanceMessage
     | TrancePowerMessage
     | TranceChanceMessage
+    | ShiftPowerMessage
+    | ShiftChanceMessage
     | TrackMessage
     | OutputMessage
     | FreeMessage
@@ -499,6 +513,12 @@ class BeatalityProcessor extends AudioWorkletProcessor {
             this.postSnapshot(0)
         } else if (message.type === 'tranceChance') {
             this.core!.bt_set_trance_chance(this.engine, message.chance)
+            this.postSnapshot(0)
+        } else if (message.type === 'shiftPower') {
+            this.core!.bt_set_shift_power(this.engine, message.power)
+            this.postSnapshot(0)
+        } else if (message.type === 'shiftChance') {
+            this.core!.bt_set_shift_chance(this.engine, message.chance)
             this.postSnapshot(0)
         } else if (message.type === 'track') {
             this.core!.bt_set_track(

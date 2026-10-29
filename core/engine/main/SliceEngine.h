@@ -62,6 +62,10 @@ public:
     static constexpr double kTrancePowerMax = 1;
     static constexpr double kTranceChanceMin = 0;
     static constexpr double kTranceChanceMax = 1;
+    static constexpr double kShiftPowerMin = 0;
+    static constexpr double kShiftPowerMax = 1;
+    static constexpr double kShiftChanceMin = 0;
+    static constexpr double kShiftChanceMax = 1;
     static constexpr double kGlobalChanceMin = 0;
     static constexpr double kGlobalChanceMax = 1;
     // Global beat is 2^exponent beats. -4 is 1/16, 1 is 2.
@@ -111,6 +115,10 @@ public:
     void setTrancePower(double power);
     // chance is 0..1. Default 0. The trance gate's share of the effect chosen when the sequence is written.
     void setTranceChance(double chance);
+    // power is 0..1 and scales the frequency shifter. Default 1. Shift.cpp maps this onto width and dry/wet.
+    void setShiftPower(double power);
+    // chance is 0..1. Default 0. The shifter's share of the effect chosen when the sequence is written.
+    void setShiftChance(double chance);
     // volume is 0..1.2 and scales the mix. The host multiplies that by note velocity.
     // pan is -1..1 and balances the two channels.
     void setOutput(double volume, double pan);
@@ -174,6 +182,8 @@ private:
     double flangerChance_ = 0;
     double trancePower_ = 1;
     double tranceChance_ = 0;
+    double shiftPower_ = 1;
+    double shiftChance_ = 0;
     double volume_ = 1;
     double pan_ = 0;
     EffectsBank currentBank_;

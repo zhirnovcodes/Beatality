@@ -270,6 +270,20 @@ BT_EXPORT void bt_set_trance_chance(Instance* instance, double chance) {
     instance->engine.setTranceChance(chance);
 }
 
+BT_EXPORT void bt_set_shift_power(Instance* instance, double power) {
+    if (instance == nullptr || !(power >= bt::SliceEngine::kShiftPowerMin) || power > bt::SliceEngine::kShiftPowerMax) {
+        return;
+    }
+    instance->engine.setShiftPower(power);
+}
+
+BT_EXPORT void bt_set_shift_chance(Instance* instance, double chance) {
+    if (instance == nullptr || !(chance >= bt::SliceEngine::kShiftChanceMin) || chance > bt::SliceEngine::kShiftChanceMax) {
+        return;
+    }
+    instance->engine.setShiftChance(chance);
+}
+
 // start is a fraction of the file, 0..1. length is 0..1. loop is 0 or 1.
 // volume is 0..1.2. pan is -1..1.
 BT_EXPORT void bt_set_track(Instance* instance, int index, double start, double length, int loop, double volume, double pan) {

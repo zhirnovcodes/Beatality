@@ -255,6 +255,13 @@ void testEffectIdsFollowTheWeights() {
     for (int i = 0; i < 4; ++i) {
         CHECK(trance.effectAt(i) == bt::EffectId::Trance);
     }
+
+    bt::Rng shiftRng(9);
+    bt::Sequence shift;
+    shift.generate(4, 1, shiftRng, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+    for (int i = 0; i < 4; ++i) {
+        CHECK(shift.effectAt(i) == bt::EffectId::Shift);
+    }
     CHECK(reversed.effectAt(4) == bt::EffectId::Delay);
     CHECK(reversed.effectAt(5) == bt::EffectId::Delay);
 

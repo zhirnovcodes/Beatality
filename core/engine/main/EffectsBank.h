@@ -6,6 +6,7 @@
 #include "Reverb.h"
 #include "Reverse.h"
 #include "Sequence.h"
+#include "Shift.h"
 #include "Trance.h"
 
 namespace bt {
@@ -27,6 +28,7 @@ private:
     Filter filter_;
     Flanger flanger_;
     Trance trance_;
+    Shift shift_;
 };
 
 } // namespace bt

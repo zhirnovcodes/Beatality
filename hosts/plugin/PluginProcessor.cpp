@@ -194,7 +194,7 @@ AppendPayload* payloadFromReader(juce::AudioFormatReader& reader, double rate, s
 class CommandQueue {
 public:
     struct Slot {
-        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, GlobalPower, GlobalBeat, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, ReversePower, ReverseChance, FilterPower, FilterChance, FlangerPower, FlangerChance, TrancePower, TranceChance, Track, Output, Pack };
+        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, GlobalPower, GlobalBeat, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, ReversePower, ReverseChance, FilterPower, FilterChance, FlangerPower, FlangerChance, TrancePower, TranceChance, ShiftPower, ShiftChance, Track, Output, Pack };
         Kind kind = Kind::Randomize;
         AppendPayload* append = nullptr;
         PackPayload* pack = nullptr;
@@ -371,6 +371,8 @@ struct Processor::Impl {
         engine->setFlangerChance(flangerChance);
         engine->setTrancePower(trancePower);
         engine->setTranceChance(tranceChance);
+        engine->setShiftPower(shiftPower);
+        engine->setShiftChance(shiftChance);
         engine->setOutput(outputVolume, outputPan);
     }
 
@@ -602,6 +604,22 @@ struct Processor::Impl {
         engine->setTranceChance(chance);
     }
 
+    void applyShiftPower(double power) {
+        shiftPower = power;
+        if (engine == nullptr) {
+            return;
+        }
+        engine->setShiftPower(power);
+    }
+
+    void applyShiftChance(double chance) {
+        shiftChance = chance;
+        if (engine == nullptr) {
+            return;
+        }
+        engine->setShiftChance(chance);
+    }
+
     void applyOutput(double volume, double pan) {
         outputVolume = volume;
         outputPan = pan;
@@ -696,6 +714,12 @@ struct Processor::Impl {
             break;
         case CommandQueue::Slot::Kind::TranceChance:
             applyTranceChance(slot.first);
+            break;
+        case CommandQueue::Slot::Kind::ShiftPower:
+            applyShiftPower(slot.first);
+            break;
+        case CommandQueue::Slot::Kind::ShiftChance:
+            applyShiftChance(slot.first);
             break;
         case CommandQueue::Slot::Kind::Track:
             applyTrack(slot.index, slot.first, slot.second, slot.flag, slot.third, slot.fourth);
@@ -960,6 +984,8 @@ struct Processor::Impl {
     double flangerChance = 0;
     double trancePower = 1;
     double tranceChance = 0;
+    double shiftPower = 1;
+    double shiftChance = 0;
     double outputVolume = 1;
     double outputPan = 0;
 };
@@ -1370,6 +1396,28 @@ void Processor::setTranceChance(double chance) {
     savedTranceChance = chance;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::TranceChance;
+    slot.first = chance;
+    impl->queue.push(slot);
+}
+
+void Processor::setShiftPower(double power) {
+    if (!std::isfinite(power) || power < bt::SliceEngine::kShiftPowerMin || power > bt::SliceEngine::kShiftPowerMax) {
+        return;
+    }
+    savedShiftPower = power;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::ShiftPower;
+    slot.first = power;
+    impl->queue.push(slot);
+}
+
+void Processor::setShiftChance(double chance) {
+    if (!std::isfinite(chance) || chance < bt::SliceEngine::kShiftChanceMin || chance > bt::SliceEngine::kShiftChanceMax) {
+        return;
+    }
+    savedShiftChance = chance;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::ShiftChance;
     slot.first = chance;
     impl->queue.push(slot);
 }

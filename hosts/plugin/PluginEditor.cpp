@@ -333,6 +333,18 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
             }
             completion(true);
         })
+        .withNativeFunction("setShiftPower", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setShiftPower(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setShiftChance", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setShiftChance(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
         .withNativeFunction("setOutput", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
             if (args.size() >= 2) {
                 processor.setOutput(static_cast<double>(args[0]), static_cast<double>(args[1]));
@@ -477,6 +489,8 @@ void Editor::pushBank() {
     object->setProperty("flangerChance", processor.flangerChance());
     object->setProperty("trancePower", processor.trancePower());
     object->setProperty("tranceChance", processor.tranceChance());
+    object->setProperty("shiftPower", processor.shiftPower());
+    object->setProperty("shiftChance", processor.shiftChance());
     object->setProperty("volume", processor.outputVolume());
     object->setProperty("pan", processor.outputPan());
     deliver("onBank", juce::var(object));

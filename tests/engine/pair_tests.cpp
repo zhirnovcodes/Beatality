@@ -785,6 +785,81 @@ void testTranceFollowsPowerAndBeat() {
     CHECK(wide[96] < 0.4f);
 }
 
+double toneEnergy(const std::vector<float>& samples, int first, int count, double freq, double rate) {
+    constexpr double kPi = 3.14159265358979323846;
+    const double coeff = 2.0 * std::cos(2.0 * kPi * freq / rate);
+    double s1 = 0.0;
+    double s2 = 0.0;
+    for (int i = 0; i < count; ++i) {
+        const double s0 = static_cast<double>(samples[static_cast<std::size_t>(first + i)]) + coeff * s1 - s2;
+        s2 = s1;
+        s1 = s0;
+    }
+    return s1 * s1 + s2 * s2 - coeff * s1 * s2;
+}
+
+void testShiftFollowsPowerAndBeat() {
+    // 120 BPM at 48 kHz. One beat is 24000 frames, so the sine is +1 at frame 6000 and -1 at frame 18000.
+    // A 2000 Hz tone then sits at 3000 Hz, then at 1000 Hz. Power 1 is that full ±1000 Hz shift.
+    constexpr int kRate = 48000;
+    constexpr int kFrames = 20000;
+    constexpr double kPi = 3.14159265358979323846;
+    constexpr int kWindow = 192;
+
+    std::vector<float> tone(kFrames);
+    for (int i = 0; i < kFrames; ++i) {
+        tone[static_cast<std::size_t>(i)] = static_cast<float>(std::sin(2.0 * kPi * 2000.0 * static_cast<double>(i) / static_cast<double>(kRate)));
+    }
+
+    auto play = [&](double power, double chance, int beat) {
+        bt::SliceEngine engine(kRate, 1);
+        engine.setGlobalChance(chance);
+        engine.setShiftChance(1);
+        engine.setShiftPower(power);
+        engine.setGlobalBeat(beat);
+        engine.append(bufferOf(1, tone));
+        engine.play();
+        std::vector<float> left(kFrames);
+        std::vector<float> right(kFrames);
+        engine.render(left.data(), right.data(), kFrames);
+        CHECK(left[6000] == right[6000]);
+        return left;
+    };
+
+    const std::vector<float> dry = play(0, 1, 0);
+    CHECK(dry[6000] == tone[6000]);
+
+    const std::vector<float> gated = play(1, 0, 0);
+    CHECK(gated[6000] == tone[6000]);
+
+    const std::vector<float> open = play(1, 1, 0);
+    const double up3k = toneEnergy(open, 5904, kWindow, 3000.0, kRate);
+    const double up2k = toneEnergy(open, 5904, kWindow, 2000.0, kRate);
+    const double up1k = toneEnergy(open, 5904, kWindow, 1000.0, kRate);
+    const double up4k = toneEnergy(open, 5904, kWindow, 4000.0, kRate);
+    if (!(up3k > 1000.0 && up3k > up2k * 8.0 && up3k > up1k * 8.0 && up3k > up4k * 8.0)) {
+        std::printf("FAIL shift up 3000=%f 2000=%f 1000=%f 4000=%f\n", up3k, up2k, up1k, up4k);
+        ++g_failed;
+    }
+
+    const double down1k = toneEnergy(open, 17904, kWindow, 1000.0, kRate);
+    const double down2k = toneEnergy(open, 17904, kWindow, 2000.0, kRate);
+    const double down3k = toneEnergy(open, 17904, kWindow, 3000.0, kRate);
+    const double down0 = toneEnergy(open, 17904, kWindow, 500.0, kRate);
+    if (!(down1k > 1000.0 && down1k > down2k * 8.0 && down1k > down3k * 8.0 && down1k > down0 * 8.0)) {
+        std::printf("FAIL shift down 1000=%f 2000=%f 3000=%f 500=%f\n", down1k, down2k, down3k, down0);
+        ++g_failed;
+    }
+
+    // A sixteenth sweeps the shift many times across the same stretch. One beat has barely left zero here.
+    const std::vector<float> fast = play(1, 1, -4);
+    double diff = 0.0;
+    for (int i = 2000; i < 4000; ++i) {
+        diff += std::fabs(static_cast<double>(open[static_cast<std::size_t>(i)]) - static_cast<double>(fast[static_cast<std::size_t>(i)]));
+    }
+    CHECK(diff > 100.0);
+}
+
 } // namespace
 
 int main() {
@@ -810,6 +885,7 @@ int main() {
     testFilterFollowsPowerAndBeat();
     testFlangerFollowsPowerAndBeat();
     testTranceFollowsPowerAndBeat();
+    testShiftFollowsPowerAndBeat();
 
     if (g_failed != 0) {
         std::printf("%d check(s) failed\n", g_failed);

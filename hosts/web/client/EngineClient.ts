@@ -178,6 +178,16 @@ export class EngineClient {
         this.node?.port.postMessage({ type: 'tranceChance', chance })
     }
 
+    async setShiftPower(power: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'shiftPower', power })
+    }
+
+    async setShiftChance(chance: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'shiftChance', chance })
+    }
+
     async setTrack(
         index: number,
         start: number,

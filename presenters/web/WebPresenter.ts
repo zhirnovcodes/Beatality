@@ -98,6 +98,8 @@ export class WebPresenter {
             setFlangerChance: (chance) => void this.perform(() => this.client.setFlangerChance(chance)),
             setTrancePower: (power) => void this.perform(() => this.client.setTrancePower(power)),
             setTranceChance: (chance) => void this.perform(() => this.client.setTranceChance(chance)),
+            setShiftPower: (power) => void this.perform(() => this.client.setShiftPower(power)),
+            setShiftChance: (chance) => void this.perform(() => this.client.setShiftChance(chance)),
             setOutput: (volume, pan) => void this.perform(() => this.client.setOutput(volume, pan)),
         })
         client.onSnapshot = (snapshot) => {

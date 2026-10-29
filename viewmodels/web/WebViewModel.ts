@@ -36,6 +36,8 @@ export interface ViewActions {
     setFlangerChance: (chance: number) => void
     setTrancePower: (power: number) => void
     setTranceChance: (chance: number) => void
+    setShiftPower: (power: number) => void
+    setShiftChance: (chance: number) => void
     setOutput: (volume: number, pan: number) => void
 }
 
@@ -124,6 +126,8 @@ export class WebViewModel {
     flangerChance = 0
     trancePower = 1
     tranceChance = 0
+    shiftPower = 1
+    shiftChance = 0
     outputVolume = 1
     outputPan = 0
     factoryBanks: FactoryBank[] = []
@@ -442,6 +446,30 @@ export class WebViewModel {
         this.tranceChance = chance
         this.notify()
         this.actions?.setTranceChance(chance)
+    }
+
+    setShiftPower(power: number) {
+        if (!Number.isFinite(power) || power < 0 || power > 1) {
+            return
+        }
+        if (power === this.shiftPower) {
+            return
+        }
+        this.shiftPower = power
+        this.notify()
+        this.actions?.setShiftPower(power)
+    }
+
+    setShiftChance(chance: number) {
+        if (!Number.isFinite(chance) || chance < 0 || chance > 1) {
+            return
+        }
+        if (chance === this.shiftChance) {
+            return
+        }
+        this.shiftChance = chance
+        this.notify()
+        this.actions?.setShiftChance(chance)
     }
 
     // Master mix. Volume is 0..1.2 and snaps to 1. Pan is -1..1 and snaps to 0.

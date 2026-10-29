@@ -3,7 +3,7 @@
 namespace bt {
 
 EffectsBank::EffectsBank(double sampleRate, std::uint64_t seed)
-    : reverb_(sampleRate), delay_(sampleRate), flanger_(sampleRate), trance_(seed) {}
+    : reverb_(sampleRate), delay_(sampleRate), flanger_(sampleRate), trance_(seed), shift_(sampleRate) {}
 
 void EffectsBank::bind(int slot) {
     if (slot == slot_) {
@@ -21,6 +21,7 @@ void EffectsBank::clean() {
     filter_.clean();
     flanger_.clean();
     trance_.clean();
+    shift_.clean();
 }
 
 void EffectsBank::apply(EffectId effect, float dryL, float dryR, float revL, float revR, int pos, float wet, double beats, double sampleRate, double bpm, float& outL, float& outR) {
@@ -46,6 +47,10 @@ void EffectsBank::apply(EffectId effect, float dryL, float dryR, float revL, flo
     }
     if (effect == EffectId::Trance) {
         trance_.apply(dryL, dryR, pos, wet, beats, sampleRate, bpm, outL, outR);
+        return;
+    }
+    if (effect == EffectId::Shift) {
+        shift_.apply(dryL, dryR, pos, wet, beats, sampleRate, bpm, outL, outR);
         return;
     }
     outL = dryL;

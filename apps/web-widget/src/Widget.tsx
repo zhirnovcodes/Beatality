@@ -1,4 +1,3 @@
-import { Fragment } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import type { WebViewModel } from '../../../viewmodels/web/WebViewModel'
 import './ui/skin/skin.css'
@@ -157,6 +156,8 @@ export function Widget({
         model.setFlangerChance(randomUnit())
         model.setTrancePower(randomUnit())
         model.setTranceChance(randomUnit())
+        model.setShiftPower(randomUnit())
+        model.setShiftChance(randomUnit())
     }
 
     const onSelectBank = () => {
@@ -348,9 +349,7 @@ export function Widget({
                             <FxCap name="FILTER" left={276} />
                             <FxCap name="FLANGER" left={324} />
                             <FxCap name="TRANCE" left={372} />
-                            {laterEffects.map((effect) => (
-                                <FxCap key={effect.id} name={effect.name} left={effect.cap} />
-                            ))}
+                            <FxCap name="SHIFT" left={420} />
                         </div>
                         <div className="fx-sliders">
                             <FxSlider
@@ -505,30 +504,26 @@ export function Widget({
                                 value={model.tranceChance}
                                 onInput={onFx((value) => model.setTranceChance(value))}
                             />
-                            {laterEffects.map((effect) => (
-                                <Fragment key={effect.id}>
-                                    <FxSlider
-                                        id={`fx-${effect.id}-power`}
-                                        label={`${effect.name} power`}
-                                        left={effect.power}
-                                        min={0}
-                                        max={1}
-                                        step={0.01}
-                                        value={0}
-                                        idle
-                                    />
-                                    <FxSlider
-                                        id={`fx-${effect.id}-chance`}
-                                        label={`${effect.name} chance (%)`}
-                                        left={effect.chance}
-                                        min={0}
-                                        max={1}
-                                        step={0.01}
-                                        value={0}
-                                        idle
-                                    />
-                                </Fragment>
-                            ))}
+                            <FxSlider
+                                id="fx-shift-power"
+                                label="Shift power"
+                                left={421}
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={model.shiftPower}
+                                onInput={onFx((value) => model.setShiftPower(value))}
+                            />
+                            <FxSlider
+                                id="fx-shift-chance"
+                                label="Shift chance (%)"
+                                left={439}
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={model.shiftChance}
+                                onInput={onFx((value) => model.setShiftChance(value))}
+                            />
                             <ol className="fx-scale" aria-hidden="true" style={{ left: '102px' }}>
                                 <li>2</li>
                                 <li>1</li>
@@ -725,10 +720,6 @@ export function Widget({
         </>
     )
 }
-
-const laterEffects = [
-    { id: 'shift', name: 'SHIFT', cap: 420, power: 421, chance: 439 },
-]
 
 function FxCap({ name, left }: { name: string; left: number }) {
     return (
