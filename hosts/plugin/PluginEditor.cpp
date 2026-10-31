@@ -87,7 +87,7 @@ Editor::Editor(Processor& processorIn) : juce::AudioProcessorEditor(processorIn)
         missing.setColour(juce::Label::textColourId, juce::Colours::white);
         addAndMakeVisible(missing);
     }
-    setSize(496, 608);
+    setSize(496, 688);
 }
 
 Editor::~Editor() {

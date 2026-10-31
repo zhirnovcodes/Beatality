@@ -87,7 +87,7 @@ function columns() {
 }
 
 function placeThumb(input) {
-    const slider = input.closest('.slider, .seek, .mix-slider')
+    const slider = input.closest('.slider, .seek, .mix-slider, .fx-slider')
     if (!(slider instanceof HTMLElement)) {
         return
     }
@@ -505,75 +505,72 @@ function applyBankSettings(bank) {
     }
     if (bank.globalPower != null && Number.isFinite(Number(bank.globalPower))) {
         state.globalPower = Number(bank.globalPower)
-        setRange('global-power', state.globalPower)
+        setRange('fx-power', state.globalPower)
     }
     if (bank.globalBeat != null && Number.isInteger(Number(bank.globalBeat))) {
         state.globalBeat = Number(bank.globalBeat)
-        setRange('global-beat', state.globalBeat)
-        const beat = document.getElementById('global-beat-value')
-        if (beat) {
-            beat.textContent = sliceLabel(state.globalBeat)
-        }
+        setRange('fx-time', state.globalBeat)
+        labelEffectTime(state.globalBeat)
     }
     if (bank.globalChance != null && Number.isFinite(Number(bank.globalChance))) {
         state.globalChance = Number(bank.globalChance)
-        setRange('global-chance', state.globalChance)
+        setRange('fx-chance', state.globalChance)
     }
     if (bank.reverbPower != null && Number.isFinite(Number(bank.reverbPower))) {
         state.reverbPower = Number(bank.reverbPower)
-        setRange('reverb-power', state.reverbPower)
+        setRange('fx-reverb-power', state.reverbPower)
     }
     if (bank.reverbChance != null && Number.isFinite(Number(bank.reverbChance))) {
         state.reverbChance = Number(bank.reverbChance)
-        setRange('reverb-chance', state.reverbChance)
+        setRange('fx-reverb-chance', state.reverbChance)
     }
     if (bank.delayPower != null && Number.isFinite(Number(bank.delayPower))) {
         state.delayPower = Number(bank.delayPower)
-        setRange('delay-power', state.delayPower)
+        setRange('fx-delay-power', state.delayPower)
     }
     if (bank.delayChance != null && Number.isFinite(Number(bank.delayChance))) {
         state.delayChance = Number(bank.delayChance)
-        setRange('delay-chance', state.delayChance)
+        setRange('fx-delay-chance', state.delayChance)
     }
     if (bank.reversePower != null && Number.isFinite(Number(bank.reversePower))) {
         state.reversePower = Number(bank.reversePower)
-        setRange('reverse-power', state.reversePower)
+        setRange('fx-reverse-power', state.reversePower)
     }
     if (bank.reverseChance != null && Number.isFinite(Number(bank.reverseChance))) {
         state.reverseChance = Number(bank.reverseChance)
-        setRange('reverse-chance', state.reverseChance)
+        setRange('fx-reverse-chance', state.reverseChance)
     }
     if (bank.filterPower != null && Number.isFinite(Number(bank.filterPower))) {
         state.filterPower = Number(bank.filterPower)
-        setRange('filter-power', state.filterPower)
+        setRange('fx-filter-power', state.filterPower)
     }
     if (bank.filterChance != null && Number.isFinite(Number(bank.filterChance))) {
         state.filterChance = Number(bank.filterChance)
-        setRange('filter-chance', state.filterChance)
+        setRange('fx-filter-chance', state.filterChance)
     }
     if (bank.flangerPower != null && Number.isFinite(Number(bank.flangerPower))) {
         state.flangerPower = Number(bank.flangerPower)
-        setRange('flanger-power', state.flangerPower)
+        setRange('fx-flanger-power', state.flangerPower)
     }
     if (bank.flangerChance != null && Number.isFinite(Number(bank.flangerChance))) {
         state.flangerChance = Number(bank.flangerChance)
-        setRange('flanger-chance', state.flangerChance)
+        setRange('fx-flanger-chance', state.flangerChance)
     }
     if (bank.trancePower != null && Number.isFinite(Number(bank.trancePower))) {
         state.trancePower = Number(bank.trancePower)
-        setRange('trance-power', state.trancePower)
+        setRange('fx-trance-power', state.trancePower)
     }
     if (bank.tranceChance != null && Number.isFinite(Number(bank.tranceChance))) {
         state.tranceChance = Number(bank.tranceChance)
-        setRange('trance-chance', state.tranceChance)
+        setRange('fx-trance-chance', state.tranceChance)
     }
     if (bank.shiftPower != null && Number.isFinite(Number(bank.shiftPower))) {
         state.shiftPower = Number(bank.shiftPower)
-        setRange('shift-power', state.shiftPower)
+        setRange('fx-shift-power', state.shiftPower)
     }
     if (bank.shiftChance != null && Number.isFinite(Number(bank.shiftChance))) {
         state.shiftChance = Number(bank.shiftChance)
-        setRange('shift-chance', state.shiftChance)
+        setRange('fx-shift-chance', state.shiftChance)
     }
     const volume = Number(bank.volume)
     const pan = Number(bank.pan)
@@ -715,7 +712,62 @@ function attachSampleScroll() {
     }
 }
 
+function labelEffectTime(exponent) {
+    const input = document.getElementById('fx-time')
+    if (input instanceof HTMLInputElement) {
+        input.setAttribute('aria-valuetext', sliceLabel(exponent) + ' beat')
+    }
+}
+
+function paintSliders() {
+    document.querySelectorAll('.slider input, .mix-slider input, .fx-slider input').forEach((input) => {
+        if (input instanceof HTMLInputElement) {
+            placeThumb(input)
+        }
+    })
+    setRange('playhead', 0)
+    labelEffectTime(state.globalBeat)
+    syncCaptions()
+}
+
+function randomUnit() {
+    return Math.round(Math.random() * 100) / 100
+}
+
+function shuffleEffects() {
+    const picks = [
+        ['globalPower', 'fx-power', 'setGlobalPower', randomUnit()],
+        ['globalChance', 'fx-chance', 'setGlobalChance', randomUnit()],
+        ['globalBeat', 'fx-time', 'setGlobalBeat', -4 + Math.floor(Math.random() * 6)],
+        ['delayPower', 'fx-delay-power', 'setDelayPower', randomUnit()],
+        ['delayChance', 'fx-delay-chance', 'setDelayChance', randomUnit()],
+        ['reverbPower', 'fx-reverb-power', 'setReverbPower', randomUnit()],
+        ['reverbChance', 'fx-reverb-chance', 'setReverbChance', randomUnit()],
+        ['reversePower', 'fx-reverse-power', 'setReversePower', randomUnit()],
+        ['reverseChance', 'fx-reverse-chance', 'setReverseChance', randomUnit()],
+        ['filterPower', 'fx-filter-power', 'setFilterPower', randomUnit()],
+        ['filterChance', 'fx-filter-chance', 'setFilterChance', randomUnit()],
+        ['flangerPower', 'fx-flanger-power', 'setFlangerPower', randomUnit()],
+        ['flangerChance', 'fx-flanger-chance', 'setFlangerChance', randomUnit()],
+        ['trancePower', 'fx-trance-power', 'setTrancePower', randomUnit()],
+        ['tranceChance', 'fx-trance-chance', 'setTranceChance', randomUnit()],
+        ['shiftPower', 'fx-shift-power', 'setShiftPower', randomUnit()],
+        ['shiftChance', 'fx-shift-chance', 'setShiftChance', randomUnit()],
+    ]
+    for (const [key, id, name, value] of picks) {
+        state[key] = value
+        const input = document.getElementById(id)
+        if (input instanceof HTMLInputElement) {
+            input.value = String(value)
+            placeThumb(input)
+        }
+        void native(name, value)
+    }
+    labelEffectTime(state.globalBeat)
+}
+
 function wire() {
+    paintSliders()
     const backend = window.__JUCE__ && window.__JUCE__.backend
     if (!backend) {
         const error = document.getElementById('error')
@@ -748,23 +800,34 @@ function wire() {
     document.getElementById('loop')?.addEventListener('input', onLoop)
     document.getElementById('slice')?.addEventListener('input', onSlice)
     document.getElementById('attack')?.addEventListener('input', onAttack)
-    document.getElementById('global-power')?.addEventListener('input', onGlobalPower)
-    document.getElementById('global-beat')?.addEventListener('input', onGlobalBeat)
-    document.getElementById('global-chance')?.addEventListener('input', onGlobalChance)
-    document.getElementById('reverb-power')?.addEventListener('input', onReverbPower)
-    document.getElementById('reverb-chance')?.addEventListener('input', onReverbChance)
-    document.getElementById('delay-power')?.addEventListener('input', onDelayPower)
-    document.getElementById('delay-chance')?.addEventListener('input', onDelayChance)
-    document.getElementById('reverse-power')?.addEventListener('input', onReversePower)
-    document.getElementById('reverse-chance')?.addEventListener('input', onReverseChance)
-    document.getElementById('filter-power')?.addEventListener('input', onFilterPower)
-    document.getElementById('filter-chance')?.addEventListener('input', onFilterChance)
-    document.getElementById('flanger-power')?.addEventListener('input', onFlangerPower)
-    document.getElementById('flanger-chance')?.addEventListener('input', onFlangerChance)
-    document.getElementById('trance-power')?.addEventListener('input', onTrancePower)
-    document.getElementById('trance-chance')?.addEventListener('input', onTranceChance)
-    document.getElementById('shift-power')?.addEventListener('input', onShiftPower)
-    document.getElementById('shift-chance')?.addEventListener('input', onShiftChance)
+    document.querySelector('.fx-sliders')?.addEventListener('input', (event) => {
+        const input = event.target
+        if (!(input instanceof HTMLInputElement)) {
+            return
+        }
+        placeThumb(input)
+        if (input.id === 'fx-time') {
+            labelEffectTime(input.valueAsNumber)
+        }
+    })
+    document.getElementById('fx-power')?.addEventListener('input', onGlobalPower)
+    document.getElementById('fx-time')?.addEventListener('input', onGlobalBeat)
+    document.getElementById('fx-chance')?.addEventListener('input', onGlobalChance)
+    document.getElementById('fx-reverb-power')?.addEventListener('input', onReverbPower)
+    document.getElementById('fx-reverb-chance')?.addEventListener('input', onReverbChance)
+    document.getElementById('fx-delay-power')?.addEventListener('input', onDelayPower)
+    document.getElementById('fx-delay-chance')?.addEventListener('input', onDelayChance)
+    document.getElementById('fx-reverse-power')?.addEventListener('input', onReversePower)
+    document.getElementById('fx-reverse-chance')?.addEventListener('input', onReverseChance)
+    document.getElementById('fx-filter-power')?.addEventListener('input', onFilterPower)
+    document.getElementById('fx-filter-chance')?.addEventListener('input', onFilterChance)
+    document.getElementById('fx-flanger-power')?.addEventListener('input', onFlangerPower)
+    document.getElementById('fx-flanger-chance')?.addEventListener('input', onFlangerChance)
+    document.getElementById('fx-trance-power')?.addEventListener('input', onTrancePower)
+    document.getElementById('fx-trance-chance')?.addEventListener('input', onTranceChance)
+    document.getElementById('fx-shift-power')?.addEventListener('input', onShiftPower)
+    document.getElementById('fx-shift-chance')?.addEventListener('input', onShiftChance)
+    document.getElementById('fx-randomize')?.addEventListener('click', shuffleEffects)
 
     document.getElementById('master-volume')?.addEventListener('input', onMaster)
     document.getElementById('master-pan')?.addEventListener('input', onMaster)
@@ -854,13 +917,6 @@ function wire() {
         void native('randomize')
     })
 
-    document.querySelectorAll('.slider input, .mix-slider input').forEach((input) => {
-        if (input instanceof HTMLInputElement) {
-            placeThumb(input)
-        }
-    })
-    setRange('playhead', 0)
-    syncCaptions()
     attachSampleScroll()
     void native('banks').then((list) => {
         banks = Array.isArray(list) ? list : []
@@ -956,7 +1012,7 @@ function onAttack() {
 }
 
 function onGlobalPower() {
-    const input = document.getElementById('global-power')
+    const input = document.getElementById('fx-power')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
@@ -969,15 +1025,12 @@ function onGlobalPower() {
 }
 
 function onGlobalBeat() {
-    const input = document.getElementById('global-beat')
+    const input = document.getElementById('fx-time')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
     const exponent = input.valueAsNumber
-    const beat = document.getElementById('global-beat-value')
-    if (beat) {
-        beat.textContent = sliceLabel(exponent)
-    }
+    labelEffectTime(exponent)
     if (exponent === state.globalBeat) {
         return
     }
@@ -986,7 +1039,7 @@ function onGlobalBeat() {
 }
 
 function onGlobalChance() {
-    const input = document.getElementById('global-chance')
+    const input = document.getElementById('fx-chance')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
@@ -999,7 +1052,7 @@ function onGlobalChance() {
 }
 
 function onReverbPower() {
-    const input = document.getElementById('reverb-power')
+    const input = document.getElementById('fx-reverb-power')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
@@ -1012,7 +1065,7 @@ function onReverbPower() {
 }
 
 function onReverbChance() {
-    const input = document.getElementById('reverb-chance')
+    const input = document.getElementById('fx-reverb-chance')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
@@ -1025,7 +1078,7 @@ function onReverbChance() {
 }
 
 function onDelayPower() {
-    const input = document.getElementById('delay-power')
+    const input = document.getElementById('fx-delay-power')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
@@ -1038,7 +1091,7 @@ function onDelayPower() {
 }
 
 function onDelayChance() {
-    const input = document.getElementById('delay-chance')
+    const input = document.getElementById('fx-delay-chance')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
@@ -1051,7 +1104,7 @@ function onDelayChance() {
 }
 
 function onReversePower() {
-    const input = document.getElementById('reverse-power')
+    const input = document.getElementById('fx-reverse-power')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
@@ -1064,7 +1117,7 @@ function onReversePower() {
 }
 
 function onReverseChance() {
-    const input = document.getElementById('reverse-chance')
+    const input = document.getElementById('fx-reverse-chance')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
@@ -1077,7 +1130,7 @@ function onReverseChance() {
 }
 
 function onFilterPower() {
-    const input = document.getElementById('filter-power')
+    const input = document.getElementById('fx-filter-power')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
@@ -1090,7 +1143,7 @@ function onFilterPower() {
 }
 
 function onFilterChance() {
-    const input = document.getElementById('filter-chance')
+    const input = document.getElementById('fx-filter-chance')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
@@ -1103,7 +1156,7 @@ function onFilterChance() {
 }
 
 function onFlangerPower() {
-    const input = document.getElementById('flanger-power')
+    const input = document.getElementById('fx-flanger-power')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
@@ -1116,7 +1169,7 @@ function onFlangerPower() {
 }
 
 function onFlangerChance() {
-    const input = document.getElementById('flanger-chance')
+    const input = document.getElementById('fx-flanger-chance')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
@@ -1129,7 +1182,7 @@ function onFlangerChance() {
 }
 
 function onTrancePower() {
-    const input = document.getElementById('trance-power')
+    const input = document.getElementById('fx-trance-power')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
@@ -1142,7 +1195,7 @@ function onTrancePower() {
 }
 
 function onTranceChance() {
-    const input = document.getElementById('trance-chance')
+    const input = document.getElementById('fx-trance-chance')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
@@ -1155,7 +1208,7 @@ function onTranceChance() {
 }
 
 function onShiftPower() {
-    const input = document.getElementById('shift-power')
+    const input = document.getElementById('fx-shift-power')
     if (!(input instanceof HTMLInputElement)) {
         return
     }
@@ -1168,7 +1221,7 @@ function onShiftPower() {
 }
 
 function onShiftChance() {
-    const input = document.getElementById('shift-chance')
+    const input = document.getElementById('fx-shift-chance')
     if (!(input instanceof HTMLInputElement)) {
         return
     }

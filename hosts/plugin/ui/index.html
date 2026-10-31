@@ -5,13 +5,7 @@
 <title>Beatality</title>
 <link rel="stylesheet" href="/ui/skin/skin.css">
 <style>
-  html, body { margin: 0; width: 496px; background: #2a2c30; }
-  .effect-controls {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
-    padding: 8px 12px 12px; color: #ddd; font: 13px/1 system-ui, sans-serif;
-  }
-  .effect-controls label { display: flex; align-items: center; gap: 8px; flex: 1 1 calc(50% - 16px); min-width: 0; white-space: nowrap; }
-  .effect-controls input[type="range"] { flex: 1; min-width: 0; }
+  html, body { margin: 0; width: 496px; height: 688px; overflow: hidden; background: #2a2c30; }
   #error {
     height: 21px; margin: 0; padding: 0 8px;
     color: #ff8d8d; font: 12px/21px system-ui, sans-serif;
@@ -71,6 +65,61 @@
       <button type="button" class="randomize" id="randomize" disabled>Randomize</button>
     </div>
   </section>
+  <section class="part effects" aria-label="Effects">
+    <div class="window"></div>
+    <div class="content">
+      <div class="fx-caps" aria-hidden="true">
+        <div class="fx-cap" style="left: 31px; width: 44px"><span class="name">GLOBAL</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+        <div class="fx-cap" style="left: 79px; width: 26px"><span class="clock"></span></div>
+        <div class="fx-cap" style="left: 132px; width: 44px"><span class="name">DELAY</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+        <div class="fx-cap" style="left: 180px; width: 44px"><span class="name">REVERB</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+        <div class="fx-cap" style="left: 228px; width: 44px"><span class="name">REVERSE</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+        <div class="fx-cap" style="left: 276px; width: 44px"><span class="name">FILTER</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+        <div class="fx-cap" style="left: 324px; width: 44px"><span class="name">FLANGER</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+        <div class="fx-cap" style="left: 372px; width: 44px"><span class="name">TRANCE</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+        <div class="fx-cap" style="left: 420px; width: 44px"><span class="name">SHIFT</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+      </div>
+      <div class="fx-sliders">
+        <div class="fx-slider" style="left: 32px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-power" min="0" max="1" step="0.01" value="1" aria-label="Global power"></div>
+        <div class="fx-slider" style="left: 50px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-chance" min="0" max="1" step="0.01" value="0" aria-label="Global chance (%)"></div>
+        <div class="fx-slider time" style="left: 80px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-time" min="-4" max="1" step="1" value="0" aria-label="Effect time" aria-valuetext="1 beat"></div>
+        <div class="fx-slider" style="left: 133px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-delay-power" min="0" max="1" step="0.01" value="1" aria-label="Delay power"></div>
+        <div class="fx-slider" style="left: 151px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-delay-chance" min="0" max="1" step="0.01" value="0" aria-label="Delay chance (%)"></div>
+        <div class="fx-slider" style="left: 181px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-reverb-power" min="0" max="1" step="0.01" value="1" aria-label="Reverb power"></div>
+        <div class="fx-slider" style="left: 199px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-reverb-chance" min="0" max="1" step="0.01" value="0" aria-label="Reverb chance (%)"></div>
+        <div class="fx-slider" style="left: 229px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-reverse-power" min="0" max="1" step="0.01" value="1" aria-label="Reverse power"></div>
+        <div class="fx-slider" style="left: 247px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-reverse-chance" min="0" max="1" step="0.01" value="0" aria-label="Reverse chance (%)"></div>
+        <div class="fx-slider" style="left: 277px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-filter-power" min="0" max="1" step="0.01" value="1" aria-label="Filter power"></div>
+        <div class="fx-slider" style="left: 295px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-filter-chance" min="0" max="1" step="0.01" value="0" aria-label="Filter chance (%)"></div>
+        <div class="fx-slider" style="left: 325px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-flanger-power" min="0" max="1" step="0.01" value="1" aria-label="Flanger power"></div>
+        <div class="fx-slider" style="left: 343px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-flanger-chance" min="0" max="1" step="0.01" value="0" aria-label="Flanger chance (%)"></div>
+        <div class="fx-slider" style="left: 373px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-trance-power" min="0" max="1" step="0.01" value="1" aria-label="Trance power"></div>
+        <div class="fx-slider" style="left: 391px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-trance-chance" min="0" max="1" step="0.01" value="0" aria-label="Trance chance (%)"></div>
+        <div class="fx-slider" style="left: 421px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-shift-power" min="0" max="1" step="0.01" value="1" aria-label="Shift power"></div>
+        <div class="fx-slider" style="left: 439px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
+          <input type="range" id="fx-shift-chance" min="0" max="1" step="0.01" value="0" aria-label="Shift chance (%)"></div>
+        <ol class="fx-scale" aria-hidden="true" style="left: 102px"><li>2</li><li>1</li><li>1/2</li><li>1/4</li><li>1/8</li><li>1/16</li></ol>
+      </div>
+      <button type="button" class="fx-randomize" id="fx-randomize">RANDOMIZE</button>
+    </div>
+    <div class="case"></div>
+  </section>
   <section class="part bottom" aria-label="Samples">
     <div class="window"></div>
     <div class="content">
@@ -128,25 +177,6 @@
   </section>
 </div>
 <p id="error"></p>
-<div class="effect-controls">
-  <label>Power <input type="range" id="global-power" min="0" max="1" step="0.01" value="1"></label>
-  <label>Beat <input type="range" id="global-beat" min="-4" max="1" step="1" value="0"> <span id="global-beat-value">1</span></label>
-  <label>Global chance <input type="range" id="global-chance" min="0" max="1" step="0.01" value="0"></label>
-  <label>Reverb <input type="range" id="reverb-power" min="0" max="1" step="0.01" value="1"></label>
-  <label>Chance <input type="range" id="reverb-chance" min="0" max="1" step="0.01" value="0"></label>
-  <label>Delay <input type="range" id="delay-power" min="0" max="1" step="0.01" value="1"></label>
-  <label>Delay chance <input type="range" id="delay-chance" min="0" max="1" step="0.01" value="0"></label>
-  <label>Reverse <input type="range" id="reverse-power" min="0" max="1" step="0.01" value="1"></label>
-  <label>Reverse chance <input type="range" id="reverse-chance" min="0" max="1" step="0.01" value="0"></label>
-  <label>Filter <input type="range" id="filter-power" min="0" max="1" step="0.01" value="1"></label>
-  <label>Filter chance <input type="range" id="filter-chance" min="0" max="1" step="0.01" value="0"></label>
-  <label>Flanger <input type="range" id="flanger-power" min="0" max="1" step="0.01" value="1"></label>
-  <label>Flanger chance <input type="range" id="flanger-chance" min="0" max="1" step="0.01" value="0"></label>
-  <label>Trance <input type="range" id="trance-power" min="0" max="1" step="0.01" value="1"></label>
-  <label>Trance chance <input type="range" id="trance-chance" min="0" max="1" step="0.01" value="0"></label>
-  <label>Shift <input type="range" id="shift-power" min="0" max="1" step="0.01" value="1"></label>
-  <label>Shift chance <input type="range" id="shift-chance" min="0" max="1" step="0.01" value="0"></label>
-</div>
 <script src="/plugin.js"></script>
 </body>
 </html>
