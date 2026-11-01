@@ -1,12 +1,14 @@
 #pragma once
 
+#include "Effect.h"
+
 namespace bt {
 
 // Bandpass. An LFO moves the frequency from 100 to 10000, one cycle per beat.
 // Power sets resonance, dry, wet, and output velocity. Those settings are in Filter.cpp.
 class Filter {
 public:
-    void apply(float dryL, float dryR, int pos, float power, double beats, double sampleRate, double bpm, float& outL, float& outR);
+    void apply(float* l, float* r, const Playhead& playhead, const EffectParams& params);
     void clean();
 
 private:

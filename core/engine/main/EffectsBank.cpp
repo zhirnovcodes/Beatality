@@ -24,37 +24,35 @@ void EffectsBank::clean() {
     shift_.clean();
 }
 
-void EffectsBank::apply(EffectId effect, float dryL, float dryR, float revL, float revR, int pos, float wet, double beats, double sampleRate, double bpm, float& outL, float& outR) {
+void EffectsBank::apply(EffectId effect, float* l, float* r, const Playhead& playhead, const EffectParams& params) {
     if (effect == EffectId::Reverb) {
-        reverb_.apply(dryL, dryR, pos, wet, beats, sampleRate, bpm, outL, outR);
+        reverb_.apply(l, r, playhead, params);
         return;
     }
     if (effect == EffectId::Delay) {
-        delay_.apply(dryL, dryR, pos, wet, beats, sampleRate, bpm, outL, outR);
+        delay_.apply(l, r, playhead, params);
         return;
     }
     if (effect == EffectId::Reverse) {
-        reverse_.apply(dryL, dryR, revL, revR, wet, outL, outR);
+        reverse_.apply(l, r, playhead, params);
         return;
     }
     if (effect == EffectId::Filter) {
-        filter_.apply(dryL, dryR, pos, wet, beats, sampleRate, bpm, outL, outR);
+        filter_.apply(l, r, playhead, params);
         return;
     }
     if (effect == EffectId::Flanger) {
-        flanger_.apply(dryL, dryR, pos, wet, beats, sampleRate, bpm, outL, outR);
+        flanger_.apply(l, r, playhead, params);
         return;
     }
     if (effect == EffectId::Trance) {
-        trance_.apply(dryL, dryR, pos, wet, beats, sampleRate, bpm, outL, outR);
+        trance_.apply(l, r, playhead, params);
         return;
     }
     if (effect == EffectId::Shift) {
-        shift_.apply(dryL, dryR, pos, wet, beats, sampleRate, bpm, outL, outR);
+        shift_.apply(l, r, playhead, params);
         return;
     }
-    outL = dryL;
-    outR = dryR;
 }
 
 } // namespace bt

@@ -89,13 +89,17 @@ float Reverb::tank(Stage* combs, Stage* allpasses, float input, float feedback) 
     return mixed;
 }
 
-void Reverb::apply(float dryL, float dryR, int, float wet, double beats, double, double, float& outL, float& outR) {
+void Reverb::apply(float* l, float* r, const Playhead&, const EffectParams& params) {
+    const float dryL = *l;
+    const float dryR = *r;
+    const float wet = params.power;
+    const double beats = params.beats;
     const float mix = wet < 0.0f ? 0.0f : (wet > 1.0f ? 1.0f : wet);
     const float feedback = feedbackFor(beats) * mix;
     const float wetL = tank(combsL_, allL_, dryL, feedback);
     const float wetR = tank(combsR_, allR_, dryR, feedback);
-    outL = dryL + (wetL - dryL) * mix;
-    outR = dryR + (wetR - dryR) * mix;
+    *l = dryL + (wetL - dryL) * mix;
+    *r = dryR + (wetR - dryR) * mix;
     quiet_ = false;
 }
 

@@ -36,7 +36,13 @@ Delay::Delay(double sampleRate) {
     right_.reset(new (std::nothrow) float[static_cast<std::size_t>(capacity_)]());
 }
 
-void Delay::apply(float dryL, float dryR, int, float wet, double beats, double sampleRate, double bpm, float& outL, float& outR) {
+void Delay::apply(float* l, float* r, const Playhead& playhead, const EffectParams& params) {
+    const float dryL = *l;
+    const float dryR = *r;
+    const float wet = params.power;
+    const double beats = params.beats;
+    const double sampleRate = playhead.sampleRate;
+    const double bpm = playhead.bpm;
     // beats * 60 / bpm is the offset in seconds. Clamp it to the line.
     const double limit = static_cast<double>(capacity_);
     double frames = beats * 60.0 / bpm * sampleRate;
@@ -92,8 +98,8 @@ void Delay::apply(float dryL, float dryR, int, float wet, double beats, double s
         delayedL = dryL + (echoL - dryL) * open;
         delayedR = dryR + (echoR - dryR) * open;
     }
-    outL = dryL + (delayedL - dryL) * mix;
-    outR = dryR + (delayedR - dryR) * mix;
+    *l = dryL + (delayedL - dryL) * mix;
+    *r = dryR + (delayedR - dryR) * mix;
     quiet_ = false;
 }
 

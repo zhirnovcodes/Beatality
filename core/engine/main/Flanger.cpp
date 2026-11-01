@@ -72,7 +72,13 @@ Flanger::Flanger(double sampleRate) {
     right_.reset(new (std::nothrow) float[static_cast<std::size_t>(capacity_)]());
 }
 
-void Flanger::apply(float dryL, float dryR, int, float power, double beats, double sampleRate, double bpm, float& outL, float& outR) {
+void Flanger::apply(float* l, float* r, const Playhead& playhead, const EffectParams& params) {
+    const float dryL = *l;
+    const float dryR = *r;
+    const float power = params.power;
+    const double beats = params.beats;
+    const double sampleRate = playhead.sampleRate;
+    const double bpm = playhead.bpm;
     // One beat is one cycle. The sine walks the delay from 0.5 ms to 8 ms.
     const double along = 0.5 * (std::sin(phase_ * 2.0 * kPi) + 1.0);
     double delay = (kDelayMsMin + along * (kDelayMsMax - kDelayMsMin)) * 0.001 * sampleRate;
@@ -99,8 +105,8 @@ void Flanger::apply(float dryL, float dryR, int, float power, double beats, doub
         write_ = 0;
     }
 
-    outL = dryL * settings.dry + echoL * settings.wet;
-    outR = dryR * settings.dry + echoR * settings.wet;
+    *l = dryL * settings.dry + echoL * settings.wet;
+    *r = dryR * settings.dry + echoR * settings.wet;
     quiet_ = false;
 }
 

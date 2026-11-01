@@ -92,7 +92,13 @@ float Shift::channel(float* line, float x, double cosine, double sine) {
     return shifted;
 }
 
-void Shift::apply(float dryL, float dryR, int, float power, double beats, double sampleRate, double bpm, float& outL, float& outR) {
+void Shift::apply(float* l, float* r, const Playhead& playhead, const EffectParams& params) {
+    const float dryL = *l;
+    const float dryR = *r;
+    const float power = params.power;
+    const double beats = params.beats;
+    const double sampleRate = playhead.sampleRate;
+    const double bpm = playhead.bpm;
     // One beat is one cycle. The sine is the shift, from -width to +width.
     const double lfo = std::sin(phase_ * 2.0 * kPi);
     const double cycle = beats * sampleRate * 60.0 / bpm;
@@ -112,8 +118,8 @@ void Shift::apply(float dryL, float dryR, int, float power, double beats, double
         write_ = 0;
     }
 
-    outL = dryL * settings.dry + wetL * settings.wet;
-    outR = dryR * settings.dry + wetR * settings.wet;
+    *l = dryL * settings.dry + wetL * settings.wet;
+    *r = dryR * settings.dry + wetR * settings.wet;
     quiet_ = false;
 }
 

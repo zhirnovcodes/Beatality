@@ -84,7 +84,13 @@ float step(float& z1, float& z2, float x, const Coeff& coeff) {
 
 } // namespace
 
-void Filter::apply(float dryL, float dryR, int, float power, double beats, double sampleRate, double bpm, float& outL, float& outR) {
+void Filter::apply(float* l, float* r, const Playhead& playhead, const EffectParams& params) {
+    const float dryL = *l;
+    const float dryR = *r;
+    const float power = params.power;
+    const double beats = params.beats;
+    const double sampleRate = playhead.sampleRate;
+    const double bpm = playhead.bpm;
     // One beat is one cycle. The sine walks from 100 to 10000 in octaves.
     const double along = 0.5 * (std::sin(phase_ * 2.0 * kPi) + 1.0);
     float frequency = static_cast<float>(static_cast<double>(kFreqMin) * std::pow(static_cast<double>(kFreqMax / kFreqMin), along));
@@ -100,8 +106,8 @@ void Filter::apply(float dryL, float dryR, int, float power, double beats, doubl
     const Coeff coeff = bandpass(frequency, qFor(settings.resonance), sampleRate);
     const float bandL = step(z1L_, z2L_, dryL, coeff);
     const float bandR = step(z1R_, z2R_, dryR, coeff);
-    outL = (dryL * settings.dry + bandL * settings.wet) * settings.velocity;
-    outR = (dryR * settings.dry + bandR * settings.wet) * settings.velocity;
+    *l = (dryL * settings.dry + bandL * settings.wet) * settings.velocity;
+    *r = (dryR * settings.dry + bandR * settings.wet) * settings.velocity;
     quiet_ = false;
 }
 

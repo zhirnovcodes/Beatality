@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Effect.h"
 #include "Delay.h"
 #include "Filter.h"
 #include "Flanger.h"
@@ -18,7 +19,7 @@ public:
 
     void bind(int slot);
     void clean();
-    void apply(EffectId effect, float dryL, float dryR, float revL, float revR, int pos, float wet, double beats, double sampleRate, double bpm, float& outL, float& outR);
+    void apply(EffectId effect, float* l, float* r, const Playhead& playhead, const EffectParams& params);
 
 private:
     int slot_ = -1;

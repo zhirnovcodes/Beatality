@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Effect.h"
+
 #include <memory>
 
 namespace bt {
@@ -16,7 +18,7 @@ class Delay {
 public:
     explicit Delay(double sampleRate);
 
-    void apply(float dryL, float dryR, int pos, float wet, double beats, double sampleRate, double bpm, float& outL, float& outR);
+    void apply(float* l, float* r, const Playhead& playhead, const EffectParams& params);
     void clean();
 
 private:

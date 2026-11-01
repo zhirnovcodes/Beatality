@@ -89,6 +89,12 @@ double clamp(double value, double low, double high) {
     return value;
 }
 
+// How many slices the file holds after the track start. The grid owns the slice length.
+int slicesAfterStart(const SliceGrid& grid, double sampleRate, const SampleBuffer& buffer, const TrackPlay& play) {
+    const double durationSec = static_cast<double>(buffer.frames) / sampleRate;
+    return grid.trackSlices(durationSec * (1.0 - unit(play.start)));
+}
+
 } // namespace
 
 void SliceEngine::setTrack(int index, double start, double length, bool loop) {
@@ -402,12 +408,6 @@ void SliceEngine::affect(EffectsBank& bank, int slot, int position, float& left,
         return;
     }
     bank.bind(slot);
-    float revL = left;
-    float revR = right;
-    if (effect == EffectId::Reverse) {
-        const int track = sequence_.indexAt(slot, bank_.count());
-        readReversed(bufferForSlot(slot), bank_.play(track), slot, position, revL, revR);
-    }
     double localPower = reversePower_;
     if (effect == EffectId::Reverb) {
         localPower = reverbPower_;
@@ -422,12 +422,22 @@ void SliceEngine::affect(EffectsBank& bank, int slot, int position, float& left,
     } else if (effect == EffectId::Shift) {
         localPower = shiftPower_;
     }
-    const float wet = static_cast<float>(unit(localPower * globalPower_));
-    float outL = 0.0f;
-    float outR = 0.0f;
-    bank.apply(effect, left, right, revL, revR, offsetInSlice(slot, position), wet, globalBeat_, sampleRate_, grid_.bpm(), outL, outR);
-    left = outL;
-    right = outR;
+    const int track = sequence_.indexAt(slot, bank_.count());
+    const SampleBuffer& source = bufferForSlot(slot);
+    Playhead playhead;
+    playhead.beats = static_cast<double>(position) / framesPerBeat();
+    playhead.bpm = grid_.bpm();
+    playhead.sampleRate = sampleRate_;
+    EffectParams params;
+    params.power = static_cast<float>(unit(localPower * globalPower_));
+    params.beats = globalBeat_;
+    params.source = &source;
+    params.play = bank_.play(track);
+    params.slot = slot;
+    params.local = offsetInSlice(slot, position);
+    params.sliceFrames = sliceFrames();
+    params.maxSlices = slicesAfterStart(grid_, sampleRate_, source, params.play);
+    bank.apply(effect, &left, &right, playhead, params);
 }
 
 int SliceEngine::offsetInSlice(int slot, int position) const {
@@ -595,21 +605,6 @@ void SliceEngine::remember(const SampleBuffer& buffer) {
     }
 }
 
-int SliceEngine::frameAt(const SampleBuffer& buffer, const TrackPlay& play, int slot, int local) const {
-    const int slice = sliceFrames();
-    const double durationSec = static_cast<double>(buffer.frames) / sampleRate_;
-    const double start = unit(play.start);
-    const double length = unit(play.length);
-    const int maxSlices = grid_.trackSlices(durationSec * (1.0 - start));
-    const int sliceCount = static_cast<int>(std::llround(length * (maxSlices - 1))) + 1;
-    if (!play.loop && slot >= sliceCount) {
-        return buffer.frames;
-    }
-    const int trackSlice = slot % sliceCount;
-    const int startFrame = static_cast<int>(std::llround(start * buffer.frames));
-    return startFrame + trackSlice * slice + local;
-}
-
 int SliceEngine::frameIn(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position) const {
     const int slice = sliceFrames();
     const int loop = loopFrames();
@@ -617,83 +612,8 @@ int SliceEngine::frameIn(const SampleBuffer& buffer, const TrackPlay& play, int 
     if (origin + slice <= position) {
         origin += loop;
     }
-    return frameAt(buffer, play, slot, position - origin);
-}
-
-namespace {
-
-void voiceGain(const TrackPlay& play, float& left, float& right) {
-    const float volume = static_cast<float>(clamp(play.volume, 0.0, 1.2));
-    const double pan = clamp(play.pan, -1.0, 1.0);
-    const float leftGain = static_cast<float>(pan <= 0.0 ? 1.0 : 1.0 - pan);
-    const float rightGain = static_cast<float>(pan >= 0.0 ? 1.0 : 1.0 + pan);
-    left *= volume * leftGain;
-    right *= volume * rightGain;
-}
-
-struct PartRead {
-    int mirrored = 0;
-    int offset = 0;
-    int length = 0;
-};
-
-// Each part plays from its end back to its start. Frames before the slice
-// continue that reverse past the first part, so the fade into the slice is the same line.
-PartRead partRead(int local, int sliceFrames, int partFrames, int parts) {
-    if (local < 0) {
-        const int end = partFrames < sliceFrames ? partFrames : sliceFrames;
-        return {end - 1 - local, local, end};
-    }
-    int index = local / partFrames;
-    if (index >= parts) {
-        index = parts - 1;
-    }
-    const int start = index * partFrames;
-    const int end = index + 1 >= parts ? sliceFrames : start + partFrames;
-    return {end - 1 - (local - start), local - start, end - start};
-}
-
-// The reversed copy rises from dry over the attack, holds, then falls back to dry.
-// The same length closes the part, so the joins stay on the dry frame.
-float copyEnvelope(int offset, int length, int attack) {
-    if (offset < 0 || length <= 0 || attack <= 0) {
-        return 0.0f;
-    }
-    float rise = static_cast<float>(offset) / static_cast<float>(attack);
-    if (rise > 1.0f) {
-        rise = 1.0f;
-    }
-    float fall = 1.0f;
-    if (offset >= length - attack) {
-        fall = static_cast<float>(length - 1 - offset) / static_cast<float>(attack);
-        if (fall < 0.0f) {
-            fall = 0.0f;
-        }
-    }
-    return rise < fall ? rise : fall;
-}
-
-} // namespace
-
-void SliceEngine::readReversed(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position, float& left, float& right) const {
-    const int slice = sliceFrames();
-    // The global beat is the part length. A longer beat keeps the slice as one part.
-    int parts = static_cast<int>(std::llround(grid_.sliceBeats() / globalBeat_));
-    if (parts < 1) {
-        parts = 1;
-    }
-    int part = slice / parts;
-    if (part < 1) {
-        part = 1;
-    }
-    const PartRead read = partRead(offsetInSlice(slot, position), slice, part, parts);
-    float revL = 0.0f;
-    float revR = 0.0f;
-    take(buffer, frameAt(buffer, play, slot, read.mirrored), revL, revR);
-    voiceGain(play, revL, revR);
-    const float env = copyEnvelope(read.offset, read.length, attackFrames(globalBeat_, sampleRate_));
-    left = left + (revL - left) * env;
-    right = right + (revR - right) * env;
+    const int maxSlices = slicesAfterStart(grid_, sampleRate_, buffer, play);
+    return frameAt(buffer, play, slot, position - origin, slice, maxSlices);
 }
 
 void SliceEngine::hear(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position, float& left, float& right) const {

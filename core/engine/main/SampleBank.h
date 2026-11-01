@@ -37,4 +37,11 @@ private:
     int count_ = 0;
 };
 
+// File frame for one local offset in a slice. maxSlices is how many slices the file holds after start.
+// A frame past the file is buffer.frames, which reads as silence.
+int frameAt(const SampleBuffer& buffer, const TrackPlay& play, int slot, int local, int sliceFrames, int maxSlices);
+
+// Volume and pan of one track, applied to one frame.
+void voiceGain(const TrackPlay& play, float& left, float& right);
+
 } // namespace bt

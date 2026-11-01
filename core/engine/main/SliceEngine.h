@@ -153,9 +153,7 @@ private:
     int heard() const;
 
     const SampleBuffer& bufferForSlot(int slot) const;
-    int frameAt(const SampleBuffer& buffer, const TrackPlay& play, int slot, int local) const;
     int frameIn(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position) const;
-    void readReversed(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position, float& left, float& right) const;
     void remember(const SampleBuffer& buffer);
     void take(const SampleBuffer& buffer, int frame, float& left, float& right) const;
     void hear(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position, float& left, float& right) const;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Effect.h"
 #include "Rng.h"
 
 namespace bt {
@@ -14,7 +15,7 @@ class Trance {
 public:
     explicit Trance(std::uint64_t seed);
 
-    void apply(float dryL, float dryR, int pos, float wet, double beats, double sampleRate, double bpm, float& outL, float& outR);
+    void apply(float* l, float* r, const Playhead& playhead, const EffectParams& params);
     void clean();
 
 private:
