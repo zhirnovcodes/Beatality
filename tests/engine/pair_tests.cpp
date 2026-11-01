@@ -590,10 +590,12 @@ void testReverseSplitsTheSlice() {
 
     auto play = [&](double power, double chance, int beat) {
         bt::SliceEngine engine(kRate, 1);
-        engine.setGlobalChance(chance);
-        engine.setReverseChance(1);
-        engine.setReversePower(power);
-        engine.setGlobalBeat(beat);
+        bt::Effects effects;
+        effects.globalChance = chance;
+        effects.reverseChance = 1;
+        effects.reversePower = power;
+        effects.globalBeat = beat;
+        engine.setEffectsSettings(effects);
         engine.append(bufferOf(1, samples));
         engine.play();
         std::vector<float> left(kSlice);
@@ -654,10 +656,12 @@ void testFilterFollowsPowerAndBeat() {
 
     auto play = [&](const std::vector<float>& samples, double power, double chance, int beat) {
         bt::SliceEngine engine(kRate, 1);
-        engine.setGlobalChance(chance);
-        engine.setFilterChance(1);
-        engine.setFilterPower(power);
-        engine.setGlobalBeat(beat);
+        bt::Effects effects;
+        effects.globalChance = chance;
+        effects.filterChance = 1;
+        effects.filterPower = power;
+        effects.globalBeat = beat;
+        engine.setEffectsSettings(effects);
         engine.append(bufferOf(1, samples));
         engine.play();
         std::vector<float> left(kFrames);
@@ -700,10 +704,12 @@ void testFlangerFollowsPowerAndBeat() {
 
     auto play = [&](const std::vector<float>& samples, double power, double chance, int beat) {
         bt::SliceEngine engine(kRate, 1);
-        engine.setGlobalChance(chance);
-        engine.setFlangerChance(1);
-        engine.setFlangerPower(power);
-        engine.setGlobalBeat(beat);
+        bt::Effects effects;
+        effects.globalChance = chance;
+        effects.flangerChance = 1;
+        effects.flangerPower = power;
+        effects.globalBeat = beat;
+        engine.setEffectsSettings(effects);
         engine.append(bufferOf(1, samples));
         engine.play();
         std::vector<float> left(kFrames);
@@ -745,10 +751,12 @@ void testTranceFollowsPowerAndBeat() {
 
     auto play = [&](double power, double chance, int beat) {
         bt::SliceEngine engine(kRate, 1);
-        engine.setGlobalChance(chance);
-        engine.setTranceChance(1);
-        engine.setTrancePower(power);
-        engine.setGlobalBeat(beat);
+        bt::Effects effects;
+        effects.globalChance = chance;
+        effects.tranceChance = 1;
+        effects.trancePower = power;
+        effects.globalBeat = beat;
+        engine.setEffectsSettings(effects);
         engine.append(bufferOf(1, held));
         engine.play();
         std::vector<float> left(kFrames);
@@ -813,10 +821,12 @@ void testShiftFollowsPowerAndBeat() {
 
     auto play = [&](double power, double chance, int beat) {
         bt::SliceEngine engine(kRate, 1);
-        engine.setGlobalChance(chance);
-        engine.setShiftChance(1);
-        engine.setShiftPower(power);
-        engine.setGlobalBeat(beat);
+        bt::Effects effects;
+        effects.globalChance = chance;
+        effects.shiftChance = 1;
+        effects.shiftPower = power;
+        effects.globalBeat = beat;
+        engine.setEffectsSettings(effects);
         engine.append(bufferOf(1, tone));
         engine.play();
         std::vector<float> left(kFrames);

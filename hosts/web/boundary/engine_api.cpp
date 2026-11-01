@@ -19,10 +19,15 @@ struct Instance {
     bt::SliceEngine engine;
     bt::SliceSnapshot snapshot;
     bt::NoteGate gate;
+    bt::Effects effects;
     float velocity = 1.0f;
 
     Instance(double sampleRate, std::uint64_t seed) : engine(sampleRate, seed) {}
 };
+
+void storeEffects(Instance& instance) {
+    instance.engine.setEffectsSettings(instance.effects);
+}
 
 void applyGate(Instance& instance, bt::Gate signal) {
     if (signal == bt::Gate::Start) {
@@ -166,122 +171,139 @@ BT_EXPORT void bt_set_attack(Instance* instance, int ms) {
 }
 
 BT_EXPORT void bt_set_global_power(Instance* instance, double power) {
-    if (instance == nullptr || !(power >= bt::SliceEngine::kGlobalPowerMin) || power > bt::SliceEngine::kGlobalPowerMax) {
+    if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->engine.setGlobalPower(power);
+    instance->effects.globalPower = power;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_global_beat(Instance* instance, int exponent) {
-    if (instance == nullptr || exponent < bt::SliceEngine::kGlobalBeatExpMin || exponent > bt::SliceEngine::kGlobalBeatExpMax) {
+    if (instance == nullptr || exponent < bt::Effects::kBeatMin || exponent > bt::Effects::kBeatMax) {
         return;
     }
-    instance->engine.setGlobalBeat(exponent);
+    instance->effects.globalBeat = exponent;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_global_chance(Instance* instance, double chance) {
-    if (instance == nullptr || !(chance >= bt::SliceEngine::kGlobalChanceMin) || chance > bt::SliceEngine::kGlobalChanceMax) {
+    if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->engine.setGlobalChance(chance);
+    instance->effects.globalChance = chance;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_reverb_power(Instance* instance, double power) {
-    if (instance == nullptr || !(power >= bt::SliceEngine::kReverbPowerMin) || power > bt::SliceEngine::kReverbPowerMax) {
+    if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->engine.setReverbPower(power);
+    instance->effects.reverbPower = power;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_reverb_chance(Instance* instance, double chance) {
-    if (instance == nullptr || !(chance >= bt::SliceEngine::kReverbChanceMin) || chance > bt::SliceEngine::kReverbChanceMax) {
+    if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->engine.setReverbChance(chance);
+    instance->effects.reverbChance = chance;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_delay_power(Instance* instance, double power) {
-    if (instance == nullptr || !(power >= bt::SliceEngine::kDelayPowerMin) || power > bt::SliceEngine::kDelayPowerMax) {
+    if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->engine.setDelayPower(power);
+    instance->effects.delayPower = power;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_delay_chance(Instance* instance, double chance) {
-    if (instance == nullptr || !(chance >= bt::SliceEngine::kDelayChanceMin) || chance > bt::SliceEngine::kDelayChanceMax) {
+    if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->engine.setDelayChance(chance);
+    instance->effects.delayChance = chance;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_reverse_power(Instance* instance, double power) {
-    if (instance == nullptr || !(power >= bt::SliceEngine::kReversePowerMin) || power > bt::SliceEngine::kReversePowerMax) {
+    if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->engine.setReversePower(power);
+    instance->effects.reversePower = power;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_reverse_chance(Instance* instance, double chance) {
-    if (instance == nullptr || !(chance >= bt::SliceEngine::kReverseChanceMin) || chance > bt::SliceEngine::kReverseChanceMax) {
+    if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->engine.setReverseChance(chance);
+    instance->effects.reverseChance = chance;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_filter_power(Instance* instance, double power) {
-    if (instance == nullptr || !(power >= bt::SliceEngine::kFilterPowerMin) || power > bt::SliceEngine::kFilterPowerMax) {
+    if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->engine.setFilterPower(power);
+    instance->effects.filterPower = power;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_filter_chance(Instance* instance, double chance) {
-    if (instance == nullptr || !(chance >= bt::SliceEngine::kFilterChanceMin) || chance > bt::SliceEngine::kFilterChanceMax) {
+    if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->engine.setFilterChance(chance);
+    instance->effects.filterChance = chance;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_flanger_power(Instance* instance, double power) {
-    if (instance == nullptr || !(power >= bt::SliceEngine::kFlangerPowerMin) || power > bt::SliceEngine::kFlangerPowerMax) {
+    if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->engine.setFlangerPower(power);
+    instance->effects.flangerPower = power;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_flanger_chance(Instance* instance, double chance) {
-    if (instance == nullptr || !(chance >= bt::SliceEngine::kFlangerChanceMin) || chance > bt::SliceEngine::kFlangerChanceMax) {
+    if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->engine.setFlangerChance(chance);
+    instance->effects.flangerChance = chance;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_trance_power(Instance* instance, double power) {
-    if (instance == nullptr || !(power >= bt::SliceEngine::kTrancePowerMin) || power > bt::SliceEngine::kTrancePowerMax) {
+    if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->engine.setTrancePower(power);
+    instance->effects.trancePower = power;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_trance_chance(Instance* instance, double chance) {
-    if (instance == nullptr || !(chance >= bt::SliceEngine::kTranceChanceMin) || chance > bt::SliceEngine::kTranceChanceMax) {
+    if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->engine.setTranceChance(chance);
+    instance->effects.tranceChance = chance;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_shift_power(Instance* instance, double power) {
-    if (instance == nullptr || !(power >= bt::SliceEngine::kShiftPowerMin) || power > bt::SliceEngine::kShiftPowerMax) {
+    if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->engine.setShiftPower(power);
+    instance->effects.shiftPower = power;
+    storeEffects(*instance);
 }
 
 BT_EXPORT void bt_set_shift_chance(Instance* instance, double chance) {
-    if (instance == nullptr || !(chance >= bt::SliceEngine::kShiftChanceMin) || chance > bt::SliceEngine::kShiftChanceMax) {
+    if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->engine.setShiftChance(chance);
+    instance->effects.shiftChance = chance;
+    storeEffects(*instance);
 }
 
 // start is a fraction of the file, 0..1. length is 0..1. loop is 0 or 1.

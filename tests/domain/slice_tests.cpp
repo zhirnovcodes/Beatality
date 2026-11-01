@@ -211,7 +211,9 @@ void testEffectIdsFollowTheWeights() {
     plain.generate(6, 2, plainRng);
     bt::Rng delayRng(5);
     bt::Sequence delay;
-    delay.generate(6, 2, delayRng, 0.0, 1.0);
+    bt::Effects delayOnly;
+    delayOnly.delayChance = 1;
+    delay.generate(6, 2, delayRng, delayOnly);
     for (int i = 0; i < 6; ++i) {
         CHECK(delay.indexAt(i, 2) == plain.indexAt(i, 2));
         CHECK(delay.rollAt(i) == plain.rollAt(i));
@@ -221,44 +223,58 @@ void testEffectIdsFollowTheWeights() {
 
     bt::Rng reverbRng(9);
     bt::Sequence reverb;
-    reverb.generate(4, 1, reverbRng, 1.0, 0.0);
+    bt::Effects reverbOnly;
+    reverbOnly.reverbChance = 1;
+    reverb.generate(4, 1, reverbRng, reverbOnly);
     for (int i = 0; i < 4; ++i) {
         CHECK(reverb.effectAt(i) == bt::EffectId::Reverb);
     }
 
     bt::Rng reverseRng(9);
     bt::Sequence reversed;
-    reversed.generate(4, 1, reverseRng, 0.0, 0.0, 1.0);
+    bt::Effects reverseOnly;
+    reverseOnly.reverseChance = 1;
+    reversed.generate(4, 1, reverseRng, reverseOnly);
     for (int i = 0; i < 4; ++i) {
         CHECK(reversed.effectAt(i) == bt::EffectId::Reverse);
     }
-    reversed.append(6, reverseRng, 0.0, 1.0, 0.0);
+    bt::Effects delayTail;
+    delayTail.delayChance = 1;
+    reversed.append(6, reverseRng, delayTail);
     CHECK(reversed.effectAt(0) == bt::EffectId::Reverse);
 
     bt::Rng filterRng(9);
     bt::Sequence filter;
-    filter.generate(4, 1, filterRng, 0.0, 0.0, 0.0, 1.0);
+    bt::Effects filterOnly;
+    filterOnly.filterChance = 1;
+    filter.generate(4, 1, filterRng, filterOnly);
     for (int i = 0; i < 4; ++i) {
         CHECK(filter.effectAt(i) == bt::EffectId::Filter);
     }
 
     bt::Rng flangerRng(9);
     bt::Sequence flanger;
-    flanger.generate(4, 1, flangerRng, 0.0, 0.0, 0.0, 0.0, 1.0);
+    bt::Effects flangerOnly;
+    flangerOnly.flangerChance = 1;
+    flanger.generate(4, 1, flangerRng, flangerOnly);
     for (int i = 0; i < 4; ++i) {
         CHECK(flanger.effectAt(i) == bt::EffectId::Flanger);
     }
 
     bt::Rng tranceRng(9);
     bt::Sequence trance;
-    trance.generate(4, 1, tranceRng, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+    bt::Effects tranceOnly;
+    tranceOnly.tranceChance = 1;
+    trance.generate(4, 1, tranceRng, tranceOnly);
     for (int i = 0; i < 4; ++i) {
         CHECK(trance.effectAt(i) == bt::EffectId::Trance);
     }
 
     bt::Rng shiftRng(9);
     bt::Sequence shift;
-    shift.generate(4, 1, shiftRng, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+    bt::Effects shiftOnly;
+    shiftOnly.shiftChance = 1;
+    shift.generate(4, 1, shiftRng, shiftOnly);
     for (int i = 0; i < 4; ++i) {
         CHECK(shift.effectAt(i) == bt::EffectId::Shift);
     }
@@ -267,7 +283,10 @@ void testEffectIdsFollowTheWeights() {
 
     bt::Rng walkRng(2);
     bt::Sequence walked;
-    walked.generate(1, 1, walkRng, 0.25, 0.75);
+    bt::Effects walkedWeights;
+    walkedWeights.reverbChance = 0.25;
+    walkedWeights.delayChance = 0.75;
+    walked.generate(1, 1, walkRng, walkedWeights);
     bt::Rng walkShadow(2);
     walkShadow.nextInt(1);
     walkShadow.nextFloat();
@@ -277,7 +296,10 @@ void testEffectIdsFollowTheWeights() {
 
     bt::Rng bothRng(1);
     bt::Sequence mixed;
-    mixed.generate(80, 1, bothRng, 1.0, 1.0);
+    bt::Effects both;
+    both.reverbChance = 1;
+    both.delayChance = 1;
+    mixed.generate(80, 1, bothRng, both);
     int reverbs = 0;
     int delays = 0;
     for (int i = 0; i < mixed.size(); ++i) {
@@ -300,8 +322,12 @@ void testEffectIdsFollowTheWeights() {
 
     bt::Rng grownRng(4);
     bt::Sequence grown;
-    grown.generate(2, 2, grownRng, 1.0, 0.0);
-    grown.append(4, grownRng, 0.0, 1.0);
+    bt::Effects grownReverb;
+    grownReverb.reverbChance = 1;
+    grown.generate(2, 2, grownRng, grownReverb);
+    bt::Effects grownDelay;
+    grownDelay.delayChance = 1;
+    grown.append(4, grownRng, grownDelay);
     CHECK(grown.effectAt(0) == bt::EffectId::Reverb);
     CHECK(grown.effectAt(1) == bt::EffectId::Reverb);
     CHECK(grown.effectAt(2) == bt::EffectId::Delay);

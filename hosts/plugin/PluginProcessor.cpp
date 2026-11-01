@@ -356,23 +356,7 @@ struct Processor::Impl {
         engine->setLoop(loopBeats);
         engine->setSlice(sliceExp);
         engine->setAttack(attackMs);
-        engine->setGlobalPower(globalPower);
-        engine->setGlobalBeat(globalBeatExp);
-        engine->setGlobalChance(globalChance);
-        engine->setReverbPower(reverbPower);
-        engine->setReverbChance(reverbChance);
-        engine->setDelayPower(delayPower);
-        engine->setDelayChance(delayChance);
-        engine->setReversePower(reversePower);
-        engine->setReverseChance(reverseChance);
-        engine->setFilterPower(filterPower);
-        engine->setFilterChance(filterChance);
-        engine->setFlangerPower(flangerPower);
-        engine->setFlangerChance(flangerChance);
-        engine->setTrancePower(trancePower);
-        engine->setTranceChance(tranceChance);
-        engine->setShiftPower(shiftPower);
-        engine->setShiftChance(shiftChance);
+        engine->setEffectsSettings(effects);
         engine->setOutput(outputVolume, outputPan);
     }
 
@@ -484,140 +468,95 @@ struct Processor::Impl {
         remember();
     }
 
-    void applyGlobalPower(double power) {
-        globalPower = power;
-        if (engine == nullptr) {
-            return;
+    void applyEffects() {
+        if (engine != nullptr) {
+            engine->setEffectsSettings(effects);
         }
-        engine->setGlobalPower(power);
+    }
+
+    void applyGlobalPower(double power) {
+        effects.globalPower = power;
+        applyEffects();
     }
 
     void applyGlobalBeat(int exponent) {
-        globalBeatExp = exponent;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setGlobalBeat(exponent);
+        effects.globalBeat = exponent;
+        applyEffects();
     }
 
     void applyGlobalChance(double chance) {
-        globalChance = chance;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setGlobalChance(chance);
+        effects.globalChance = chance;
+        applyEffects();
     }
 
     void applyReverbPower(double power) {
-        reverbPower = power;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setReverbPower(power);
+        effects.reverbPower = power;
+        applyEffects();
     }
 
     void applyReverbChance(double chance) {
-        reverbChance = chance;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setReverbChance(chance);
+        effects.reverbChance = chance;
+        applyEffects();
     }
 
     void applyDelayPower(double power) {
-        delayPower = power;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setDelayPower(power);
+        effects.delayPower = power;
+        applyEffects();
     }
 
     void applyDelayChance(double chance) {
-        delayChance = chance;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setDelayChance(chance);
+        effects.delayChance = chance;
+        applyEffects();
     }
 
     void applyReversePower(double power) {
-        reversePower = power;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setReversePower(power);
+        effects.reversePower = power;
+        applyEffects();
     }
 
     void applyReverseChance(double chance) {
-        reverseChance = chance;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setReverseChance(chance);
+        effects.reverseChance = chance;
+        applyEffects();
     }
 
     void applyFilterPower(double power) {
-        filterPower = power;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setFilterPower(power);
+        effects.filterPower = power;
+        applyEffects();
     }
 
     void applyFilterChance(double chance) {
-        filterChance = chance;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setFilterChance(chance);
+        effects.filterChance = chance;
+        applyEffects();
     }
 
     void applyFlangerPower(double power) {
-        flangerPower = power;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setFlangerPower(power);
+        effects.flangerPower = power;
+        applyEffects();
     }
 
     void applyFlangerChance(double chance) {
-        flangerChance = chance;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setFlangerChance(chance);
+        effects.flangerChance = chance;
+        applyEffects();
     }
 
     void applyTrancePower(double power) {
-        trancePower = power;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setTrancePower(power);
+        effects.trancePower = power;
+        applyEffects();
     }
 
     void applyTranceChance(double chance) {
-        tranceChance = chance;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setTranceChance(chance);
+        effects.tranceChance = chance;
+        applyEffects();
     }
 
     void applyShiftPower(double power) {
-        shiftPower = power;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setShiftPower(power);
+        effects.shiftPower = power;
+        applyEffects();
     }
 
     void applyShiftChance(double chance) {
-        shiftChance = chance;
-        if (engine == nullptr) {
-            return;
-        }
-        engine->setShiftChance(chance);
+        effects.shiftChance = chance;
+        applyEffects();
     }
 
     void applyOutput(double volume, double pan) {
@@ -969,23 +908,7 @@ struct Processor::Impl {
     int loopBeats = 8;
     int sliceExp = 0;
     int attackMs = bt::SliceEngine::kAttackMinMs;
-    double globalPower = 1;
-    int globalBeatExp = 0;
-    double globalChance = 0;
-    double reverbPower = 1;
-    double reverbChance = 0;
-    double delayPower = 1;
-    double delayChance = 0;
-    double reversePower = 1;
-    double reverseChance = 0;
-    double filterPower = 1;
-    double filterChance = 0;
-    double flangerPower = 1;
-    double flangerChance = 0;
-    double trancePower = 1;
-    double tranceChance = 0;
-    double shiftPower = 1;
-    double shiftChance = 0;
+    bt::Effects effects;
     double outputVolume = 1;
     double outputPan = 0;
 };
@@ -1236,10 +1159,10 @@ void Processor::setAttack(int ms) {
 }
 
 void Processor::setGlobalPower(double power) {
-    if (!std::isfinite(power) || power < bt::SliceEngine::kGlobalPowerMin || power > bt::SliceEngine::kGlobalPowerMax) {
+    if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    savedGlobalPower = power;
+    saved.globalPower = power;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::GlobalPower;
     slot.first = power;
@@ -1247,10 +1170,10 @@ void Processor::setGlobalPower(double power) {
 }
 
 void Processor::setGlobalBeat(int exponent) {
-    if (exponent < bt::SliceEngine::kGlobalBeatExpMin || exponent > bt::SliceEngine::kGlobalBeatExpMax) {
+    if (exponent < bt::Effects::kBeatMin || exponent > bt::Effects::kBeatMax) {
         return;
     }
-    savedGlobalBeat = exponent;
+    saved.globalBeat = exponent;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::GlobalBeat;
     slot.number = exponent;
@@ -1258,10 +1181,10 @@ void Processor::setGlobalBeat(int exponent) {
 }
 
 void Processor::setGlobalChance(double chance) {
-    if (!std::isfinite(chance) || chance < bt::SliceEngine::kGlobalChanceMin || chance > bt::SliceEngine::kGlobalChanceMax) {
+    if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    savedGlobalChance = chance;
+    saved.globalChance = chance;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::GlobalChance;
     slot.first = chance;
@@ -1269,10 +1192,10 @@ void Processor::setGlobalChance(double chance) {
 }
 
 void Processor::setReverbPower(double power) {
-    if (!std::isfinite(power) || power < bt::SliceEngine::kReverbPowerMin || power > bt::SliceEngine::kReverbPowerMax) {
+    if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    savedReverbPower = power;
+    saved.reverbPower = power;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::ReverbPower;
     slot.first = power;
@@ -1280,10 +1203,10 @@ void Processor::setReverbPower(double power) {
 }
 
 void Processor::setReverbChance(double chance) {
-    if (!std::isfinite(chance) || chance < bt::SliceEngine::kReverbChanceMin || chance > bt::SliceEngine::kReverbChanceMax) {
+    if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    savedReverbChance = chance;
+    saved.reverbChance = chance;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::ReverbChance;
     slot.first = chance;
@@ -1291,10 +1214,10 @@ void Processor::setReverbChance(double chance) {
 }
 
 void Processor::setDelayPower(double power) {
-    if (!std::isfinite(power) || power < bt::SliceEngine::kDelayPowerMin || power > bt::SliceEngine::kDelayPowerMax) {
+    if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    savedDelayPower = power;
+    saved.delayPower = power;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::DelayPower;
     slot.first = power;
@@ -1302,10 +1225,10 @@ void Processor::setDelayPower(double power) {
 }
 
 void Processor::setDelayChance(double chance) {
-    if (!std::isfinite(chance) || chance < bt::SliceEngine::kDelayChanceMin || chance > bt::SliceEngine::kDelayChanceMax) {
+    if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    savedDelayChance = chance;
+    saved.delayChance = chance;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::DelayChance;
     slot.first = chance;
@@ -1313,10 +1236,10 @@ void Processor::setDelayChance(double chance) {
 }
 
 void Processor::setReversePower(double power) {
-    if (!std::isfinite(power) || power < bt::SliceEngine::kReversePowerMin || power > bt::SliceEngine::kReversePowerMax) {
+    if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    savedReversePower = power;
+    saved.reversePower = power;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::ReversePower;
     slot.first = power;
@@ -1324,10 +1247,10 @@ void Processor::setReversePower(double power) {
 }
 
 void Processor::setReverseChance(double chance) {
-    if (!std::isfinite(chance) || chance < bt::SliceEngine::kReverseChanceMin || chance > bt::SliceEngine::kReverseChanceMax) {
+    if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    savedReverseChance = chance;
+    saved.reverseChance = chance;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::ReverseChance;
     slot.first = chance;
@@ -1335,10 +1258,10 @@ void Processor::setReverseChance(double chance) {
 }
 
 void Processor::setFilterPower(double power) {
-    if (!std::isfinite(power) || power < bt::SliceEngine::kFilterPowerMin || power > bt::SliceEngine::kFilterPowerMax) {
+    if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    savedFilterPower = power;
+    saved.filterPower = power;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::FilterPower;
     slot.first = power;
@@ -1346,10 +1269,10 @@ void Processor::setFilterPower(double power) {
 }
 
 void Processor::setFilterChance(double chance) {
-    if (!std::isfinite(chance) || chance < bt::SliceEngine::kFilterChanceMin || chance > bt::SliceEngine::kFilterChanceMax) {
+    if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    savedFilterChance = chance;
+    saved.filterChance = chance;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::FilterChance;
     slot.first = chance;
@@ -1357,10 +1280,10 @@ void Processor::setFilterChance(double chance) {
 }
 
 void Processor::setFlangerPower(double power) {
-    if (!std::isfinite(power) || power < bt::SliceEngine::kFlangerPowerMin || power > bt::SliceEngine::kFlangerPowerMax) {
+    if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    savedFlangerPower = power;
+    saved.flangerPower = power;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::FlangerPower;
     slot.first = power;
@@ -1368,10 +1291,10 @@ void Processor::setFlangerPower(double power) {
 }
 
 void Processor::setFlangerChance(double chance) {
-    if (!std::isfinite(chance) || chance < bt::SliceEngine::kFlangerChanceMin || chance > bt::SliceEngine::kFlangerChanceMax) {
+    if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    savedFlangerChance = chance;
+    saved.flangerChance = chance;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::FlangerChance;
     slot.first = chance;
@@ -1379,10 +1302,10 @@ void Processor::setFlangerChance(double chance) {
 }
 
 void Processor::setTrancePower(double power) {
-    if (!std::isfinite(power) || power < bt::SliceEngine::kTrancePowerMin || power > bt::SliceEngine::kTrancePowerMax) {
+    if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    savedTrancePower = power;
+    saved.trancePower = power;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::TrancePower;
     slot.first = power;
@@ -1390,10 +1313,10 @@ void Processor::setTrancePower(double power) {
 }
 
 void Processor::setTranceChance(double chance) {
-    if (!std::isfinite(chance) || chance < bt::SliceEngine::kTranceChanceMin || chance > bt::SliceEngine::kTranceChanceMax) {
+    if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    savedTranceChance = chance;
+    saved.tranceChance = chance;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::TranceChance;
     slot.first = chance;
@@ -1401,10 +1324,10 @@ void Processor::setTranceChance(double chance) {
 }
 
 void Processor::setShiftPower(double power) {
-    if (!std::isfinite(power) || power < bt::SliceEngine::kShiftPowerMin || power > bt::SliceEngine::kShiftPowerMax) {
+    if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    savedShiftPower = power;
+    saved.shiftPower = power;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::ShiftPower;
     slot.first = power;
@@ -1412,10 +1335,10 @@ void Processor::setShiftPower(double power) {
 }
 
 void Processor::setShiftChance(double chance) {
-    if (!std::isfinite(chance) || chance < bt::SliceEngine::kShiftChanceMin || chance > bt::SliceEngine::kShiftChanceMax) {
+    if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    savedShiftChance = chance;
+    saved.shiftChance = chance;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::ShiftChance;
     slot.first = chance;

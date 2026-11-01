@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Curve.h"
+#include "Effects.h"
 #include "EffectsBank.h"
 #include "Rng.h"
 #include "SampleBank.h"
@@ -36,41 +37,6 @@ public:
     static constexpr int kMaxTracks = SampleBank::kCapacity;
     static constexpr int kAttackMinMs = 2;
     static constexpr int kAttackMaxMs = 16;
-    static constexpr double kGlobalPowerMin = 0;
-    static constexpr double kGlobalPowerMax = 1;
-    static constexpr double kReverbPowerMin = 0;
-    static constexpr double kReverbPowerMax = 1;
-    static constexpr double kReverbChanceMin = 0;
-    static constexpr double kReverbChanceMax = 1;
-    static constexpr double kDelayPowerMin = 0;
-    static constexpr double kDelayPowerMax = 1;
-    static constexpr double kDelayChanceMin = 0;
-    static constexpr double kDelayChanceMax = 1;
-    static constexpr double kReversePowerMin = 0;
-    static constexpr double kReversePowerMax = 1;
-    static constexpr double kReverseChanceMin = 0;
-    static constexpr double kReverseChanceMax = 1;
-    static constexpr double kFilterPowerMin = 0;
-    static constexpr double kFilterPowerMax = 1;
-    static constexpr double kFilterChanceMin = 0;
-    static constexpr double kFilterChanceMax = 1;
-    static constexpr double kFlangerPowerMin = 0;
-    static constexpr double kFlangerPowerMax = 1;
-    static constexpr double kFlangerChanceMin = 0;
-    static constexpr double kFlangerChanceMax = 1;
-    static constexpr double kTrancePowerMin = 0;
-    static constexpr double kTrancePowerMax = 1;
-    static constexpr double kTranceChanceMin = 0;
-    static constexpr double kTranceChanceMax = 1;
-    static constexpr double kShiftPowerMin = 0;
-    static constexpr double kShiftPowerMax = 1;
-    static constexpr double kShiftChanceMin = 0;
-    static constexpr double kShiftChanceMax = 1;
-    static constexpr double kGlobalChanceMin = 0;
-    static constexpr double kGlobalChanceMax = 1;
-    // Global beat is 2^exponent beats. -4 is 1/16, 1 is 2.
-    static constexpr int kGlobalBeatExpMin = -4;
-    static constexpr int kGlobalBeatExpMax = 1;
 
     SliceEngine(double sampleRate, std::uint64_t seed);
 
@@ -85,40 +51,8 @@ public:
     void setLoop(int beats);
     void setSlice(int exponent);
     void setAttack(int ms);
-    // power is 0..1 and scales every effect. Default 1.
-    void setGlobalPower(double power);
-    // exponent selects 2^exponent beats, from 1/16 through 2. Default 1 beat.
-    void setGlobalBeat(int exponent);
-    // chance is 0..1. A slice plays its stored effect when its roll is below this. Default 0.
-    void setGlobalChance(double chance);
-    // power is 0..1 and scales the reverb. Default 1.
-    void setReverbPower(double power);
-    // chance is 0..1. Default 0. The reverb's share of the effect chosen when the sequence is written.
-    void setReverbChance(double chance);
-    // power is 0..1 and scales the delay. Default 1.
-    void setDelayPower(double power);
-    // chance is 0..1. Default 0. The delay's share of the effect chosen when the sequence is written.
-    void setDelayChance(double chance);
-    // power is 0..1 and scales the reverse. Default 1. This is the dry/wet lerp.
-    void setReversePower(double power);
-    // chance is 0..1. Default 0. The reverse's share of the effect chosen when the sequence is written.
-    void setReverseChance(double chance);
-    // power is 0..1 and scales the filter. Default 1. Filter.cpp maps this onto its settings.
-    void setFilterPower(double power);
-    // chance is 0..1. Default 0. The filter's share of the effect chosen when the sequence is written.
-    void setFilterChance(double chance);
-    // power is 0..1 and scales the flanger. Default 1. Flanger.cpp maps this onto feedback and dry/wet.
-    void setFlangerPower(double power);
-    // chance is 0..1. Default 0. The flanger's share of the effect chosen when the sequence is written.
-    void setFlangerChance(double chance);
-    // power is 0..1 and scales the trance gate. Default 1. This is the dry/wet mix.
-    void setTrancePower(double power);
-    // chance is 0..1. Default 0. The trance gate's share of the effect chosen when the sequence is written.
-    void setTranceChance(double chance);
-    // power is 0..1 and scales the frequency shifter. Default 1. Shift.cpp maps this onto width and dry/wet.
-    void setShiftPower(double power);
-    // chance is 0..1. Default 0. The shifter's share of the effect chosen when the sequence is written.
-    void setShiftChance(double chance);
+    // Replaces every effect knob.
+    void setEffectsSettings(const Effects& settings);
     // volume is 0..1.2 and scales the mix. The host multiplies that by note velocity.
     // pan is -1..1 and balances the two channels.
     void setOutput(double volume, double pan);
@@ -165,23 +99,7 @@ private:
 
     double sampleRate_;
     int attackMs_ = kAttackMinMs;
-    double globalPower_ = 1;
-    double globalBeat_ = 1;
-    double globalChance_ = 0;
-    double reverbPower_ = 1;
-    double reverbChance_ = 0;
-    double delayPower_ = 1;
-    double delayChance_ = 0;
-    double reversePower_ = 1;
-    double reverseChance_ = 0;
-    double filterPower_ = 1;
-    double filterChance_ = 0;
-    double flangerPower_ = 1;
-    double flangerChance_ = 0;
-    double trancePower_ = 1;
-    double tranceChance_ = 0;
-    double shiftPower_ = 1;
-    double shiftChance_ = 0;
+    Effects effects_{};
     double volume_ = 1;
     double pan_ = 0;
     EffectsBank currentBank_;

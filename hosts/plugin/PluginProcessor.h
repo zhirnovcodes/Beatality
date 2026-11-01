@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Effects.h"
+
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include <atomic>
@@ -80,23 +82,23 @@ public:
     int loopBeats() const { return savedLoop; }
     int sliceExponent() const { return savedSlice; }
     int attackMs() const { return savedAttack; }
-    double globalPower() const { return savedGlobalPower; }
-    int globalBeat() const { return savedGlobalBeat; }
-    double globalChance() const { return savedGlobalChance; }
-    double reverbPower() const { return savedReverbPower; }
-    double reverbChance() const { return savedReverbChance; }
-    double delayPower() const { return savedDelayPower; }
-    double delayChance() const { return savedDelayChance; }
-    double reversePower() const { return savedReversePower; }
-    double reverseChance() const { return savedReverseChance; }
-    double filterPower() const { return savedFilterPower; }
-    double filterChance() const { return savedFilterChance; }
-    double flangerPower() const { return savedFlangerPower; }
-    double flangerChance() const { return savedFlangerChance; }
-    double trancePower() const { return savedTrancePower; }
-    double tranceChance() const { return savedTranceChance; }
-    double shiftPower() const { return savedShiftPower; }
-    double shiftChance() const { return savedShiftChance; }
+    double globalPower() const { return saved.globalPower; }
+    int globalBeat() const { return saved.globalBeat; }
+    double globalChance() const { return saved.globalChance; }
+    double reverbPower() const { return saved.reverbPower; }
+    double reverbChance() const { return saved.reverbChance; }
+    double delayPower() const { return saved.delayPower; }
+    double delayChance() const { return saved.delayChance; }
+    double reversePower() const { return saved.reversePower; }
+    double reverseChance() const { return saved.reverseChance; }
+    double filterPower() const { return saved.filterPower; }
+    double filterChance() const { return saved.filterChance; }
+    double flangerPower() const { return saved.flangerPower; }
+    double flangerChance() const { return saved.flangerChance; }
+    double trancePower() const { return saved.trancePower; }
+    double tranceChance() const { return saved.tranceChance; }
+    double shiftPower() const { return saved.shiftPower; }
+    double shiftChance() const { return saved.shiftChance; }
     double outputVolume() const { return savedVolume; }
     double outputPan() const { return savedPan; }
     double trackStart(int index) const;
@@ -144,23 +146,7 @@ private:
     int savedLoop = 8;
     int savedSlice = 0;
     int savedAttack = 2;
-    double savedGlobalPower = 1;
-    int savedGlobalBeat = 0;
-    double savedGlobalChance = 0;
-    double savedReverbPower = 1;
-    double savedReverbChance = 0;
-    double savedDelayPower = 1;
-    double savedDelayChance = 0;
-    double savedReversePower = 1;
-    double savedReverseChance = 0;
-    double savedFilterPower = 1;
-    double savedFilterChance = 0;
-    double savedFlangerPower = 1;
-    double savedFlangerChance = 0;
-    double savedTrancePower = 1;
-    double savedTranceChance = 0;
-    double savedShiftPower = 1;
-    double savedShiftChance = 0;
+    bt::Effects saved;
     double savedVolume = 1;
     double savedPan = 0;
     std::atomic<std::uint32_t> view{0};
