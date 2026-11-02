@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Curve.h"
+#include "Clock.h"
 #include "Effects.h"
-#include "EffectsBank.h"
 #include "Rng.h"
 #include "SampleBank.h"
 #include "SampleBuffer.h"
 #include "Sequence.h"
 #include "SliceGrid.h"
+#include "SlicePlayer.h"
 
 #include <cstdint>
 
@@ -28,10 +28,9 @@ struct SliceSnapshot {
     int releasedCount = 0;
 };
 
-// The grid, the sequence, the samples, and two gains.
-// slice_ follows the playhead through a slice boundary.
-// play_ is the transport. A new play replaces it; the one leaving is outgoing_.
-// play() and stop() return the playhead to 0.
+// The grid, the sequence, the samples, and two voices.
+// playing_ is the slice that is arriving. outgoing_ is the one leaving.
+// play() and stop() report the playhead at 0.
 class SliceEngine {
 public:
     static constexpr int kMaxTracks = SampleBank::kCapacity;
@@ -72,62 +71,28 @@ public:
     void fillSnapshot(SliceSnapshot& out);
 
 private:
-    void handoff(const SampleBuffer& from);
     void syncSequence(int oldExp, int oldSlots);
-    void place(double beats);
-    void listen();
 
-    void mixSlice(float& left, float& right);
-    void affect(EffectsBank& bank, int slot, int position, float& left, float& right);
-    int offsetInSlice(int slot, int position) const;
-    void applyPlay(float& left, float& right) const;
-    void mixOutgoing(float& left, float& right);
-    void advance();
-    void cleanBanks();
-    int heard() const;
-
-    const SampleBuffer& bufferForSlot(int slot) const;
-    int frameIn(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position) const;
-    void remember(const SampleBuffer& buffer);
-    void take(const SampleBuffer& buffer, int frame, float& left, float& right) const;
-    void hear(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position, float& left, float& right) const;
-
-    int fadeFrames() const;
-    int sliceFrames() const;
-    int loopFrames() const;
-    double framesPerBeat() const;
-
-    double sampleRate_;
+    ClockSettings settings_;
+    SlicePlayer playing_;
+    SlicePlayer outgoing_;
+    Rng rng_;
     int attackMs_ = kAttackMinMs;
     Effects effects_{};
     double volume_ = 1;
     double pan_ = 0;
-    EffectsBank currentBank_;
-    EffectsBank decayingBank_;
-    // True while the attack fade is mixing the slot that is leaving.
-    bool fading_ = false;
-    Rng rng_;
     SliceGrid grid_;
     Sequence sequence_;
     SampleBank bank_;
-
-    int position_ = 0;
-    int fadePosition_ = 0;
-    int clock_ = 0;
-    bool playing_ = false;
-
-    Curve slice_;
-    Curve play_;
-    int playAt_ = 0;
-
-    Curve outgoing_;
-    int outgoingAt_ = 0;
-    int outgoingPosition_ = 0;
+    Clock playingClock_;
+    Clock outgoingClock_;
+    // The sample each voice is playing. The outgoing one can outlive the bank.
+    SampleBuffer playingBuffer_{};
     SampleBuffer outgoingBuffer_{};
-    TrackPlay outgoingPlay_{};
+    int playingSlot_ = -1;
+
     std::uint32_t pending_ = 0;
     bool pendingHeld_ = false;
-
     std::uint32_t released_[kMaxTracks + 1]{};
     int releasedCount_ = 0;
 };

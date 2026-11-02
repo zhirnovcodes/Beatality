@@ -50,46 +50,43 @@ float copyEnvelope(int offset, int length, int attack) {
     return rise < fall ? rise : fall;
 }
 
-void readFrame(const SampleBuffer& buffer, int frame, float& left, float& right) {
-    if (frame < 0 || frame >= buffer.frames) {
-        left = 0.0f;
-        right = 0.0f;
-        return;
-    }
-    left = buffer.left[frame];
-    right = buffer.right[frame];
-}
-
 } // namespace
 
-void Reverse::apply(float* l, float* r, const Playhead& playhead, const EffectParams& params) {
-    const float dryL = *l;
-    const float dryR = *r;
-    const int slice = params.sliceFrames;
-    const double framesPerBeat = playhead.sampleRate * 60.0 / playhead.bpm;
-    const double sliceBeats = static_cast<double>(slice) / framesPerBeat;
+void Reverse::apply(float* l, float* r, const SampleBuffer& slice, const ClockSettings& settings, const Clock& clock,
+                    const SliceGrid& grid, const EffectParams& params) {
+    const int sliceFrames = clock.sliceFrames(settings, grid);
+    const double framesPerBeat = settings.framesPerBeat();
+    const double sliceBeats = static_cast<double>(sliceFrames) / framesPerBeat;
     int parts = static_cast<int>(std::llround(sliceBeats / params.beats));
     if (parts < 1) {
         parts = 1;
     }
-    int part = slice / parts;
+    int part = sliceFrames / parts;
     if (part < 1) {
         part = 1;
     }
-    const PartRead read = partRead(params.local, slice, part, parts);
-    float revL = 0.0f;
-    float revR = 0.0f;
-    readFrame(*params.source, frameAt(*params.source, params.play, params.slot, read.mirrored, slice, params.maxSlices), revL, revR);
-    voiceGain(params.play, revL, revR);
-    const float env = copyEnvelope(read.offset, read.length, attackFrames(params.beats, playhead.sampleRate));
-    const float shapedL = dryL + (revL - dryL) * env;
-    const float shapedR = dryR + (revR - dryR) * env;
+    const int attack = attackFrames(params.beats, settings.sampleRate);
     float mix = params.power;
     if (mix < 0.0f) {
         mix = 0.0f;
     } else if (mix > 1.0f) {
         mix = 1.0f;
     }
+
+    const float dryL = *l;
+    const float dryR = *r;
+    const PartRead read = partRead(clock.localIn(params.slot, settings, grid), sliceFrames, part, parts);
+    const int frame = frameAt(slice, params.play, params.slot, read.mirrored, sliceFrames, params.maxSlices);
+    float revL = 0.0f;
+    float revR = 0.0f;
+    if (frame >= 0 && frame < slice.frames) {
+        revL = slice.left[frame];
+        revR = slice.right[frame];
+    }
+    voiceGain(params.play, revL, revR);
+    const float env = copyEnvelope(read.offset, read.length, attack);
+    const float shapedL = dryL + (revL - dryL) * env;
+    const float shapedR = dryR + (revR - dryR) * env;
     *l = dryL + (shapedL - dryL) * mix;
     *r = dryR + (shapedR - dryR) * mix;
 }

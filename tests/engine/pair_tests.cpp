@@ -677,9 +677,9 @@ void testFilterFollowsPowerAndBeat() {
     const std::vector<float> gated = play(held, 1, 0, 1);
     CHECK(gated[2500] == 1.0f);
 
-    // Full power keeps a tenth of a constant and multiplies by the output velocity. The moving band leaves a small remainder.
+    // Full power keeps a tenth of a constant. Velocity is 1, and the moving band leaves a small remainder.
     const std::vector<float> open = play(held, 1, 1, 1);
-    CHECK(std::fabs(open[2500] - 0.08) < 0.002);
+    CHECK(std::fabs(open[2500] - 0.1008) < 0.002);
 
     const std::vector<float> slowMid = play(mid, 1, 1, 1);
     const std::vector<float> slowLow = play(low, 1, 1, 1);

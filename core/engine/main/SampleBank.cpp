@@ -54,9 +54,9 @@ void SampleBank::clear() {
     count_ = 0;
 }
 
-void SampleBank::setPlay(int index, const TrackPlay& play) { plays_[index] = play; }
+void SampleBank::setPlay(int index, const SampleSettings& play) { plays_[index] = play; }
 
-const TrackPlay* SampleBank::findPlay(std::uint32_t id) const {
+const SampleSettings* SampleBank::findPlay(std::uint32_t id) const {
     for (int i = 0; i < count_; ++i) {
         if (buffers_[i].id == id) {
             return &plays_[i];
@@ -65,7 +65,7 @@ const TrackPlay* SampleBank::findPlay(std::uint32_t id) const {
     return nullptr;
 }
 
-int frameAt(const SampleBuffer& buffer, const TrackPlay& play, int slot, int local, int sliceFrames, int maxSlices) {
+int frameAt(const SampleBuffer& buffer, const SampleSettings& play, int slot, int local, int sliceFrames, int maxSlices) {
     const double start = unit(play.start);
     const double length = unit(play.length);
     const int sliceCount = static_cast<int>(std::llround(length * (maxSlices - 1))) + 1;
@@ -77,7 +77,7 @@ int frameAt(const SampleBuffer& buffer, const TrackPlay& play, int slot, int loc
     return startFrame + trackSlice * sliceFrames + local;
 }
 
-void voiceGain(const TrackPlay& play, float& left, float& right) {
+void voiceGain(const SampleSettings& play, float& left, float& right) {
     const float volume = static_cast<float>(clamp(play.volume, 0.0, 1.2));
     const double pan = clamp(play.pan, -1.0, 1.0);
     const float leftGain = static_cast<float>(pan <= 0.0 ? 1.0 : 1.0 - pan);

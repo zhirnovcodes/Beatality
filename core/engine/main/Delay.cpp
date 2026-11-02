@@ -36,13 +36,12 @@ Delay::Delay(double sampleRate) {
     right_.reset(new (std::nothrow) float[static_cast<std::size_t>(capacity_)]());
 }
 
-void Delay::apply(float* l, float* r, const Playhead& playhead, const EffectParams& params) {
-    const float dryL = *l;
-    const float dryR = *r;
+void Delay::apply(float* l, float* r, const SampleBuffer&, const ClockSettings& settings, const Clock&, const SliceGrid&,
+                 const EffectParams& params) {
     const float wet = params.power;
     const double beats = params.beats;
-    const double sampleRate = playhead.sampleRate;
-    const double bpm = playhead.bpm;
+    const double sampleRate = settings.sampleRate;
+    const double bpm = settings.bpm;
     // beats * 60 / bpm is the offset in seconds. Clamp it to the line.
     const double limit = static_cast<double>(capacity_);
     double frames = beats * 60.0 / bpm * sampleRate;
@@ -55,7 +54,12 @@ void Delay::apply(float* l, float* r, const Playhead& playhead, const EffectPara
     } else if (delay > capacity_) {
         delay = capacity_;
     }
+    const float mix = wet < 0.0f ? 0.0f : (wet > 1.0f ? 1.0f : wet);
+    const float feedback = mix * kFeedback;
+    const int attack = attackFrames(beats, sampleRate);
 
+    const float dryL = *l;
+    const float dryR = *r;
     float echoL = 0.0f;
     float echoR = 0.0f;
     const bool arrived = delay > 0 && filled_ >= delay;
@@ -67,8 +71,6 @@ void Delay::apply(float* l, float* r, const Playhead& playhead, const EffectPara
         echoL = left_[static_cast<std::size_t>(read)];
         echoR = right_[static_cast<std::size_t>(read)];
     }
-    const float mix = wet < 0.0f ? 0.0f : (wet > 1.0f ? 1.0f : wet);
-    const float feedback = mix * kFeedback;
     float inL = dryL + echoL * feedback;
     float inR = dryR + echoR * feedback;
     if (inL > -1.0e-15f && inL < 1.0e-15f) {
@@ -89,7 +91,6 @@ void Delay::apply(float* l, float* r, const Playhead& playhead, const EffectPara
     float delayedL = dryL;
     float delayedR = dryR;
     if (arrived) {
-        const int attack = attackFrames(beats, sampleRate);
         float open = 1.0f;
         if (attacked_ < attack) {
             open = static_cast<float>(attacked_) / static_cast<float>(attack);

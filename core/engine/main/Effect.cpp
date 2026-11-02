@@ -2,7 +2,7 @@
 
 namespace bt {
 
-void Effect::apply(float*, float*, const Playhead&, const EffectParams&) {}
+void Effect::apply(float*, float*, const SampleBuffer&, const ClockSettings&, const Clock&, const SliceGrid&, const EffectParams&) {}
 
 void Effect::clean() {}
 

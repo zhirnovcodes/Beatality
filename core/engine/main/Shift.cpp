@@ -92,20 +92,22 @@ float Shift::channel(float* line, float x, double cosine, double sine) {
     return shifted;
 }
 
-void Shift::apply(float* l, float* r, const Playhead& playhead, const EffectParams& params) {
-    const float dryL = *l;
-    const float dryR = *r;
+void Shift::apply(float* l, float* r, const SampleBuffer&, const ClockSettings& clockSettings, const Clock&, const SliceGrid&,
+                  const EffectParams& params) {
     const float power = params.power;
     const double beats = params.beats;
-    const double sampleRate = playhead.sampleRate;
-    const double bpm = playhead.bpm;
+    const double sampleRate = clockSettings.sampleRate;
+    const double bpm = clockSettings.bpm;
+    const Settings settings = settingsFor(power);
+    const double cycle = beats * sampleRate * 60.0 / bpm;
+
+    const float dryL = *l;
+    const float dryR = *r;
     // One beat is one cycle. The sine is the shift, from -width to +width.
     const double lfo = std::sin(phase_ * 2.0 * kPi);
-    const double cycle = beats * sampleRate * 60.0 / bpm;
     phase_ += 1.0 / cycle;
     phase_ -= std::floor(phase_);
 
-    const Settings settings = settingsFor(power);
     osc_ += lfo * static_cast<double>(settings.width) / sampleRate;
     osc_ -= std::floor(osc_);
     const double angle = osc_ * 2.0 * kPi;

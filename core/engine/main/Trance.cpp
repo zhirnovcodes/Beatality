@@ -82,19 +82,25 @@ float envelopeAt(const Run* runs, int count, double phase, double element, doubl
 
 Trance::Trance(std::uint64_t seed) : rng_(seed) {}
 
-void Trance::apply(float* l, float* r, const Playhead& playhead, const EffectParams& params) {
-    const float dryL = *l;
-    const float dryR = *r;
+void Trance::apply(float* l, float* r, const SampleBuffer&, const ClockSettings& settings, const Clock&, const SliceGrid&,
+                  const EffectParams& params) {
     const float wet = params.power;
     const double beats = params.beats;
-    const double sampleRate = playhead.sampleRate;
-    const double bpm = playhead.bpm;
+    const double sampleRate = settings.sampleRate;
     // One sample moves the playhead by this many beats. The sustain and the gaps are counted in beats,
     // so a tempo change keeps them on the grid. The attack stays the short fade from attackFrames.
-    const double framesPerBeat = sampleRate * 60.0 / bpm;
+    const double framesPerBeat = settings.framesPerBeat();
     const double attack = static_cast<double>(attackFrames(beats, sampleRate)) / framesPerBeat;
     const double element = beats * 0.5;
+    float mix = wet;
+    if (mix < 0.0f) {
+        mix = 0.0f;
+    } else if (mix > 1.0f) {
+        mix = 1.0f;
+    }
 
+    const float dryL = *l;
+    const float dryR = *r;
     if (armed_) {
         sequence_ = rng_.nextInt(kSequenceCount);
         phase_ = 0.0;
@@ -111,12 +117,6 @@ void Trance::apply(float* l, float* r, const Playhead& playhead, const EffectPar
     }
 
     const float env = envelopeAt(runs, runCount, phase_, element, attack);
-    float mix = wet;
-    if (mix < 0.0f) {
-        mix = 0.0f;
-    } else if (mix > 1.0f) {
-        mix = 1.0f;
-    }
     const float wetL = dryL * env;
     const float wetR = dryR * env;
     *l = dryL + (wetL - dryL) * mix;

@@ -43,8 +43,10 @@ target_link_libraries(slice_tests PRIVATE beatality_slices)
 beatality_core_flags(slice_tests)
 
 add_library(beatality_slice_engine
+    core/engine/main/Clock.cpp
     core/engine/main/Curve.cpp
     core/engine/main/Effect.cpp
+    core/engine/main/SlicePlayer.cpp
     core/engine/main/EffectsBank.cpp
     core/engine/main/Delay.cpp
     core/engine/main/Reverb.cpp

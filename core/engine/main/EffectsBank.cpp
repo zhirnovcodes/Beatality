@@ -24,33 +24,34 @@ void EffectsBank::clean() {
     shift_.clean();
 }
 
-void EffectsBank::apply(EffectId effect, float* l, float* r, const Playhead& playhead, const EffectParams& params) {
+void EffectsBank::apply(EffectId effect, float* l, float* r, const SampleBuffer& slice, const ClockSettings& settings, const Clock& clock,
+                        const SliceGrid& grid, const EffectParams& params) {
     if (effect == EffectId::Reverb) {
-        reverb_.apply(l, r, playhead, params);
+        reverb_.apply(l, r, slice, settings, clock, grid, params);
         return;
     }
     if (effect == EffectId::Delay) {
-        delay_.apply(l, r, playhead, params);
+        delay_.apply(l, r, slice, settings, clock, grid, params);
         return;
     }
     if (effect == EffectId::Reverse) {
-        reverse_.apply(l, r, playhead, params);
+        reverse_.apply(l, r, slice, settings, clock, grid, params);
         return;
     }
     if (effect == EffectId::Filter) {
-        filter_.apply(l, r, playhead, params);
+        filter_.apply(l, r, slice, settings, clock, grid, params);
         return;
     }
     if (effect == EffectId::Flanger) {
-        flanger_.apply(l, r, playhead, params);
+        flanger_.apply(l, r, slice, settings, clock, grid, params);
         return;
     }
     if (effect == EffectId::Trance) {
-        trance_.apply(l, r, playhead, params);
+        trance_.apply(l, r, slice, settings, clock, grid, params);
         return;
     }
     if (effect == EffectId::Shift) {
-        shift_.apply(l, r, playhead, params);
+        shift_.apply(l, r, slice, settings, clock, grid, params);
         return;
     }
 }

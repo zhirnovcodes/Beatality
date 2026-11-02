@@ -72,27 +72,29 @@ Flanger::Flanger(double sampleRate) {
     right_.reset(new (std::nothrow) float[static_cast<std::size_t>(capacity_)]());
 }
 
-void Flanger::apply(float* l, float* r, const Playhead& playhead, const EffectParams& params) {
-    const float dryL = *l;
-    const float dryR = *r;
+void Flanger::apply(float* l, float* r, const SampleBuffer&, const ClockSettings& clockSettings, const Clock&, const SliceGrid&,
+                    const EffectParams& params) {
     const float power = params.power;
     const double beats = params.beats;
-    const double sampleRate = playhead.sampleRate;
-    const double bpm = playhead.bpm;
+    const double sampleRate = clockSettings.sampleRate;
+    const double bpm = clockSettings.bpm;
+    const Settings settings = settingsFor(power);
+    const double cycle = beats * sampleRate * 60.0 / bpm;
+    const double limit = static_cast<double>(capacity_ - 2);
+
+    const float dryL = *l;
+    const float dryR = *r;
     // One beat is one cycle. The sine walks the delay from 0.5 ms to 8 ms.
     const double along = 0.5 * (std::sin(phase_ * 2.0 * kPi) + 1.0);
     double delay = (kDelayMsMin + along * (kDelayMsMax - kDelayMsMin)) * 0.001 * sampleRate;
-    const double limit = static_cast<double>(capacity_ - 2);
     if (delay < 1.0) {
         delay = 1.0;
     } else if (delay > limit) {
         delay = limit;
     }
-    const double cycle = beats * sampleRate * 60.0 / bpm;
     phase_ += 1.0 / cycle;
     phase_ -= std::floor(phase_);
 
-    const Settings settings = settingsFor(power);
     const float echoL = tap(left_.get(), capacity_, write_, delay);
     const float echoR = tap(right_.get(), capacity_, write_, delay);
     float inL = dryL + echoL * settings.feedback;

@@ -1,33 +1,25 @@
 #pragma once
 
+#include "Clock.h"
 #include "SampleBank.h"
 
 namespace bt {
 
-// This sample's clock. beats is its position from the start of the loop.
-struct Playhead {
-    double beats = 0;
-    double bpm = 120;
-    double sampleRate = 44100;
-};
-
-// Knobs for this sample. Reverse also reads the source window. Other effects leave it unread.
+// Knobs for this sample. Reverse reads a nearby frame of the slice it is given.
 struct EffectParams {
     float power = 0;
     double beats = 1;
-    const SampleBuffer* source = nullptr;
-    TrackPlay play{};
+    SampleSettings play{};
     int slot = 0;
-    int local = 0;
-    int sliceFrames = 0;
     int maxSlices = 0;
 };
 
-// One slice effect. apply mixes this sample in place. clean drops leftover state.
-// This effect passes the dry sample through.
+// One slice effect. apply writes this sample. The slice is the buffer the voice is rendering.
+// clean drops leftover state. This effect passes the dry sample through.
 class Effect {
 public:
-    void apply(float* l, float* r, const Playhead& playhead, const EffectParams& params);
+    void apply(float* l, float* r, const SampleBuffer& slice, const ClockSettings& settings, const Clock& clock, const SliceGrid& grid,
+               const EffectParams& params);
     void clean();
 };
 

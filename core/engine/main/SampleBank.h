@@ -8,7 +8,7 @@ namespace bt {
 // start is a fraction of the file, 0..1, from the first sample to the end.
 // length 0 keeps one slice. length 1 uses every slice after start.
 // volume is 0..1.2. pan is -1..1.
-struct TrackPlay {
+struct SampleSettings {
     double start = 0;
     double length = 1;
     bool loop = false;
@@ -24,24 +24,24 @@ public:
     void append(const SampleBuffer& buffer);
     SampleBuffer remove(int index);   // shifts the later slots down
     void clear();
-    void setPlay(int index, const TrackPlay& play);
+    void setPlay(int index, const SampleSettings& play);
 
     int count() const { return count_; }
     const SampleBuffer& at(int index) const { return buffers_[index]; }
-    const TrackPlay& play(int index) const { return plays_[index]; }
-    const TrackPlay* findPlay(std::uint32_t id) const;
+    const SampleSettings& play(int index) const { return plays_[index]; }
+    const SampleSettings* findPlay(std::uint32_t id) const;
 
 private:
     SampleBuffer buffers_[kCapacity]{};
-    TrackPlay plays_[kCapacity]{};
+    SampleSettings plays_[kCapacity]{};
     int count_ = 0;
 };
 
 // File frame for one local offset in a slice. maxSlices is how many slices the file holds after start.
 // A frame past the file is buffer.frames, which reads as silence.
-int frameAt(const SampleBuffer& buffer, const TrackPlay& play, int slot, int local, int sliceFrames, int maxSlices);
+int frameAt(const SampleBuffer& buffer, const SampleSettings& play, int slot, int local, int sliceFrames, int maxSlices);
 
 // Volume and pan of one track, applied to one frame.
-void voiceGain(const TrackPlay& play, float& left, float& right);
+void voiceGain(const SampleSettings& play, float& left, float& right);
 
 } // namespace bt

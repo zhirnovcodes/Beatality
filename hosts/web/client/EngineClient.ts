@@ -1,5 +1,5 @@
 import type { PackMessage, WorkletMessage } from '../messages'
-import type { PackDocument, TrackPlay } from '../pack'
+import type { PackDocument, SampleSettings } from '../pack'
 
 function isAbort(error: unknown): boolean {
     return typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
@@ -232,7 +232,7 @@ export class EngineClient {
         await this.start()
         const tracks: PackInstallTrack[] = []
         for (const track of doc.tracks) {
-            const play: TrackPlay = {
+            const play: SampleSettings = {
                 start: track.start,
                 length: track.length,
                 loop: track.loop,
@@ -489,7 +489,7 @@ export class EngineClient {
 export interface PackInstallTrack {
     name: string
     missing: boolean
-    play: TrackPlay
+    play: SampleSettings
     frames: number
     planar: Float32Array | null
     left: Float32Array

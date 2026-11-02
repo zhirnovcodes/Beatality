@@ -1,0 +1,22 @@
+---
+description: Ask before changing how audio is processed or owned
+alwaysApply: true
+---
+
+# Ask before an architectural decision
+
+Do not invent a processing model, a cache, an ownership split, or a new call pattern. Stop and ask. Do not implement the alternative first.
+
+A new function, a new method, or a new argument list is that decision. A helper whose only job is to build a call is that decision. Show the signature in the chat and wait for a yes. Do not add the function so the call compiles.
+
+A slice effect writes one output sample per call. It may read nearby samples from the slice arrays it was given. It does not walk the whole slice inside one audio callback, and it does not copy the slice into another buffer first.
+
+```cpp
+// Rejected. A helper and a lookup, added so the call would compile.
+renderVoice(playing_, ...);
+voice.origin(...);
+
+// SliceEngine::render. The engine holds the sample references. The player plays the one it is given.
+playing_.render(playingBuffer_, settings_, playingClock_, grid_, attackMs_, playL, playR);
+outgoing_.render(outgoingBuffer_, settings_, outgoingClock_, grid_, attackMs_, outL, outR);
+```

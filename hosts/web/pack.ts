@@ -1,4 +1,4 @@
-export interface TrackPlay {
+export interface SampleSettings {
     start: number
     length: number
     loop: boolean

@@ -1,4 +1,4 @@
-import type { TrackPlay } from '../pack'
+import type { SampleSettings } from '../pack'
 
 // Left and right, one sample per frame. `samples` is the left channel.
 export interface TrackWave {
@@ -7,7 +7,7 @@ export interface TrackWave {
     sampleRate: number
 }
 
-const defaultPlay: TrackPlay = { start: 0, length: 1, loop: false, volume: 1, pan: 0 }
+const defaultPlay: SampleSettings = { start: 0, length: 1, loop: false, volume: 1, pan: 0 }
 
 // File names in list order, the waveform the page draws, and the ids the audio thread uses.
 export class TrackRegistry {
@@ -16,7 +16,7 @@ export class TrackRegistry {
     private names: string[] = []
     private waves: TrackWave[] = []
     private missing: boolean[] = []
-    private plays: TrackPlay[] = []
+    private plays: SampleSettings[] = []
     private nextId = 1
 
     get count(): number {
@@ -39,18 +39,18 @@ export class TrackRegistry {
         return this.missing.slice()
     }
 
-    playAt(index: number): TrackPlay | null {
+    playAt(index: number): SampleSettings | null {
         return this.plays[index] ?? null
     }
 
-    setPlay(index: number, play: TrackPlay): void {
+    setPlay(index: number, play: SampleSettings): void {
         if (this.plays[index]) {
             this.plays[index] = play
         }
     }
 
     // Null when the list is full. Ids start at 1 and are never reused.
-    add(name: string, wave: TrackWave, missing = false, play: TrackPlay = defaultPlay): number | null {
+    add(name: string, wave: TrackWave, missing = false, play: SampleSettings = defaultPlay): number | null {
         if (this.names.length >= TrackRegistry.capacity) {
             return null
         }

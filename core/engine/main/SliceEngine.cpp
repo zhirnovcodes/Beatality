@@ -1,71 +1,8 @@
 #include "SliceEngine.h"
 
-#include <cmath>
 #include <utility>
 
 namespace bt {
-
-SliceEngine::SliceEngine(double sampleRate, std::uint64_t seed)
-    : sampleRate_(sampleRate), currentBank_(sampleRate, seed), decayingBank_(sampleRate, seed + 1), rng_(seed) {
-    listen();
-}
-
-void SliceEngine::play() {
-    if (sequence_.empty()) {
-        sequence_.generate(grid_.slotCount(), bank_.count(), rng_, effects_);
-    }
-    listen();
-    if (playing_ || play_.fadingOut()) {
-        const int at = heard();
-        const int slice = sliceFrames();
-        if (at < grid_.slotCount() * slice) {
-            handoff(bufferForSlot(at / slice));
-        } else {
-            handoff({});
-        }
-    } else {
-        playAt_ = clock_;
-        playing_ = true;
-    }
-    position_ = 0;
-}
-
-void SliceEngine::stop() {
-    cleanBanks();
-    if (playing_) {
-        fadePosition_ = position_;
-        if (!play_.fadingOut()) {
-            play_.stop(clock_ - playAt_);
-        }
-    }
-    playing_ = false;
-    position_ = 0;
-}
-
-void SliceEngine::randomize() {
-    cleanBanks();
-    SampleBuffer from{};
-    const bool live = playing_ || play_.fadingOut();
-    if (live) {
-        from = bufferForSlot(position_ / sliceFrames());
-    }
-    sequence_.generate(grid_.slotCount(), bank_.count(), rng_, effects_);
-    if (live) {
-        handoff(from);
-    }
-}
-
-void SliceEngine::append(const SampleBuffer& buffer) {
-    SampleBuffer from{};
-    const bool live = playing_ && !sequence_.empty();
-    if (live) {
-        from = bufferForSlot(position_ / sliceFrames());
-    }
-    bank_.append(buffer);
-    if (live) {
-        handoff(from);
-    }
-}
 
 namespace {
 
@@ -89,19 +26,101 @@ double clamp(double value, double low, double high) {
     return value;
 }
 
-// How many slices the file holds after the track start. The grid owns the slice length.
-int slicesAfterStart(const SliceGrid& grid, double sampleRate, const SampleBuffer& buffer, const TrackPlay& play) {
-    const double durationSec = static_cast<double>(buffer.frames) / sampleRate;
-    return grid.trackSlices(durationSec * (1.0 - unit(play.start)));
+void movePlayingOut(SlicePlayer& playing, SlicePlayer& outgoing, Clock& playingClock, Clock& outgoingClock, int& playingSlot,
+                    SampleBuffer& playingBuffer, SampleBuffer& outgoingBuffer) {
+    if (playing.hasStopped()) {
+        return;
+    }
+    const bool running = playing.running();
+    playing.stop();
+    std::swap(playing, outgoing);
+    std::swap(playingBuffer, outgoingBuffer);
+    outgoing.setRunning(false);
+    playing.setRunning(running);
+    outgoingClock = playingClock;
+    playingSlot = -1;
 }
 
 } // namespace
+
+SliceEngine::SliceEngine(double sampleRate, std::uint64_t seed)
+    : settings_{sampleRate, 120.0}, playing_(sampleRate, seed), outgoing_(sampleRate, seed + 1), rng_(seed) {}
+
+void SliceEngine::play() {
+    if (sequence_.empty()) {
+        sequence_.generate(grid_.slotCount(), bank_.count(), rng_, effects_);
+    }
+    if (playing_.isPlaying()) {
+        movePlayingOut(playing_, outgoing_, playingClock_, outgoingClock_, playingSlot_, playingBuffer_, outgoingBuffer_);
+        playingClock_.seek(0);
+        if (!sequence_.empty() && bank_.count() > 0) {
+            const int track = sequence_.indexAt(0, bank_.count());
+            playingBuffer_ = bank_.at(track);
+            playing_.setSlice(bank_.play(track), 0, sequence_.effectAt(0), sequence_.rollAt(0));
+            playingSlot_ = 0;
+        } else {
+            playingSlot_ = -1;
+        }
+    } else {
+        playingClock_.seek(0);
+        playingSlot_ = -1;
+    }
+    playing_.setRunning(true);
+}
+
+void SliceEngine::stop() {
+    if (playing_.running()) {
+        playing_.stop();
+    }
+    playing_.setRunning(false);
+}
+
+void SliceEngine::randomize() {
+    const bool live = playing_.isPlaying();
+    const bool restart = !playing_.running();
+    sequence_.generate(grid_.slotCount(), bank_.count(), rng_, effects_);
+    if (!live) {
+        return;
+    }
+    movePlayingOut(playing_, outgoing_, playingClock_, outgoingClock_, playingSlot_, playingBuffer_, outgoingBuffer_);
+    if (restart) {
+        playingClock_.seek(0);
+    }
+    const int slot = restart ? 0 : playingClock_.sliceIndex(settings_, grid_);
+    if (slot >= 0 && !sequence_.empty() && bank_.count() > 0) {
+        const int track = sequence_.indexAt(slot, bank_.count());
+        playingBuffer_ = bank_.at(track);
+            playing_.setSlice(bank_.play(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot));
+        playingSlot_ = slot;
+    } else {
+        playingSlot_ = -1;
+    }
+    playing_.setRunning(true);
+}
+
+void SliceEngine::append(const SampleBuffer& buffer) {
+    const bool live = playing_.running() && !sequence_.empty();
+    bank_.append(buffer);
+    if (!live) {
+        return;
+    }
+    const int slot = playingClock_.sliceIndex(settings_, grid_);
+    movePlayingOut(playing_, outgoing_, playingClock_, outgoingClock_, playingSlot_, playingBuffer_, outgoingBuffer_);
+    if (slot >= 0 && bank_.count() > 0) {
+        const int track = sequence_.indexAt(slot, bank_.count());
+        playingBuffer_ = bank_.at(track);
+            playing_.setSlice(bank_.play(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot));
+        playingSlot_ = slot;
+    } else {
+        playingSlot_ = -1;
+    }
+}
 
 void SliceEngine::setTrack(int index, double start, double length, bool loop) {
     if (index < 0 || index >= bank_.count()) {
         return;
     }
-    TrackPlay play = bank_.play(index);
+    SampleSettings play = bank_.play(index);
     play.start = unit(start);
     play.length = unit(length);
     play.loop = loop;
@@ -116,7 +135,7 @@ void SliceEngine::setIndexedTrack(int index, double start, double length, bool l
     if (index < 0 || index >= bank_.count()) {
         return;
     }
-    bank_.setPlay(index, TrackPlay{
+    bank_.setPlay(index, SampleSettings{
                              .start = unit(start),
                              .length = unit(length),
                              .loop = loop,
@@ -126,12 +145,13 @@ void SliceEngine::setIndexedTrack(int index, double start, double length, bool l
 }
 
 void SliceEngine::remove(int index) {
-    cleanBanks();
     SampleBuffer from{};
-    const bool live = (playing_ || play_.fadingOut()) && !sequence_.empty();
+    const bool live = playing_.isPlaying() && !sequence_.empty();
     if (live) {
-        from = bufferForSlot(position_ / sliceFrames());
-        remember(from);
+        const int slot = playingClock_.sliceIndex(settings_, grid_);
+        if (slot >= 0) {
+            from = bank_.at(sequence_.indexAt(slot, bank_.count()));
+        }
     }
     const std::uint32_t id = bank_.remove(index).id;
     if (bank_.count() == 0 && !sequence_.empty()) {
@@ -151,30 +171,30 @@ void SliceEngine::remove(int index) {
         released_[releasedCount_++] = id;
     }
     if (bank_.count() == 0) {
-        if (!play_.fadingOut()) {
-            play_.stop(clock_ - playAt_);
-        }
-        outgoingPosition_ = heard();
-        outgoing_ = play_;
-        outgoingAt_ = playAt_;
-        outgoingBuffer_ = from;
-        playing_ = false;
-        position_ = 0;
+        movePlayingOut(playing_, outgoing_, playingClock_, outgoingClock_, playingSlot_, playingBuffer_, outgoingBuffer_);
+        playing_.setRunning(false);
+        playingSlot_ = -1;
         return;
     }
-    handoff(from);
+    const int slot = playingClock_.sliceIndex(settings_, grid_);
+    movePlayingOut(playing_, outgoing_, playingClock_, outgoingClock_, playingSlot_, playingBuffer_, outgoingBuffer_);
+    if (slot >= 0 && !sequence_.empty()) {
+        const int track = sequence_.indexAt(slot, bank_.count());
+        playingBuffer_ = bank_.at(track);
+            playing_.setSlice(bank_.play(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot));
+        playingSlot_ = slot;
+    } else {
+        playingSlot_ = -1;
+    }
 }
 
 void SliceEngine::clear() {
-    cleanBanks();
     SampleBuffer from{};
-    const bool live = (playing_ || play_.fadingOut()) && !sequence_.empty() && bank_.count() > 0;
+    const bool live = playing_.isPlaying() && !sequence_.empty() && bank_.count() > 0;
     if (live) {
-        const int slice = sliceFrames();
-        const int at = heard();
-        if (slice > 0 && at < grid_.slotCount() * slice) {
-            from = bufferForSlot(at / slice);
-            remember(from);
+        const int slot = playingClock_.sliceIndex(settings_, grid_);
+        if (slot >= 0) {
+            from = bank_.at(sequence_.indexAt(slot, bank_.count()));
         }
     }
 
@@ -195,76 +215,74 @@ void SliceEngine::clear() {
         }
         pending_ = from.id;
         pendingHeld_ = true;
-        if (!play_.fadingOut()) {
-            play_.stop(clock_ - playAt_);
-        }
-        outgoingPosition_ = heard();
-        outgoing_ = play_;
-        outgoingAt_ = playAt_;
-        outgoingBuffer_ = from;
-        playing_ = false;
-        position_ = 0;
+        movePlayingOut(playing_, outgoing_, playingClock_, outgoingClock_, playingSlot_, playingBuffer_, outgoingBuffer_);
+        playing_.setRunning(false);
+        playingSlot_ = -1;
         return;
     }
 
-    if (playing_) {
-        stop();
-    }
-    if (pendingHeld_ && !outgoing_.fadingOut()) {
+    playing_.drop();
+    playingSlot_ = -1;
+    if (pendingHeld_ && outgoing_.hasStopped()) {
         released_[releasedCount_++] = pending_;
         pendingHeld_ = false;
     }
 }
 
 void SliceEngine::setBpm(double bpm) {
-    const double beats = static_cast<double>(position_) / framesPerBeat();
     grid_.setBpm(bpm);
-    place(beats);
-    listen();
+    settings_.bpm = bpm;
 }
 
 void SliceEngine::setLoop(int beats) {
     const int oldExp = grid_.sliceExp();
     const int oldSlots = grid_.slotCount();
-    const double at = static_cast<double>(position_) / framesPerBeat();
-    SampleBuffer from{};
-    const bool live = playing_ && !sequence_.empty();
-    if (live) {
-        from = bufferForSlot(position_ / sliceFrames());
-    }
+    const bool live = playing_.running() && !sequence_.empty();
     grid_.setLoop(beats);
-    if (at >= grid_.loopBeats()) {
-        place(at);
-    }
     syncSequence(oldExp, oldSlots);
-    listen();
-    if (live) {
-        handoff(from);
+    if (!live) {
+        return;
+    }
+    const int slot = playingClock_.sliceIndex(settings_, grid_);
+    movePlayingOut(playing_, outgoing_, playingClock_, outgoingClock_, playingSlot_, playingBuffer_, outgoingBuffer_);
+    if (slot >= 0 && !sequence_.empty() && bank_.count() > 0) {
+        const int track = sequence_.indexAt(slot, bank_.count());
+        playingBuffer_ = bank_.at(track);
+            playing_.setSlice(bank_.play(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot));
+        playingSlot_ = slot;
+    } else {
+        playingSlot_ = -1;
     }
 }
 
 void SliceEngine::setSlice(int exponent) {
     const int oldExp = grid_.sliceExp();
     const int oldSlots = grid_.slotCount();
-    SampleBuffer from{};
-    const bool live = playing_ && !sequence_.empty();
-    if (live) {
-        from = bufferForSlot(position_ / sliceFrames());
-    }
+    const bool live = playing_.running() && !sequence_.empty();
     grid_.setSlice(exponent);
     syncSequence(oldExp, oldSlots);
-    listen();
-    if (live) {
-        handoff(from);
+    if (!live) {
+        return;
+    }
+    const int slot = playingClock_.sliceIndex(settings_, grid_);
+    movePlayingOut(playing_, outgoing_, playingClock_, outgoingClock_, playingSlot_, playingBuffer_, outgoingBuffer_);
+    if (slot >= 0 && !sequence_.empty() && bank_.count() > 0) {
+        const int track = sequence_.indexAt(slot, bank_.count());
+        playingBuffer_ = bank_.at(track);
+            playing_.setSlice(bank_.play(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot));
+        playingSlot_ = slot;
+    } else {
+        playingSlot_ = -1;
     }
 }
 
-void SliceEngine::setAttack(int ms) {
-    attackMs_ = ms;
-    listen();
-}
+void SliceEngine::setAttack(int ms) { attackMs_ = ms; }
 
-void SliceEngine::setEffectsSettings(const Effects& settings) { effects_ = settings; }
+void SliceEngine::setEffectsSettings(const Effects& settings) {
+    effects_ = settings;
+    playing_.setEffects(settings);
+    outgoing_.setEffects(settings);
+}
 
 void SliceEngine::setOutput(double volume, double pan) {
     volume_ = clamp(volume, 0.0, 1.2);
@@ -273,14 +291,42 @@ void SliceEngine::setOutput(double volume, double pan) {
 
 void SliceEngine::render(float* left, float* right, int frames) {
     for (int i = 0; i < frames; ++i) {
-        float sampleL = 0.0f;
-        float sampleR = 0.0f;
-        mixSlice(sampleL, sampleR);
-        applyPlay(sampleL, sampleR);
-        mixOutgoing(sampleL, sampleR);
-        left[i] = sampleL;
-        right[i] = sampleR;
-        advance();
+        if (playing_.running() && !sequence_.empty() && bank_.count() > 0) {
+            const int arriving = playingClock_.arrivingSlot(settings_, grid_, attackMs_);
+            if (arriving != playingSlot_) {
+                movePlayingOut(playing_, outgoing_, playingClock_, outgoingClock_, playingSlot_, playingBuffer_, outgoingBuffer_);
+                if (arriving >= 0) {
+                    const int track = sequence_.indexAt(arriving, bank_.count());
+                    playingBuffer_ = bank_.at(track);
+            playing_.setSlice(bank_.play(track), arriving, sequence_.effectAt(arriving), sequence_.rollAt(arriving));
+                    playingSlot_ = arriving;
+                } else {
+                    playingSlot_ = -1;
+                }
+            } else if (arriving >= 0) {
+                const int track = sequence_.indexAt(arriving, bank_.count());
+                playingBuffer_ = bank_.at(track);
+                playing_.setPlay(bank_.play(track));
+            }
+        }
+        float playL = 0.0f;
+        float playR = 0.0f;
+        float outL = 0.0f;
+        float outR = 0.0f;
+        playing_.render(playingBuffer_, settings_, playingClock_, grid_, attackMs_, playL, playR);
+        outgoing_.render(outgoingBuffer_, settings_, outgoingClock_, grid_, attackMs_, outL, outR);
+        left[i] = playL + outL;
+        right[i] = playR + outR;
+        if (playing_.isPlaying()) {
+            playingClock_.tick();
+        }
+        if (outgoing_.isPlaying()) {
+            outgoingClock_.tick();
+        }
+        if (pendingHeld_ && outgoing_.hasStopped()) {
+            released_[releasedCount_++] = pending_;
+            pendingHeld_ = false;
+        }
     }
     const float volume = static_cast<float>(volume_);
     const float leftGain = static_cast<float>(pan_ <= 0.0 ? 1.0 : 1.0 - pan_) * volume;
@@ -294,245 +340,29 @@ void SliceEngine::render(float* left, float* right, int frames) {
     }
 }
 
-void SliceEngine::mixSlice(float& left, float& right) {
-    left = 0.0f;
-    right = 0.0f;
-    if (sequence_.empty() || bank_.count() == 0) {
-        return;
-    }
-
-    const int slice = sliceFrames();
-    const int loop = loopFrames();
-    const int musical = grid_.slotCount() * slice;
-    const int fade = fadeFrames();
-    const int position = heard();
-    float nowL = 0.0f;
-    float nowR = 0.0f;
-    float prevL = 0.0f;
-    float prevR = 0.0f;
-    float sliceG = 1.0f;
-    int nowSlot = -1;
-    int prevSlot = -1;
-
-    if (position >= musical) {
-        const int until = loop - position;
-        if (fade > 0 && until <= fade) {
-            sliceG = slice_.y(fade - until);
-            nowSlot = 0;
-            const int track = sequence_.indexAt(0, bank_.count());
-            hear(bufferForSlot(0), bank_.play(track), 0, position, nowL, nowR);
-        }
-    } else {
-        const int slot = position / slice;
-        const int boundary = (slot + 1) * slice;
-        const int until = boundary - position;
-        const bool intoSilence = boundary >= musical && musical < loop;
-        if (fade > 0 && until <= fade) {
-            sliceG = slice_.y(fade - until);
-            if (!intoSilence) {
-                const int nextSlot = boundary >= loop ? 0 : slot + 1;
-                const int nextTrack = sequence_.indexAt(nextSlot, bank_.count());
-                nowSlot = nextSlot;
-                hear(bufferForSlot(nextSlot), bank_.play(nextTrack), nextSlot, position, nowL, nowR);
-            }
-            const int track = sequence_.indexAt(slot, bank_.count());
-            prevSlot = slot;
-            hear(bufferForSlot(slot), bank_.play(track), slot, position, prevL, prevR);
-        } else {
-            const int track = sequence_.indexAt(slot, bank_.count());
-            nowSlot = slot;
-            hear(bufferForSlot(slot), bank_.play(track), slot, position, nowL, nowR);
-        }
-    }
-
-    // The slot that is ending keeps the bank it already filled. The slot that is
-    // starting takes the other one. When the fade ends, that leftover tail is dropped.
-    const bool inFade = prevSlot >= 0 || (nowSlot >= 0 && position >= musical);
-    if (inFade) {
-        if (!fading_) {
-            std::swap(currentBank_, decayingBank_);
-            fading_ = true;
-        }
-    } else if (fading_) {
-        decayingBank_.clean();
-        fading_ = false;
-    }
-
-    if (nowSlot >= 0) {
-        affect(currentBank_, nowSlot, position, nowL, nowR);
-    }
-    if (prevSlot >= 0) {
-        affect(decayingBank_, prevSlot, position, prevL, prevR);
-    }
-
-    left = sliceG * nowL + (1.0f - sliceG) * prevL;
-    right = sliceG * nowR + (1.0f - sliceG) * prevR;
-}
-
-void SliceEngine::affect(EffectsBank& bank, int slot, int position, float& left, float& right) {
-    const EffectId effect = sequence_.effectAt(slot);
-    if (!(sequence_.rollAt(slot) < effects_.globalChance) || effect == EffectId::None) {
-        bank.clean();
-        return;
-    }
-    bank.bind(slot);
-    double localPower = effects_.reversePower;
-    if (effect == EffectId::Reverb) {
-        localPower = effects_.reverbPower;
-    } else if (effect == EffectId::Delay) {
-        localPower = effects_.delayPower;
-    } else if (effect == EffectId::Filter) {
-        localPower = effects_.filterPower;
-    } else if (effect == EffectId::Flanger) {
-        localPower = effects_.flangerPower;
-    } else if (effect == EffectId::Trance) {
-        localPower = effects_.trancePower;
-    } else if (effect == EffectId::Shift) {
-        localPower = effects_.shiftPower;
-    }
-    const int track = sequence_.indexAt(slot, bank_.count());
-    const SampleBuffer& source = bufferForSlot(slot);
-    Playhead playhead;
-    playhead.beats = static_cast<double>(position) / framesPerBeat();
-    playhead.bpm = grid_.bpm();
-    playhead.sampleRate = sampleRate_;
-    EffectParams params;
-    params.power = static_cast<float>(unit(localPower * effects_.globalPower));
-    params.beats = effects_.beatLength();
-    params.source = &source;
-    params.play = bank_.play(track);
-    params.slot = slot;
-    params.local = offsetInSlice(slot, position);
-    params.sliceFrames = sliceFrames();
-    params.maxSlices = slicesAfterStart(grid_, sampleRate_, source, params.play);
-    bank.apply(effect, &left, &right, playhead, params);
-}
-
-int SliceEngine::offsetInSlice(int slot, int position) const {
-    const int slice = sliceFrames();
-    const int loop = loopFrames();
-    int origin = slot * slice;
-    if (origin + slice <= position) {
-        origin += loop;
-    }
-    return position - origin;
-}
-
-void SliceEngine::applyPlay(float& left, float& right) const {
-    const float playG = (playing_ || play_.fadingOut()) ? play_.y(clock_ - playAt_) : 0.0f;
-    left *= playG;
-    right *= playG;
-}
-
-void SliceEngine::mixOutgoing(float& left, float& right) {
-    if (!outgoing_.fadingOut()) {
-        return;
-    }
-    const int slice = sliceFrames();
-    const int musical = grid_.slotCount() * slice;
-    const float oldG = outgoing_.y(clock_ - outgoingAt_);
-    float oldL = 0.0f;
-    float oldR = 0.0f;
-    const int slot = outgoingPosition_ < musical ? outgoingPosition_ / slice : 0;
-    hear(outgoingBuffer_, outgoingPlay_, slot, outgoingPosition_, oldL, oldR);
-    left += oldG * oldL;
-    right += oldG * oldR;
-    if (oldG == 0.0f && pendingHeld_) {
-        released_[releasedCount_++] = pending_;
-        pendingHeld_ = false;
-    }
-}
-
-void SliceEngine::cleanBanks() {
-    currentBank_.clean();
-    decayingBank_.clean();
-    fading_ = false;
-}
-
-void SliceEngine::advance() {
-    const bool stopping = !playing_ && play_.fadingOut();
-    const bool tail = outgoing_.fadingOut();
-    if (playing_ || stopping || tail) {
-        ++clock_;
-    }
-    if (playing_) {
-        ++position_;
-        if (position_ >= loopFrames()) {
-            position_ = 0;
-        }
-    }
-    if (stopping) {
-        ++fadePosition_;
-        if (fadePosition_ >= loopFrames()) {
-            fadePosition_ = 0;
-        }
-    }
-    if (tail) {
-        ++outgoingPosition_;
-        if (outgoingPosition_ >= loopFrames()) {
-            outgoingPosition_ = 0;
-        }
-        if (outgoing_.y(clock_ - outgoingAt_) == 0.0f) {
-            outgoing_ = Curve();
-            outgoing_.setLength(fadeFrames());
-            // The clock already moved, so the mix read the previous sample and
-            // will not see this zero itself.
-            if (pendingHeld_) {
-                released_[releasedCount_++] = pending_;
-                pendingHeld_ = false;
-            }
-        }
-    }
-    if (stopping && play_.y(clock_ - playAt_) == 0.0f) {
-        play_ = Curve();
-        play_.setLength(fadeFrames());
-        position_ = 0;
-    }
-}
-
-int SliceEngine::heard() const {
-    if (!playing_ && play_.fadingOut()) {
-        return fadePosition_;
-    }
-    return position_;
-}
-
 void SliceEngine::fillSnapshot(SliceSnapshot& out) {
     out.count = bank_.count();
-    out.playing = playing_;
+    out.playing = playing_.running();
     out.sliceExp = grid_.sliceExp();
     out.loopBeats = grid_.loopBeats();
     out.bpm = grid_.bpm();
     out.playSlot = -1;
     out.playTrack = -1;
-    const int loop = loopFrames();
-    out.playhead = playing_ && loop > 0 ? static_cast<double>(position_) / static_cast<double>(loop) : 0.0;
-    const int slice = sliceFrames();
-    const int musical = grid_.slotCount() * slice;
-    if (playing_ && slice > 0 && position_ < musical && bank_.count() > 0 && !sequence_.empty()) {
-        out.playSlot = position_ / slice;
-        out.playTrack = sequence_.indexAt(out.playSlot, bank_.count());
+    out.playhead = 0.0;
+    const double loopSec = static_cast<double>(grid_.loopBeats()) * 60.0 / settings_.bpm;
+    if (playing_.running() && loopSec > 0.0) {
+        out.playhead = playingClock_.seconds(settings_, grid_) / loopSec;
+    }
+    const int slot = playingClock_.sliceIndex(settings_, grid_);
+    if (playing_.running() && slot >= 0 && bank_.count() > 0 && !sequence_.empty()) {
+        out.playSlot = slot;
+        out.playTrack = sequence_.indexAt(slot, bank_.count());
     }
     out.releasedCount = releasedCount_;
     for (int i = 0; i < releasedCount_; ++i) {
         out.released[i] = released_[i];
     }
     releasedCount_ = 0;
-}
-
-void SliceEngine::handoff(const SampleBuffer& from) {
-    remember(from);
-    outgoingPosition_ = heard();
-    if (!play_.fadingOut()) {
-        play_.stop(clock_ - playAt_);
-    }
-    outgoing_ = play_;
-    outgoingAt_ = playAt_;
-    outgoingBuffer_ = from;
-    play_ = Curve();
-    play_.setLength(fadeFrames());
-    playAt_ = clock_;
-    playing_ = true;
 }
 
 void SliceEngine::syncSequence(int oldExp, int oldSlots) {
@@ -549,68 +379,5 @@ void SliceEngine::syncSequence(int oldExp, int oldSlots) {
         sequence_.crop(slots);
     }
 }
-
-void SliceEngine::place(double beats) {
-    const double wrapped = std::fmod(beats, grid_.loopBeats());
-    position_ = static_cast<int>(std::llround(wrapped * framesPerBeat()));
-}
-
-void SliceEngine::listen() {
-    const int n = fadeFrames();
-    slice_.setLength(n);
-    if (!play_.fadingOut()) {
-        play_.setLength(n);
-    }
-}
-
-const SampleBuffer& SliceEngine::bufferForSlot(int slot) const {
-    return bank_.at(sequence_.indexAt(slot, bank_.count()));
-}
-
-void SliceEngine::remember(const SampleBuffer& buffer) {
-    if (const TrackPlay* found = bank_.findPlay(buffer.id)) {
-        outgoingPlay_ = *found;
-    }
-}
-
-int SliceEngine::frameIn(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position) const {
-    const int slice = sliceFrames();
-    const int loop = loopFrames();
-    int origin = slot * slice;
-    if (origin + slice <= position) {
-        origin += loop;
-    }
-    const int maxSlices = slicesAfterStart(grid_, sampleRate_, buffer, play);
-    return frameAt(buffer, play, slot, position - origin, slice, maxSlices);
-}
-
-void SliceEngine::hear(const SampleBuffer& buffer, const TrackPlay& play, int slot, int position, float& left, float& right) const {
-    take(buffer, frameIn(buffer, play, slot, position), left, right);
-    voiceGain(play, left, right);
-}
-
-void SliceEngine::take(const SampleBuffer& buffer, int frame, float& left, float& right) const {
-    if (frame < 0 || frame >= buffer.frames) {
-        left = 0.0f;
-        right = 0.0f;
-        return;
-    }
-    left = buffer.left[frame];
-    right = buffer.right[frame];
-}
-
-int SliceEngine::fadeFrames() const {
-    return fadeLength(sampleRate_, grid_.sliceSec(), attackMs_ * 0.001);
-}
-
-int SliceEngine::sliceFrames() const {
-    return static_cast<int>(std::llround(grid_.sliceSec() * sampleRate_));
-}
-
-int SliceEngine::loopFrames() const {
-    return static_cast<int>(std::llround(grid_.loopSec() * sampleRate_));
-}
-
-double SliceEngine::framesPerBeat() const { return sampleRate_ * grid_.beatSec(); }
 
 } // namespace bt

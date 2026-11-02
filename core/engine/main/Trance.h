@@ -15,7 +15,8 @@ class Trance {
 public:
     explicit Trance(std::uint64_t seed);
 
-    void apply(float* l, float* r, const Playhead& playhead, const EffectParams& params);
+    void apply(float* l, float* r, const SampleBuffer& slice, const ClockSettings& settings, const Clock& clock, const SliceGrid& grid,
+               const EffectParams& params);
     void clean();
 
 private:
