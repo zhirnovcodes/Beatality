@@ -45,6 +45,9 @@ interface Core {
         loop: number,
         volume: number,
         pan: number,
+        warp: number,
+        bpm: number,
+        param: number,
     ) => void
     bt_set_output: (engine: number, volume: number, pan: number) => void
     bt_render: (engine: number, left: number, right: number, frames: number) => void
@@ -215,6 +218,10 @@ interface TrackMessage {
     loop: boolean
     volume: number
     pan: number
+    // The engine mode number: 0 none, 1 beat, 2 pitch.
+    warp: number
+    bpm: number
+    warpParam: number
 }
 
 interface OutputMessage {
@@ -238,6 +245,9 @@ interface PackTrackMessage {
     loop: boolean
     volume: number
     pan: number
+    warp: number
+    bpm: number
+    warpParam: number
 }
 
 interface PackMessage {
@@ -529,6 +539,9 @@ class BeatalityProcessor extends AudioWorkletProcessor {
                 message.loop ? 1 : 0,
                 message.volume,
                 message.pan,
+                message.warp,
+                message.bpm,
+                message.warpParam,
             )
         } else if (message.type === 'output') {
             this.core!.bt_set_output(this.engine, message.volume, message.pan)
@@ -561,6 +574,9 @@ class BeatalityProcessor extends AudioWorkletProcessor {
                 track.loop ? 1 : 0,
                 track.volume,
                 track.pan,
+                track.warp,
+                track.bpm,
+                track.warpParam,
             )
         })
         core.bt_set_bpm(this.engine, message.bpm)

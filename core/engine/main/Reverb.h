@@ -12,8 +12,8 @@ class Reverb {
 public:
     explicit Reverb(double sampleRate);
 
-    void apply(float* l, float* r, const SampleBuffer& slice, const ClockSettings& settings, const Clock& clock, const SliceGrid& grid,
-               const EffectParams& params);
+    Frame apply(const SliceReader& slice, const ClockSettings& settings, const Clock& clock, const SliceGrid& grid,
+                const EffectParams& params);
     void clean();
 
 private:

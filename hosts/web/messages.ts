@@ -155,6 +155,10 @@ export interface TrackMessage {
     loop: boolean
     volume: number
     pan: number
+    // The engine mode number: 0 none, 1 beat, 2 pitch.
+    warp: number
+    bpm: number
+    warpParam: number
 }
 
 export interface OutputMessage {
@@ -178,6 +182,9 @@ export interface PackTrackMessage {
     loop: boolean
     volume: number
     pan: number
+    warp: number
+    bpm: number
+    warpParam: number
 }
 
 export interface PackMessage {

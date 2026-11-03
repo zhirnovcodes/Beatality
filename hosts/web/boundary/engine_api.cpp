@@ -308,11 +308,16 @@ BT_EXPORT void bt_set_shift_chance(Instance* instance, double chance) {
 
 // start is a fraction of the file, 0..1. length is 0..1. loop is 0 or 1.
 // volume is 0..1.2. pan is -1..1.
-BT_EXPORT void bt_set_track(Instance* instance, int index, double start, double length, int loop, double volume, double pan) {
+// warp is 0 None, 1 Beat, 2 Pitch. Any other number is None.
+// bpm is the sample's own tempo, 1..999.9. param is 0..1.
+BT_EXPORT void bt_set_track(Instance* instance, int index, double start, double length, int loop, double volume, double pan, int warp,
+                            double bpm, double param) {
     if (instance == nullptr) {
         return;
     }
     instance->engine.setIndexedTrack(index, start, length, loop != 0, volume, pan);
+    const bt::WarpMode mode = warp >= 0 && warp <= 2 ? static_cast<bt::WarpMode>(warp) : bt::WarpMode::None;
+    instance->engine.setWarp(index, bt::WarpSettings{.mode = mode, .bpm = bpm, .param = param});
 }
 
 // volume is 0..1.2 and multiplies note velocity. pan is -1..1.

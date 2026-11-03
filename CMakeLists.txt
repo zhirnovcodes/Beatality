@@ -56,6 +56,7 @@ add_library(beatality_slice_engine
     core/engine/main/Trance.cpp
     core/engine/main/Reverse.cpp
     core/engine/main/SampleBank.cpp
+    core/engine/main/SliceReader.cpp
     core/engine/main/SliceEngine.cpp
 )
 target_include_directories(beatality_slice_engine PUBLIC

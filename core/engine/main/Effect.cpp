@@ -2,7 +2,10 @@
 
 namespace bt {
 
-void Effect::apply(float*, float*, const SampleBuffer&, const ClockSettings&, const Clock&, const SliceGrid&, const EffectParams&) {}
+Frame Effect::apply(const SliceReader& slice, const ClockSettings& settings, const Clock& clock, const SliceGrid& grid,
+                    const EffectParams& params) {
+    return slice.read(clock.localIn(params.slot, settings, grid));
+}
 
 void Effect::clean() {}
 

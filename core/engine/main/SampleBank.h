@@ -16,6 +16,16 @@ struct SampleSettings {
     double pan = 0;
 };
 
+// How a track is fitted to the project tempo. The values match the host's mode numbers.
+enum class WarpMode { None = 0, Beat = 1, Pitch = 2 };
+
+// The track's own tempo and how it is warped. bpm is 1..999.9. param is 0..1, and its meaning depends on the mode.
+struct WarpSettings {
+    WarpMode mode = WarpMode::None;
+    double bpm = 120;
+    double param = 0;
+};
+
 // One host-owned buffer per track, in list order.
 class SampleBank {
 public:
@@ -25,21 +35,20 @@ public:
     SampleBuffer remove(int index);   // shifts the later slots down
     void clear();
     void setPlay(int index, const SampleSettings& play);
+    void setWarp(int index, const WarpSettings& warp);
 
     int count() const { return count_; }
     const SampleBuffer& at(int index) const { return buffers_[index]; }
     const SampleSettings& play(int index) const { return plays_[index]; }
+    const WarpSettings& warp(int index) const { return warps_[index]; }
     const SampleSettings* findPlay(std::uint32_t id) const;
 
 private:
     SampleBuffer buffers_[kCapacity]{};
     SampleSettings plays_[kCapacity]{};
+    WarpSettings warps_[kCapacity]{};
     int count_ = 0;
 };
-
-// File frame for one local offset in a slice. maxSlices is how many slices the file holds after start.
-// A frame past the file is buffer.frames, which reads as silence.
-int frameAt(const SampleBuffer& buffer, const SampleSettings& play, int slot, int local, int sliceFrames, int maxSlices);
 
 // Volume and pan of one track, applied to one frame.
 void voiceGain(const SampleSettings& play, float& left, float& right);

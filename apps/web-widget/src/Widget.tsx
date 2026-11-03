@@ -7,12 +7,14 @@ export function Widget({
     model,
     grid,
     bindPanel,
+    bindWarp,
     listenSelection,
     chosen,
 }: {
     model: WebViewModel
     grid: HTMLElement
     bindPanel: (panel: HTMLFieldSetElement) => void
+    bindWarp: (panel: HTMLFieldSetElement) => void
     listenSelection: (listener: (index: number) => void) => void
     chosen: () => number
 }) {
@@ -32,6 +34,11 @@ export function Widget({
     const onPanel = useRef((panel: HTMLFieldSetElement | null) => {
         if (panel) {
             bindPanel(panel)
+        }
+    }).current
+    const onWarp = useRef((panel: HTMLFieldSetElement | null) => {
+        if (panel) {
+            bindWarp(panel)
         }
     }).current
 
@@ -717,6 +724,24 @@ export function Widget({
                 </section>
             </div>
             <p id="error">{model.error}</p>
+            {/* Unstyled warp controls for the selected sample, outside the skin. */}
+            <fieldset id="warp-panel" disabled={chosenIndex < 0} ref={onWarp}>
+                <label>
+                    Warp{' '}
+                    <select id="warp-mode" aria-label="Warp mode">
+                        <option value="none">None</option>
+                        <option value="beat">Beat</option>
+                        <option value="pitch">Pitch</option>
+                    </select>
+                </label>{' '}
+                <label>
+                    Param <input type="range" id="warp-param" min={0} max={1} step={0.01} defaultValue={0} aria-label="Warp param" />
+                </label>{' '}
+                <label>
+                    BPM{' '}
+                    <input type="number" id="warp-bpm" min={1} max={999.9} step={0.1} defaultValue={120} aria-label="Sample BPM" />
+                </label>
+            </fieldset>
         </>
     )
 }

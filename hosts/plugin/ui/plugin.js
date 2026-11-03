@@ -313,6 +313,7 @@ function syncPanel() {
         panel.disabled = selected < 0
     }
     const play = plays[selected]
+    syncWarpPanel(play)
     const duration = play ? durationSec(selected) : 0
     const startTime = document.getElementById('start-time')
     if (startTime instanceof HTMLInputElement) {
@@ -340,6 +341,26 @@ function syncPanel() {
     const loop = document.getElementById('track-loop')
     if (loop instanceof HTMLInputElement && document.activeElement !== loop) {
         loop.checked = play.loop
+    }
+}
+
+// The unstyled warp row under the skin. A field the user is typing in is left alone.
+function syncWarpPanel(play) {
+    const panel = document.getElementById('warp-panel')
+    if (panel instanceof HTMLFieldSetElement) {
+        panel.disabled = !play
+    }
+    const mode = document.getElementById('warp-mode')
+    const param = document.getElementById('warp-param')
+    const bpm = document.getElementById('warp-bpm')
+    if (mode instanceof HTMLSelectElement && document.activeElement !== mode) {
+        mode.value = String(play ? play.warp : 0)
+    }
+    if (param instanceof HTMLInputElement && document.activeElement !== param) {
+        param.value = String(play ? play.warpParam : 0)
+    }
+    if (bpm instanceof HTMLInputElement && document.activeElement !== bpm) {
+        bpm.value = (play ? play.bpm : 120).toFixed(1)
     }
 }
 
@@ -400,8 +421,10 @@ function paintGrid() {
     syncButtons()
 }
 
+// A new file takes the project tempo as its own. The processor does the same.
 function freshPlay(name) {
-    return { name, start: 0, length: 1, loop: false, volume: 1, pan: 0, missing: false }
+    const bpm = state.bpm > 0 ? state.bpm : 120
+    return { name, start: 0, length: 1, loop: false, volume: 1, pan: 0, warp: 0, bpm, warpParam: 0, missing: false }
 }
 
 function playFromBank(name, bank, index) {
@@ -417,6 +440,9 @@ function playFromBank(name, bank, index) {
         loop: !!(bank.loops && bank.loops[index]),
         volume: at(bank.volumes, 1),
         pan: at(bank.pans, 0),
+        warp: at(bank.warps, 0),
+        bpm: at(bank.bpms, 120),
+        warpParam: at(bank.warpParams, 0),
         missing: !!(bank.missing && bank.missing[index]),
     }
 }
@@ -623,6 +649,34 @@ function commitTrack() {
         return
     }
     void native('setTrack', selected, play.start, play.length, play.loop, play.volume, play.pan)
+}
+
+function commitWarp() {
+    const play = plays[selected]
+    if (!play || selected < 0) {
+        return
+    }
+    void native('setWarp', selected, play.warp, play.bpm, play.warpParam)
+}
+
+// The waveform is not redrawn: it shows the file at the project tempo, whatever the warp.
+function onWarp(event) {
+    const play = plays[selected]
+    const input = event.currentTarget
+    if (!play) {
+        return
+    }
+    if (input instanceof HTMLSelectElement && input.id === 'warp-mode') {
+        play.warp = Number(input.value)
+    } else if (input instanceof HTMLInputElement && input.id === 'warp-param') {
+        play.warpParam = Number(input.value)
+    } else if (input instanceof HTMLInputElement && input.id === 'warp-bpm') {
+        const parsed = Number.parseFloat(input.value.trim().replace(',', '.'))
+        const bpm = Number.isFinite(parsed) ? Math.min(999.9, Math.max(1, Math.round(parsed * 10) / 10)) : play.bpm
+        play.bpm = bpm
+        input.value = bpm.toFixed(1)
+    }
+    commitWarp()
 }
 
 function attachSampleScroll() {
@@ -843,6 +897,15 @@ function wire() {
     startTime?.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' && startTime instanceof HTMLInputElement) {
             startTime.blur()
+        }
+    })
+    document.getElementById('warp-mode')?.addEventListener('change', onWarp)
+    document.getElementById('warp-param')?.addEventListener('input', onWarp)
+    const warpBpm = document.getElementById('warp-bpm')
+    warpBpm?.addEventListener('change', onWarp)
+    warpBpm?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && warpBpm instanceof HTMLInputElement) {
+            warpBpm.blur()
         }
     })
     document.getElementById('track-loop')?.addEventListener('change', () => {

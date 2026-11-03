@@ -67,6 +67,8 @@ public:
     void setShiftChance(double chance);
     void setOutput(double volume, double pan);
     void setTrack(int index, double start, double length, bool loop, double volume, double pan);
+    // mode is 0 none, 1 beat, 2 pitch. bpm is the sample's own tempo, 1..999.9. param is 0..1.
+    void setWarp(int index, int mode, double bpm, double param);
     // Factory banks shipped with the plugin. Each entry is a name and a .beatality file name.
     juce::Array<juce::var> factoryBanks() const;
     // Loads a factory pack by its file name. Stops playback.
@@ -106,6 +108,9 @@ public:
     bool trackLoop(int index) const;
     double trackVolume(int index) const;
     double trackPan(int index) const;
+    int trackWarp(int index) const;
+    double trackBpm(int index) const;
+    double trackWarpParam(int index) const;
     bool trackMissing(int index) const;
 
     int numTracks() const;
@@ -134,6 +139,9 @@ private:
         bool loop = false;
         double volume = 1;
         double pan = 0;
+        int warp = 0;
+        double bpm = 120;
+        double warpParam = 0;
     };
 
     struct Impl;

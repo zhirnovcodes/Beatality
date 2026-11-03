@@ -36,8 +36,8 @@ Delay::Delay(double sampleRate) {
     right_.reset(new (std::nothrow) float[static_cast<std::size_t>(capacity_)]());
 }
 
-void Delay::apply(float* l, float* r, const SampleBuffer&, const ClockSettings& settings, const Clock&, const SliceGrid&,
-                 const EffectParams& params) {
+Frame Delay::apply(const SliceReader& slice, const ClockSettings& settings, const Clock& clock, const SliceGrid& grid,
+                   const EffectParams& params) {
     const float wet = params.power;
     const double beats = params.beats;
     const double sampleRate = settings.sampleRate;
@@ -58,8 +58,9 @@ void Delay::apply(float* l, float* r, const SampleBuffer&, const ClockSettings& 
     const float feedback = mix * kFeedback;
     const int attack = attackFrames(beats, sampleRate);
 
-    const float dryL = *l;
-    const float dryR = *r;
+    const Frame dry = slice.read(clock.localIn(params.slot, settings, grid));
+    const float dryL = dry.l;
+    const float dryR = dry.r;
     float echoL = 0.0f;
     float echoR = 0.0f;
     const bool arrived = delay > 0 && filled_ >= delay;
@@ -99,9 +100,8 @@ void Delay::apply(float* l, float* r, const SampleBuffer&, const ClockSettings& 
         delayedL = dryL + (echoL - dryL) * open;
         delayedR = dryR + (echoR - dryR) * open;
     }
-    *l = dryL + (delayedL - dryL) * mix;
-    *r = dryR + (delayedR - dryR) * mix;
     quiet_ = false;
+    return {dryL + (delayedL - dryL) * mix, dryR + (delayedR - dryR) * mix};
 }
 
 void Delay::clean() {

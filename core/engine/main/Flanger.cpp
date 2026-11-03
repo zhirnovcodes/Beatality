@@ -72,8 +72,8 @@ Flanger::Flanger(double sampleRate) {
     right_.reset(new (std::nothrow) float[static_cast<std::size_t>(capacity_)]());
 }
 
-void Flanger::apply(float* l, float* r, const SampleBuffer&, const ClockSettings& clockSettings, const Clock&, const SliceGrid&,
-                    const EffectParams& params) {
+Frame Flanger::apply(const SliceReader& slice, const ClockSettings& clockSettings, const Clock& clock, const SliceGrid& grid,
+                     const EffectParams& params) {
     const float power = params.power;
     const double beats = params.beats;
     const double sampleRate = clockSettings.sampleRate;
@@ -82,8 +82,9 @@ void Flanger::apply(float* l, float* r, const SampleBuffer&, const ClockSettings
     const double cycle = beats * sampleRate * 60.0 / bpm;
     const double limit = static_cast<double>(capacity_ - 2);
 
-    const float dryL = *l;
-    const float dryR = *r;
+    const Frame dry = slice.read(clock.localIn(params.slot, clockSettings, grid));
+    const float dryL = dry.l;
+    const float dryR = dry.r;
     // One beat is one cycle. The sine walks the delay from 0.5 ms to 8 ms.
     const double along = 0.5 * (std::sin(phase_ * 2.0 * kPi) + 1.0);
     double delay = (kDelayMsMin + along * (kDelayMsMax - kDelayMsMin)) * 0.001 * sampleRate;
@@ -107,9 +108,8 @@ void Flanger::apply(float* l, float* r, const SampleBuffer&, const ClockSettings
         write_ = 0;
     }
 
-    *l = dryL * settings.dry + echoL * settings.wet;
-    *r = dryR * settings.dry + echoR * settings.wet;
     quiet_ = false;
+    return {dryL * settings.dry + echoL * settings.wet, dryR * settings.dry + echoR * settings.wet};
 }
 
 void Flanger::clean() {

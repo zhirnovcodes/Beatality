@@ -84,8 +84,8 @@ float step(float& z1, float& z2, float x, const Coeff& coeff) {
 
 } // namespace
 
-void Filter::apply(float* l, float* r, const SampleBuffer&, const ClockSettings& clockSettings, const Clock&, const SliceGrid&,
-                   const EffectParams& params) {
+Frame Filter::apply(const SliceReader& slice, const ClockSettings& clockSettings, const Clock& clock, const SliceGrid& grid,
+                    const EffectParams& params) {
     const float power = params.power;
     const double beats = params.beats;
     const double sampleRate = clockSettings.sampleRate;
@@ -94,8 +94,9 @@ void Filter::apply(float* l, float* r, const SampleBuffer&, const ClockSettings&
     const double cycle = beats * sampleRate * 60.0 / bpm;
     const float limit = static_cast<float>(sampleRate) * 0.49f;
 
-    const float dryL = *l;
-    const float dryR = *r;
+    const Frame dry = slice.read(clock.localIn(params.slot, clockSettings, grid));
+    const float dryL = dry.l;
+    const float dryR = dry.r;
     // One beat is one cycle. The sine walks from 100 to 10000 in octaves.
     const double along = 0.5 * (std::sin(phase_ * 2.0 * kPi) + 1.0);
     float frequency = static_cast<float>(static_cast<double>(kFreqMin) * std::pow(static_cast<double>(kFreqMax / kFreqMin), along));
@@ -108,9 +109,8 @@ void Filter::apply(float* l, float* r, const SampleBuffer&, const ClockSettings&
     const Coeff coeff = bandpass(frequency, qFor(settings.resonance), sampleRate);
     const float bandL = step(z1L_, z2L_, dryL, coeff);
     const float bandR = step(z1R_, z2R_, dryR, coeff);
-    *l = (dryL * settings.dry + bandL * settings.wet) * settings.velocity;
-    *r = (dryR * settings.dry + bandR * settings.wet) * settings.velocity;
     quiet_ = false;
+    return {(dryL * settings.dry + bandL * settings.wet) * settings.velocity, (dryR * settings.dry + bandR * settings.wet) * settings.velocity};
 }
 
 void Filter::clean() {

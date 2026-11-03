@@ -92,8 +92,8 @@ float Shift::channel(float* line, float x, double cosine, double sine) {
     return shifted;
 }
 
-void Shift::apply(float* l, float* r, const SampleBuffer&, const ClockSettings& clockSettings, const Clock&, const SliceGrid&,
-                  const EffectParams& params) {
+Frame Shift::apply(const SliceReader& slice, const ClockSettings& clockSettings, const Clock& clock, const SliceGrid& grid,
+                   const EffectParams& params) {
     const float power = params.power;
     const double beats = params.beats;
     const double sampleRate = clockSettings.sampleRate;
@@ -101,8 +101,9 @@ void Shift::apply(float* l, float* r, const SampleBuffer&, const ClockSettings& 
     const Settings settings = settingsFor(power);
     const double cycle = beats * sampleRate * 60.0 / bpm;
 
-    const float dryL = *l;
-    const float dryR = *r;
+    const Frame dry = slice.read(clock.localIn(params.slot, clockSettings, grid));
+    const float dryL = dry.l;
+    const float dryR = dry.r;
     // One beat is one cycle. The sine is the shift, from -width to +width.
     const double lfo = std::sin(phase_ * 2.0 * kPi);
     phase_ += 1.0 / cycle;
@@ -120,9 +121,8 @@ void Shift::apply(float* l, float* r, const SampleBuffer&, const ClockSettings& 
         write_ = 0;
     }
 
-    *l = dryL * settings.dry + wetL * settings.wet;
-    *r = dryR * settings.dry + wetR * settings.wet;
     quiet_ = false;
+    return {dryL * settings.dry + wetL * settings.wet, dryR * settings.dry + wetR * settings.wet};
 }
 
 void Shift::clean() {

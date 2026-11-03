@@ -38,6 +38,7 @@ render(
         model={model}
         grid={grid}
         bindPanel={(panel) => presenter.bindPanel(panel)}
+        bindWarp={(panel) => presenter.bindWarp(panel)}
         listenSelection={(listener) => presenter.listenSelection(listener)}
         chosen={() => presenter.chosen()}
     />,

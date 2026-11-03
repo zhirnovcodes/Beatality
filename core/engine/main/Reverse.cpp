@@ -52,8 +52,8 @@ float copyEnvelope(int offset, int length, int attack) {
 
 } // namespace
 
-void Reverse::apply(float* l, float* r, const SampleBuffer& slice, const ClockSettings& settings, const Clock& clock,
-                    const SliceGrid& grid, const EffectParams& params) {
+Frame Reverse::apply(const SliceReader& slice, const ClockSettings& settings, const Clock& clock, const SliceGrid& grid,
+                     const EffectParams& params) {
     const int sliceFrames = clock.sliceFrames(settings, grid);
     const double framesPerBeat = settings.framesPerBeat();
     const double sliceBeats = static_cast<double>(sliceFrames) / framesPerBeat;
@@ -73,22 +73,14 @@ void Reverse::apply(float* l, float* r, const SampleBuffer& slice, const ClockSe
         mix = 1.0f;
     }
 
-    const float dryL = *l;
-    const float dryR = *r;
-    const PartRead read = partRead(clock.localIn(params.slot, settings, grid), sliceFrames, part, parts);
-    const int frame = frameAt(slice, params.play, params.slot, read.mirrored, sliceFrames, params.maxSlices);
-    float revL = 0.0f;
-    float revR = 0.0f;
-    if (frame >= 0 && frame < slice.frames) {
-        revL = slice.left[frame];
-        revR = slice.right[frame];
-    }
-    voiceGain(params.play, revL, revR);
+    const int local = clock.localIn(params.slot, settings, grid);
+    const Frame dry = slice.read(local);
+    const PartRead read = partRead(local, sliceFrames, part, parts);
+    const Frame rev = slice.read(read.mirrored);
     const float env = copyEnvelope(read.offset, read.length, attack);
-    const float shapedL = dryL + (revL - dryL) * env;
-    const float shapedR = dryR + (revR - dryR) * env;
-    *l = dryL + (shapedL - dryL) * mix;
-    *r = dryR + (shapedR - dryR) * mix;
+    const float shapedL = dry.l + (rev.l - dry.l) * env;
+    const float shapedR = dry.r + (rev.r - dry.r) * env;
+    return {dry.l + (shapedL - dry.l) * mix, dry.r + (shapedR - dry.r) * mix};
 }
 
 void Reverse::clean() {}

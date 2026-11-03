@@ -24,6 +24,22 @@ double clamp(double value, double low, double high) {
     return value;
 }
 
+// In the engine's order: the index is the mode number.
+const char* const kWarpNames[] = {"none", "beat", "pitch"};
+
+int warpFromName(const juce::String& name) {
+    for (int i = 0; i < 3; ++i) {
+        if (name == kWarpNames[i]) {
+            return i;
+        }
+    }
+    return 0;
+}
+
+bool isNumber(const juce::var& value) {
+    return value.isDouble() || value.isInt();
+}
+
 int fitSlice(int exponent, int loopBeats) {
     while (std::ldexp(1.0, exponent) > loopBeats) {
         --exponent;
@@ -69,6 +85,15 @@ std::optional<PackTrack> decodeTrack(const juce::var& value) {
     track.pan = clamp(static_cast<double>(pan), -1.0, 1.0);
     track.length = unit(static_cast<double>(length));
     track.loop = static_cast<bool>(loop);
+    const juce::var bpm = object->getProperty("bpm");
+    const juce::var warpParam = object->getProperty("warpParam");
+    track.warp = warpFromName(object->getProperty("warp").toString());
+    if (isNumber(bpm) && std::isfinite(static_cast<double>(bpm))) {
+        track.bpm = clamp(std::round(static_cast<double>(bpm) * 10.0) / 10.0, 1.0, 999.9);
+    }
+    if (isNumber(warpParam)) {
+        track.warpParam = unit(static_cast<double>(warpParam));
+    }
     return track;
 }
 
@@ -181,6 +206,9 @@ juce::String encodePack(const PackDocument& pack) {
         item->setProperty("pan", track.pan);
         item->setProperty("length", track.length);
         item->setProperty("loop", track.loop);
+        item->setProperty("warp", kWarpNames[track.warp >= 0 && track.warp <= 2 ? track.warp : 0]);
+        item->setProperty("bpm", track.bpm);
+        item->setProperty("warpParam", track.warpParam);
         tracks.add(juce::var(item));
     }
     object->setProperty("tracks", tracks);

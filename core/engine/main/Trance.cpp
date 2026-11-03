@@ -82,8 +82,8 @@ float envelopeAt(const Run* runs, int count, double phase, double element, doubl
 
 Trance::Trance(std::uint64_t seed) : rng_(seed) {}
 
-void Trance::apply(float* l, float* r, const SampleBuffer&, const ClockSettings& settings, const Clock&, const SliceGrid&,
-                  const EffectParams& params) {
+Frame Trance::apply(const SliceReader& slice, const ClockSettings& settings, const Clock& clock, const SliceGrid& grid,
+                    const EffectParams& params) {
     const float wet = params.power;
     const double beats = params.beats;
     const double sampleRate = settings.sampleRate;
@@ -99,8 +99,9 @@ void Trance::apply(float* l, float* r, const SampleBuffer&, const ClockSettings&
         mix = 1.0f;
     }
 
-    const float dryL = *l;
-    const float dryR = *r;
+    const Frame dry = slice.read(clock.localIn(params.slot, settings, grid));
+    const float dryL = dry.l;
+    const float dryR = dry.r;
     if (armed_) {
         sequence_ = rng_.nextInt(kSequenceCount);
         phase_ = 0.0;
@@ -119,9 +120,8 @@ void Trance::apply(float* l, float* r, const SampleBuffer&, const ClockSettings&
     const float env = envelopeAt(runs, runCount, phase_, element, attack);
     const float wetL = dryL * env;
     const float wetR = dryR * env;
-    *l = dryL + (wetL - dryL) * mix;
-    *r = dryR + (wetR - dryR) * mix;
     phase_ += 1.0 / framesPerBeat;
+    return {dryL + (wetL - dryL) * mix, dryR + (wetR - dryR) * mix};
 }
 
 void Trance::clean() {

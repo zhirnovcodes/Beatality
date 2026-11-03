@@ -59,6 +59,8 @@ public:
     void setTrack(int index, double start, double length, bool loop);
     // Web track. start is a fraction of the file, 0..1.
     void setIndexedTrack(int index, double start, double length, bool loop, double volume, double pan);
+    // The track's own tempo, warp mode, and warp param. Keeps start, length, loop, volume, and pan.
+    void setWarp(int index, const WarpSettings& warp);
     // Written after bpm, loop, and slice, which would otherwise build a new sequence.
     void installSequence(const std::uint16_t* slots, int size, int savedCount);
 

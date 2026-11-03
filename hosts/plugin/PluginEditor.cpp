@@ -87,7 +87,8 @@ Editor::Editor(Processor& processorIn) : juce::AudioProcessorEditor(processorIn)
         missing.setColour(juce::Label::textColourId, juce::Colours::white);
         addAndMakeVisible(missing);
     }
-    setSize(496, 688);
+    // 688 is the skin. The strip below it holds the unstyled warp controls.
+    setSize(496, 724);
 }
 
 Editor::~Editor() {
@@ -357,6 +358,13 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
                                    static_cast<bool>(args[3]), static_cast<double>(args[4]), static_cast<double>(args[5]));
             }
             completion(true);
+        })
+        .withNativeFunction("setWarp", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (args.size() >= 4) {
+                processor.setWarp(static_cast<int>(args[0]), static_cast<int>(args[1]), static_cast<double>(args[2]),
+                                  static_cast<double>(args[3]));
+            }
+            completion(true);
         });
 }
 
@@ -439,6 +447,9 @@ void Editor::pushBank() {
     juce::Array<juce::var> loops;
     juce::Array<juce::var> volumes;
     juce::Array<juce::var> pans;
+    juce::Array<juce::var> warps;
+    juce::Array<juce::var> bpms;
+    juce::Array<juce::var> warpParams;
     juce::Array<juce::var> missingTracks;
     for (int i = 0; i < count; ++i) {
         names.add(processor.trackName(i));
@@ -449,6 +460,9 @@ void Editor::pushBank() {
         loops.add(processor.trackLoop(i));
         volumes.add(processor.trackVolume(i));
         pans.add(processor.trackPan(i));
+        warps.add(processor.trackWarp(i));
+        bpms.add(processor.trackBpm(i));
+        warpParams.add(processor.trackWarpParam(i));
         missingTracks.add(processor.trackMissing(i));
         juce::Array<juce::var> columns;
         const auto& row = processor.trackPeaks(i);
@@ -469,6 +483,9 @@ void Editor::pushBank() {
     object->setProperty("loops", loops);
     object->setProperty("volumes", volumes);
     object->setProperty("pans", pans);
+    object->setProperty("warps", warps);
+    object->setProperty("bpms", bpms);
+    object->setProperty("warpParams", warpParams);
     object->setProperty("missing", missingTracks);
     object->setProperty("bpm", processor.bpm());
     object->setProperty("loop", processor.loopBeats());

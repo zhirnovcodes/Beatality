@@ -1,5 +1,20 @@
-import type { PackMessage, WorkletMessage } from '../messages'
-import type { PackDocument, SampleSettings } from '../pack'
+import type { PackMessage, TrackMessage, WorkletMessage } from '../messages'
+import { sampleBpm, warpIndex, type PackDocument, type SampleSettings } from '../pack'
+
+function trackMessage(index: number, play: SampleSettings): TrackMessage {
+    return {
+        type: 'track',
+        index,
+        start: play.start,
+        length: play.length,
+        loop: play.loop,
+        volume: play.volume,
+        pan: play.pan,
+        warp: warpIndex(play.warp),
+        bpm: play.bpm,
+        warpParam: play.warpParam,
+    }
+}
 
 function isAbort(error: unknown): boolean {
     return typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
@@ -188,16 +203,9 @@ export class EngineClient {
         this.node?.port.postMessage({ type: 'shiftChance', chance })
     }
 
-    async setTrack(
-        index: number,
-        start: number,
-        length: number,
-        loop: boolean,
-        volume: number,
-        pan: number,
-    ): Promise<void> {
+    async setTrack(index: number, play: SampleSettings): Promise<void> {
         await this.start()
-        this.node?.port.postMessage({ type: 'track', index, start, length, loop, volume, pan })
+        this.node?.port.postMessage(trackMessage(index, play))
     }
 
     async setOutput(volume: number, pan: number): Promise<void> {
@@ -238,6 +246,9 @@ export class EngineClient {
                 loop: track.loop,
                 volume: track.volume,
                 pan: track.pan,
+                warp: track.warp,
+                bpm: track.bpm,
+                warpParam: track.warpParam,
             }
             const name = track.source.type === 'internal' ? track.source.id : baseName(track.source.path)
             const file = track.source.type === 'internal' ? await openInternal(track.source.id) : null
@@ -309,6 +320,9 @@ export class EngineClient {
                 loop: track.play.loop,
                 volume: track.play.volume,
                 pan: track.play.pan,
+                warp: warpIndex(track.play.warp),
+                bpm: track.play.bpm,
+                warpParam: track.play.warpParam,
             })
             if (!track.missing && track.planar) {
                 transfers.push(track.planar.buffer as ArrayBuffer)
@@ -437,13 +451,16 @@ export class EngineClient {
         return decoded
     }
 
+    // A new file takes the project tempo as its own, so it plays unchanged until its BPM is edited.
     private sendDecoded(decoded: readonly DecodedTrack[]) {
         for (const item of decoded) {
-            const id = this.registry.add(item.name, {
-                samples: item.left,
-                right: item.right,
-                sampleRate: item.sampleRate,
-            })
+            const play = { ...TrackRegistry.defaultPlay, bpm: sampleBpm(this.latest?.bpm ?? 120) }
+            const id = this.registry.add(
+                item.name,
+                { samples: item.left, right: item.right, sampleRate: item.sampleRate },
+                false,
+                play,
+            )
             if (id === null || !this.node) {
                 break
             }
@@ -451,6 +468,7 @@ export class EngineClient {
                 { type: 'append', id, frames: item.frames, planar: item.planar },
                 [item.planar.buffer],
             )
+            this.node.port.postMessage(trackMessage(this.registry.count - 1, play))
         }
     }
 

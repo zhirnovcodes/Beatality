@@ -24,36 +24,30 @@ void EffectsBank::clean() {
     shift_.clean();
 }
 
-void EffectsBank::apply(EffectId effect, float* l, float* r, const SampleBuffer& slice, const ClockSettings& settings, const Clock& clock,
-                        const SliceGrid& grid, const EffectParams& params) {
+Frame EffectsBank::apply(EffectId effect, const SliceReader& slice, const ClockSettings& settings, const Clock& clock,
+                         const SliceGrid& grid, const EffectParams& params) {
     if (effect == EffectId::Reverb) {
-        reverb_.apply(l, r, slice, settings, clock, grid, params);
-        return;
+        return reverb_.apply(slice, settings, clock, grid, params);
     }
     if (effect == EffectId::Delay) {
-        delay_.apply(l, r, slice, settings, clock, grid, params);
-        return;
+        return delay_.apply(slice, settings, clock, grid, params);
     }
     if (effect == EffectId::Reverse) {
-        reverse_.apply(l, r, slice, settings, clock, grid, params);
-        return;
+        return reverse_.apply(slice, settings, clock, grid, params);
     }
     if (effect == EffectId::Filter) {
-        filter_.apply(l, r, slice, settings, clock, grid, params);
-        return;
+        return filter_.apply(slice, settings, clock, grid, params);
     }
     if (effect == EffectId::Flanger) {
-        flanger_.apply(l, r, slice, settings, clock, grid, params);
-        return;
+        return flanger_.apply(slice, settings, clock, grid, params);
     }
     if (effect == EffectId::Trance) {
-        trance_.apply(l, r, slice, settings, clock, grid, params);
-        return;
+        return trance_.apply(slice, settings, clock, grid, params);
     }
     if (effect == EffectId::Shift) {
-        shift_.apply(l, r, slice, settings, clock, grid, params);
-        return;
+        return shift_.apply(slice, settings, clock, grid, params);
     }
+    return slice.read(clock.localIn(params.slot, settings, grid));
 }
 
 } // namespace bt

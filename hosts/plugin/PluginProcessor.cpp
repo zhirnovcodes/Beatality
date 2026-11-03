@@ -89,6 +89,15 @@ void freePayload(AppendPayload* payload) {
     delete payload;
 }
 
+// A mode number outside 0..2 is None. The engine clamps bpm and param.
+bt::WarpSettings warpSettings(int mode, double bpm, double param) {
+    bt::WarpSettings warp;
+    warp.mode = mode >= 0 && mode <= 2 ? static_cast<bt::WarpMode>(mode) : bt::WarpMode::None;
+    warp.bpm = bpm;
+    warp.param = param;
+    return warp;
+}
+
 struct PackTrackPayload {
     AppendPayload* audio = nullptr;
     double start = 0;
@@ -96,6 +105,7 @@ struct PackTrackPayload {
     bool loop = false;
     double volume = 1;
     double pan = 0;
+    bt::WarpSettings warp{};
 };
 
 struct PackPayload {
@@ -194,7 +204,7 @@ AppendPayload* payloadFromReader(juce::AudioFormatReader& reader, double rate, s
 class CommandQueue {
 public:
     struct Slot {
-        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, GlobalPower, GlobalBeat, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, ReversePower, ReverseChance, FilterPower, FilterChance, FlangerPower, FlangerChance, TrancePower, TranceChance, ShiftPower, ShiftChance, Track, Output, Pack };
+        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, GlobalPower, GlobalBeat, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, ReversePower, ReverseChance, FilterPower, FilterChance, FlangerPower, FlangerChance, TrancePower, TranceChance, ShiftPower, ShiftChance, Track, Warp, Output, Pack };
         Kind kind = Kind::Randomize;
         AppendPayload* append = nullptr;
         PackPayload* pack = nullptr;
@@ -263,6 +273,7 @@ struct SourceTrack {
     bool loop = false;
     double volume = 1;
     double pan = 0;
+    bt::WarpSettings warp{};
 };
 
 struct DeviceAudio {
@@ -583,6 +594,22 @@ struct Processor::Impl {
         engine->setIndexedTrack(index, start, length, loop, volume, pan);
     }
 
+    void applyWarp(int index, const bt::WarpSettings& warp) {
+        if (index >= 0 && index < static_cast<int>(sources.size())) {
+            sources[static_cast<std::size_t>(index)].warp = warp;
+        }
+        if (engine == nullptr) {
+            return;
+        }
+        engine->setWarp(index, warp);
+    }
+
+    // The track's window, gain, and warp, onto the engine slot that was just appended.
+    void placeTrack(int index, const SourceTrack& source) {
+        engine->setIndexedTrack(index, source.start, source.length, source.loop, source.volume, source.pan);
+        engine->setWarp(index, source.warp);
+    }
+
     void applySlot(CommandQueue::Slot slot) {
         switch (slot.kind) {
         case CommandQueue::Slot::Kind::Randomize:
@@ -663,6 +690,9 @@ struct Processor::Impl {
         case CommandQueue::Slot::Kind::Track:
             applyTrack(slot.index, slot.first, slot.second, slot.flag, slot.third, slot.fourth);
             break;
+        case CommandQueue::Slot::Kind::Warp:
+            applyWarp(slot.index, warpSettings(slot.number, slot.first, slot.second));
+            break;
         case CommandQueue::Slot::Kind::Output:
             applyOutput(slot.first, slot.second);
             break;
@@ -703,6 +733,7 @@ struct Processor::Impl {
             source.loop = track.loop;
             source.volume = track.volume;
             source.pan = track.pan;
+            source.warp = track.warp;
             bool placed = false;
             if (track.audio != nullptr) {
                 source.rate = track.audio->sourceRate;
@@ -727,7 +758,7 @@ struct Processor::Impl {
                     track.audio->deviceRight = nullptr;
                     const bt::SampleBuffer buffer{device.id, device.left.get(), device.right.get(), device.frames};
                     engine->append(buffer);
-                    engine->setIndexedTrack(index, source.start, source.length, source.loop, source.volume, source.pan);
+                    placeTrack(index, source);
                     devices.push_back(std::move(device));
                     placed = true;
                 }
@@ -739,7 +770,7 @@ struct Processor::Impl {
                 const std::uint32_t id = nextId.fetch_add(1, std::memory_order_relaxed);
                 const bt::SampleBuffer buffer{id, nullptr, nullptr, 0};
                 engine->append(buffer);
-                engine->setIndexedTrack(index, source.start, source.length, source.loop, source.volume, source.pan);
+                placeTrack(index, source);
             }
             sources.push_back(std::move(source));
             ++index;
@@ -843,7 +874,7 @@ struct Processor::Impl {
                 device.id = nextId.fetch_add(1, std::memory_order_relaxed);
                 const bt::SampleBuffer buffer{device.id, nullptr, nullptr, 0};
                 engine->append(buffer);
-                engine->setIndexedTrack(index, source.start, source.length, source.loop, source.volume, source.pan);
+                placeTrack(index, source);
                 devices.push_back(std::move(device));
                 ++index;
                 continue;
@@ -859,7 +890,7 @@ struct Processor::Impl {
             device.right = std::move(resampled.right);
             const bt::SampleBuffer buffer{device.id, device.left.get(), device.right.get(), device.frames};
             engine->append(buffer);
-            engine->setIndexedTrack(index, source.start, source.length, source.loop, source.volume, source.pan);
+            placeTrack(index, source);
             devices.push_back(std::move(device));
             ++index;
         }
@@ -1004,6 +1035,8 @@ void Processor::appendFiles(const juce::Array<juce::File>& files) {
         picture.frames = payload->sourceFrames;
         picture.peaks = peakColumns(payload->sourceLeft, payload->sourceRight, payload->sourceFrames);
         picture.address = file.getFullPathName();
+        // A new file takes the project tempo as its own, so it plays unchanged until its BPM is edited.
+        picture.bpm = savedBpm;
         CommandQueue::Slot slot;
         slot.kind = CommandQueue::Slot::Kind::Append;
         slot.append = payload;
@@ -1011,6 +1044,13 @@ void Processor::appendFiles(const juce::Array<juce::File>& files) {
             freePayload(payload);
             break;
         }
+        CommandQueue::Slot warp;
+        warp.kind = CommandQueue::Slot::Kind::Warp;
+        warp.index = names.size();
+        warp.number = picture.warp;
+        warp.first = picture.bpm;
+        warp.second = picture.warpParam;
+        impl->queue.push(warp);
         names.add(file.getFileName());
         pictures.push_back(std::move(picture));
         ++added;
@@ -1382,6 +1422,27 @@ void Processor::setTrack(int index, double start, double length, bool loop, doub
     impl->queue.push(slot);
 }
 
+void Processor::setWarp(int index, int mode, double bpm, double param) {
+    if (index < 0 || index >= names.size() || mode < 0 || mode > 2 || !std::isfinite(bpm) || !std::isfinite(param)) {
+        return;
+    }
+    bpm = std::clamp(std::round(bpm * 10.0) / 10.0, 1.0, 999.9);
+    param = std::clamp(param, 0.0, 1.0);
+    if (index < static_cast<int>(pictures.size())) {
+        TrackPicture& picture = pictures[static_cast<std::size_t>(index)];
+        picture.warp = mode;
+        picture.bpm = bpm;
+        picture.warpParam = param;
+    }
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::Warp;
+    slot.index = index;
+    slot.number = mode;
+    slot.first = bpm;
+    slot.second = param;
+    impl->queue.push(slot);
+}
+
 juce::Array<juce::var> Processor::factoryBanks() const {
     juce::Array<juce::var> list;
     int bytes = 0;
@@ -1435,6 +1496,7 @@ bool Processor::loadPackText(const juce::String& text) {
         item.loop = track.loop;
         item.volume = track.volume;
         item.pan = track.pan;
+        item.warp = warpSettings(track.warp, track.bpm, track.warpParam);
 
         TrackPicture picture;
         picture.internal = track.internal;
@@ -1444,6 +1506,9 @@ bool Processor::loadPackText(const juce::String& text) {
         picture.loop = track.loop;
         picture.volume = track.volume;
         picture.pan = track.pan;
+        picture.warp = track.warp;
+        picture.bpm = track.bpm;
+        picture.warpParam = track.warpParam;
         picture.missing = true;
 
         juce::String display = track.internal ? track.address : juce::File(track.address).getFileName();
@@ -1520,6 +1585,9 @@ juce::String Processor::packText() {
         track.loop = picture.loop;
         track.volume = picture.volume;
         track.pan = picture.pan;
+        track.warp = picture.warp;
+        track.bpm = picture.bpm;
+        track.warpParam = picture.warpParam;
         pack.tracks.push_back(track);
     }
     return encodePack(pack);
@@ -1543,6 +1611,18 @@ double Processor::trackVolume(int index) const {
 
 double Processor::trackPan(int index) const {
     return index >= 0 && index < static_cast<int>(pictures.size()) ? pictures[static_cast<std::size_t>(index)].pan : 0;
+}
+
+int Processor::trackWarp(int index) const {
+    return index >= 0 && index < static_cast<int>(pictures.size()) ? pictures[static_cast<std::size_t>(index)].warp : 0;
+}
+
+double Processor::trackBpm(int index) const {
+    return index >= 0 && index < static_cast<int>(pictures.size()) ? pictures[static_cast<std::size_t>(index)].bpm : 120;
+}
+
+double Processor::trackWarpParam(int index) const {
+    return index >= 0 && index < static_cast<int>(pictures.size()) ? pictures[static_cast<std::size_t>(index)].warpParam : 0;
 }
 
 bool Processor::trackMissing(int index) const {

@@ -1,4 +1,5 @@
 import type { EngineClient } from '../../hosts/web/client/EngineClient'
+import { sampleBpm, warpModes, type SampleSettings } from '../../hosts/web/pack'
 import type { WebViewModel } from '../../viewmodels/web/WebViewModel'
 import { SampleBufferPresenter, type TrackEdit } from './SampleBufferPresenter'
 import { SampleBufferView } from '../../views/web/SampleBufferView'
@@ -64,6 +65,9 @@ export class WebPresenter {
     private lengthInput: HTMLInputElement | null = null
     private startTimeInput: HTMLInputElement | null = null
     private loopInput: HTMLInputElement | null = null
+    private warpModeInput: HTMLSelectElement | null = null
+    private warpParamInput: HTMLInputElement | null = null
+    private warpBpmInput: HTMLInputElement | null = null
     private selectionListener: (index: number) => void = () => {}
 
     constructor(
@@ -182,6 +186,60 @@ export class WebPresenter {
         this.syncPanel()
     }
 
+    // Warp mode, warp param, and the sample's own BPM for the selected row.
+    // These go to the engine only. The waveform keeps showing the file at the project tempo.
+    bindWarp(panel: HTMLFieldSetElement) {
+        if (this.warpModeInput) {
+            return
+        }
+        const mode = panel.querySelector('#warp-mode')
+        const param = panel.querySelector('#warp-param')
+        const bpm = panel.querySelector('#warp-bpm')
+        if (!(mode instanceof HTMLSelectElement) || !(param instanceof HTMLInputElement) || !(bpm instanceof HTMLInputElement)) {
+            throw new Error('missing warp panel')
+        }
+        this.warpModeInput = mode
+        this.warpParamInput = param
+        this.warpBpmInput = bpm
+        mode.addEventListener('change', () => {
+            const warp = warpModes.find((item) => item === mode.value)
+            if (warp) {
+                this.editWarp({ warp })
+            }
+        })
+        param.addEventListener('input', () => {
+            this.editWarp({ warpParam: Number(param.value) })
+        })
+        bpm.addEventListener('change', () => {
+            const parsed = Number.parseFloat(bpm.value.trim().replace(',', '.'))
+            const current = this.client.registry.playAt(this.selected)
+            const value = Number.isFinite(parsed) ? sampleBpm(parsed) : (current?.bpm ?? 120)
+            bpm.value = value.toFixed(1)
+            this.editWarp({ bpm: value })
+        })
+        bpm.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                bpm.blur()
+            }
+        })
+        this.syncPanel()
+    }
+
+    private editWarp(patch: Partial<SampleSettings>) {
+        const index = this.selected
+        const current = this.client.registry.playAt(index)
+        if (index < 0 || !current) {
+            return
+        }
+        const play = { ...current, ...patch }
+        this.client.registry.setPlay(index, play)
+        void this.client.setTrack(index, play)
+        // A new sample BPM moves the slice lines in the file, so the strip is redrawn at it.
+        if (patch.bpm !== undefined) {
+            this.followSample()
+        }
+    }
+
     private sync() {
         this.followSample()
         this.markPlaying()
@@ -218,16 +276,19 @@ export class WebPresenter {
                 row = this.createRow(wave.samples)
                 this.rows.push(row)
             }
+            const play = this.client.registry.playAt(wave.index)
+            // The file is drawn at its own BPM, where every warp mode measures its slices.
+            // The project BPM does not move it.
             row.presenter.follow(
                 {
                     samples: wave.samples,
                     right: wave.right,
                     sampleRate: wave.sampleRate,
-                    bpm: this.model.bpm,
+                    bpm: play?.bpm ?? this.model.bpm,
                     loopBeats: this.model.loopBeats,
                     sliceBeats,
                 },
-                this.client.registry.playAt(wave.index) ?? undefined,
+                play ?? undefined,
             )
         }
         if (this.selected >= this.model.tracks.length) {
@@ -241,13 +302,16 @@ export class WebPresenter {
         spectrum.className = 'spectrum'
         const view = new SampleBufferView(spectrum, skinRow)
         const presenter = new SampleBufferPresenter(view)
-        presenter.onEdit = (play) => {
+        presenter.onEdit = (edit) => {
             const index = this.indexOf(samples)
-            if (index < 0) {
+            const current = this.client.registry.playAt(index)
+            if (index < 0 || !current) {
                 return
             }
+            // The strip edits start, length, loop, volume, and pan. The warp fields stay as they were.
+            const play = { ...current, ...edit }
             this.client.registry.setPlay(index, play)
-            void this.client.setTrack(index, play.start, play.length, play.loop, play.volume, play.pan)
+            void this.client.setTrack(index, play)
             if (index === this.selected) {
                 this.syncPanel()
             }
@@ -398,7 +462,24 @@ export class WebPresenter {
         this.editSelected({ start: fraction })
     }
 
+    private syncWarp() {
+        const play = this.selected >= 0 ? this.client.registry.playAt(this.selected) : null
+        const mode = this.warpModeInput
+        const param = this.warpParamInput
+        const bpm = this.warpBpmInput
+        if (mode && document.activeElement !== mode) {
+            mode.value = play?.warp ?? 'none'
+        }
+        if (param && document.activeElement !== param) {
+            param.value = String(play?.warpParam ?? 0)
+        }
+        if (bpm && document.activeElement !== bpm) {
+            bpm.value = (play?.bpm ?? 120).toFixed(1)
+        }
+    }
+
     private syncPanel() {
+        this.syncWarp()
         const picture = this.selected >= 0 ? this.rowAt(this.selected)?.presenter.read() : null
         const duration = picture ? (this.rowAt(this.selected)?.presenter.durationSec() ?? 0) : 0
         const volume = this.volumeInput

@@ -18,8 +18,9 @@ double unit(double value) {
 
 SlicePlayer::SlicePlayer(double sampleRate, std::uint64_t seed) : bank_(sampleRate, seed) { curve_.stop(0); }
 
-void SlicePlayer::setSlice(const SampleSettings& play, int slot, EffectId effect, float roll) {
+void SlicePlayer::setSlice(const SampleSettings& play, const WarpSettings& warp, int slot, EffectId effect, float roll) {
     play_ = play;
+    warp_ = warp;
     slot_ = slot;
     effect_ = effect;
     roll_ = roll;
@@ -28,12 +29,13 @@ void SlicePlayer::setSlice(const SampleSettings& play, int slot, EffectId effect
     at_ = 0;
 }
 
-void SlicePlayer::setPlay(const SampleSettings& play) {
+void SlicePlayer::setPlay(const SampleSettings& play, const WarpSettings& warp) {
     if (play_.start == play.start && play_.length == play.length && play_.loop == play.loop && play_.volume == play.volume &&
-        play_.pan == play.pan) {
+        play_.pan == play.pan && warp_.mode == warp.mode && warp_.bpm == warp.bpm && warp_.param == warp.param) {
         return;
     }
     play_ = play;
+    warp_ = warp;
 }
 
 void SlicePlayer::setEffects(const Effects& effects) { effects_ = effects; }
@@ -64,16 +66,8 @@ void SlicePlayer::render(const SampleBuffer& slice, const ClockSettings& setting
     }
     const float gain = curve_.y(at_);
     ++at_;
-    const int sliceFrames = clock.sliceFrames(settings, grid);
-    const int frame = frameAt(slice, play_, slot_, clock.localIn(slot_, settings, grid), sliceFrames, slicesAfter(slice, settings, grid));
-    float sampleL = 0.0f;
-    float sampleR = 0.0f;
-    if (frame >= 0 && frame < slice.frames) {
-        sampleL = slice.left[frame];
-        sampleR = slice.right[frame];
-    }
-    voiceGain(play_, sampleL, sampleR);
-
+    const SliceReader reader(slice, play_, warp_, settings, grid, slot_, clock.sliceFrames(settings, grid));
+    Frame sample;
     if (roll_ < effects_.globalChance && effect_ != EffectId::None) {
         bank_.bind(slot_);
         double localPower = effects_.reversePower;
@@ -93,27 +87,14 @@ void SlicePlayer::render(const SampleBuffer& slice, const ClockSettings& setting
         EffectParams params;
         params.power = static_cast<float>(unit(localPower * effects_.globalPower));
         params.beats = effects_.beatLength();
-        params.play = play_;
         params.slot = slot_;
-        params.maxSlices = slicesAfter(slice, settings, grid);
-        bank_.apply(effect_, &sampleL, &sampleR, slice, settings, clock, grid, params);
+        sample = bank_.apply(effect_, reader, settings, clock, grid, params);
+    } else {
+        sample = reader.read(clock.localIn(slot_, settings, grid));
     }
 
-    // Warp joins here, between the effect and the curve.
-
-    left = sampleL * gain;
-    right = sampleR * gain;
-}
-
-int SlicePlayer::slicesAfter(const SampleBuffer& slice, const ClockSettings& settings, const SliceGrid& grid) const {
-    const double durationSec = static_cast<double>(slice.frames) / settings.sampleRate;
-    double start = play_.start;
-    if (start < 0.0) {
-        start = 0.0;
-    } else if (start > 1.0) {
-        start = 1.0;
-    }
-    return grid.trackSlices(durationSec * (1.0 - start));
+    left = sample.l * gain;
+    right = sample.r * gain;
 }
 
 } // namespace bt

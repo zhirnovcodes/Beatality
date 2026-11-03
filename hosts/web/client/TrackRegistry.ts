@@ -7,11 +7,19 @@ export interface TrackWave {
     sampleRate: number
 }
 
-const defaultPlay: SampleSettings = { start: 0, length: 1, loop: false, volume: 1, pan: 0 }
-
 // File names in list order, the waveform the page draws, and the ids the audio thread uses.
 export class TrackRegistry {
     static readonly capacity = 32
+    static readonly defaultPlay: SampleSettings = {
+        start: 0,
+        length: 1,
+        loop: false,
+        volume: 1,
+        pan: 0,
+        warp: 'none',
+        bpm: 120,
+        warpParam: 0,
+    }
 
     private names: string[] = []
     private waves: TrackWave[] = []
@@ -50,7 +58,7 @@ export class TrackRegistry {
     }
 
     // Null when the list is full. Ids start at 1 and are never reused.
-    add(name: string, wave: TrackWave, missing = false, play: SampleSettings = defaultPlay): number | null {
+    add(name: string, wave: TrackWave, missing = false, play: SampleSettings = TrackRegistry.defaultPlay): number | null {
         if (this.names.length >= TrackRegistry.capacity) {
             return null
         }

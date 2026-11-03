@@ -1,11 +1,20 @@
+// In the engine's order: the index is the mode number bt_set_track takes.
+export const warpModes = ['none', 'beat', 'pitch'] as const
+export type WarpMode = (typeof warpModes)[number]
+
+// bpm is the sample's own tempo, 1.0..999.9 in steps of 0.1. warpParam is 0..1.
 export interface SampleSettings {
     start: number
     length: number
     loop: boolean
     volume: number
     pan: number
+    warp: WarpMode
+    bpm: number
+    warpParam: number
 }
 
+// warp, bpm, and warpParam may be missing from older packs. They read as none, 120, and 0.
 export interface PackTrack {
     source: { type: 'internal'; id: string } | { type: 'file'; path: string }
     volume: number
@@ -13,6 +22,9 @@ export interface PackTrack {
     pan: number
     length: number
     loop: boolean
+    warp: WarpMode
+    bpm: number
+    warpParam: number
 }
 
 export interface PackDocument {
@@ -78,6 +90,19 @@ function finite(value: unknown): number | null {
         return null
     }
     return value
+}
+
+// One decimal place, 1.0 to 999.9.
+export function sampleBpm(value: number): number {
+    return clamp(Math.round(value * 10) / 10, 1, 999.9)
+}
+
+export function warpIndex(mode: WarpMode): number {
+    return warpModes.indexOf(mode)
+}
+
+function decodeWarp(value: unknown): WarpMode {
+    return warpModes.find((mode) => mode === value) ?? 'none'
 }
 
 // The same document the plugin writes. Null when the text is not a version-1 pack.
@@ -178,6 +203,7 @@ function decodeTrack(value: unknown): PackTrack | null {
     if (!source || volume === null || start === null || pan === null || length === null || typeof record.loop !== 'boolean') {
         return null
     }
+    const bpm = finite(record.bpm)
     return {
         source,
         volume: clamp(volume, 0, 1.2),
@@ -185,6 +211,9 @@ function decodeTrack(value: unknown): PackTrack | null {
         pan: clamp(pan, -1, 1),
         length: unit(length),
         loop: record.loop,
+        warp: decodeWarp(record.warp),
+        bpm: bpm === null ? 120 : sampleBpm(bpm),
+        warpParam: unit(finite(record.warpParam) ?? 0),
     }
 }
 

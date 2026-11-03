@@ -89,19 +89,19 @@ float Reverb::tank(Stage* combs, Stage* allpasses, float input, float feedback) 
     return mixed;
 }
 
-void Reverb::apply(float* l, float* r, const SampleBuffer&, const ClockSettings&, const Clock&, const SliceGrid&,
-                  const EffectParams& params) {
+Frame Reverb::apply(const SliceReader& slice, const ClockSettings& settings, const Clock& clock, const SliceGrid& grid,
+                    const EffectParams& params) {
     const float wet = params.power;
     const double beats = params.beats;
     const float mix = wet < 0.0f ? 0.0f : (wet > 1.0f ? 1.0f : wet);
     const float feedback = feedbackFor(beats) * mix;
-    const float dryL = *l;
-    const float dryR = *r;
+    const Frame dry = slice.read(clock.localIn(params.slot, settings, grid));
+    const float dryL = dry.l;
+    const float dryR = dry.r;
     const float wetL = tank(combsL_, allL_, dryL, feedback);
     const float wetR = tank(combsR_, allR_, dryR, feedback);
-    *l = dryL + (wetL - dryL) * mix;
-    *r = dryR + (wetR - dryR) * mix;
     quiet_ = false;
+    return {dryL + (wetL - dryL) * mix, dryR + (wetR - dryR) * mix};
 }
 
 void Reverb::clean() {
