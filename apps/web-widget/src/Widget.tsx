@@ -54,7 +54,7 @@ export function Widget({
         if (!root) {
             return
         }
-        root.querySelectorAll<HTMLElement>('.slider, .seek, .mix-slider, .fx-slider').forEach((slider) => {
+        root.querySelectorAll<HTMLElement>('.slider, .seek, .mix-slider, .fx-slider, .br-slider').forEach((slider) => {
             const input = slider.querySelector('input[type="range"]')
             if (input instanceof HTMLInputElement) {
                 placeThumb(input)
@@ -540,6 +540,7 @@ export function Widget({
                     </div>
                     <div className="case" />
                 </section>
+                <BeatRepeatPart model={model} />
                 <section className="part bottom" aria-label="Samples">
                     <div className="window" />
                     <div className="content">
@@ -726,97 +727,138 @@ export function Widget({
                     </div>
                 </section>
             </div>
-            <BeatRepeatPanel model={model} />
             <p id="error">{model.error}</p>
         </>
     )
 }
 
-// Plain controls until beat repeat has its place in the skin.
-// Size is 1/32 .. 2 beats, picked between min and max. The tail is 1/16 .. 2 beats.
-function BeatRepeatPanel({ model }: { model: WebViewModel }) {
-    const sizes = [-5, -4, -3, -2, -1, 0, 1]
-    const lengths = [-4, -3, -2, -1, 0, 1]
-    const pick = (apply: (exponent: number) => void) => (event: Event) => {
-        const select = event.currentTarget as HTMLSelectElement
-        apply(Number(select.value))
+// SIZE index 0..6 is the exponent -5..1 (1/32 .. 2 beats). LENGTH index 0..5 is -4..1 (1/16 .. 2 beats).
+const repeatSizeBase = -5
+const repeatLengthBase = -4
+
+function BeatRepeatPart({ model }: { model: WebViewModel }) {
+    const lo = model.repeatSizeMinExp - repeatSizeBase
+    const hi = model.repeatSizeMaxExp - repeatSizeBase
+    const length = model.repeatLengthExp - repeatLengthBase
+    const value = (event: Event) => (event.currentTarget as HTMLInputElement).valueAsNumber
+    const onSlider = (apply: (value: number) => void) => (event: Event) => {
+        apply(value(event))
+        placeThumb(event.currentTarget as HTMLInputElement)
     }
     return (
-        <fieldset className="beat-repeat">
-            <legend>Beat repeat</legend>
-            <label>
-                <input
-                    type="checkbox"
-                    checked={model.repeatEnabled}
-                    onChange={(event) => model.setRepeatEnabled((event.currentTarget as HTMLInputElement).checked)}
-                />
-                On
-            </label>
-            <label>
-                Size min
-                <select value={model.repeatSizeMinExp} onChange={pick((exponent) => model.setRepeatSizeMin(exponent))}>
-                    {sizes.map((exponent) => (
-                        <option key={exponent} value={exponent} disabled={exponent > model.repeatSizeMaxExp}>
-                            {beatLabel(exponent)}
-                        </option>
-                    ))}
-                </select>
-            </label>
-            <label>
-                Size max
-                <select value={model.repeatSizeMaxExp} onChange={pick((exponent) => model.setRepeatSizeMax(exponent))}>
-                    {sizes.map((exponent) => (
-                        <option key={exponent} value={exponent} disabled={exponent < model.repeatSizeMinExp}>
-                            {beatLabel(exponent)}
-                        </option>
-                    ))}
-                </select>
-            </label>
-            <label>
-                Length
-                <select value={model.repeatLengthExp} onChange={pick((exponent) => model.setRepeatLength(exponent))}>
-                    {lengths.map((exponent) => (
-                        <option key={exponent} value={exponent}>
-                            {beatLabel(exponent)} beat
-                        </option>
-                    ))}
-                </select>
-            </label>
-            <label>
-                Chance {Math.round(model.repeatChance * 100)}%
-                <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={model.repeatChance}
-                    onInput={(event) => model.setRepeatChance((event.currentTarget as HTMLInputElement).valueAsNumber)}
-                />
-            </label>
-            <label>
-                Mix {Math.round(model.repeatMix * 100)}%
-                <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={model.repeatMix}
-                    onInput={(event) => model.setRepeatMix((event.currentTarget as HTMLInputElement).valueAsNumber)}
-                />
-            </label>
-            <div className="positions" role="group" aria-label="Positions">
-                {model.repeatPositions.map((on, index) => (
-                    <label key={index}>
+        <section className="part beatrepeat" aria-label="Beat repeat">
+            <div className="window" />
+            <div className="content">
+                <button
+                    type="button"
+                    className="br-power"
+                    id="br-power"
+                    aria-pressed={model.repeatEnabled}
+                    onClick={() => model.setRepeatEnabled(!model.repeatEnabled)}
+                >
+                    {model.repeatEnabled ? 'ON' : 'OFF'}
+                </button>
+                <span className="br-name pos">POS.</span>
+                <div className="br-positions" role="group" aria-label="Positions">
+                    {model.repeatPositions.map((on, index) => (
                         <input
+                            key={index}
                             type="checkbox"
+                            className="br-pos"
+                            id={`br-pos-${index + 1}`}
+                            style={{ left: `${84 + index * 14}px` }}
+                            aria-label={`Position ${index + 1}`}
                             checked={on}
                             onChange={(event) => model.setRepeatPosition(index, (event.currentTarget as HTMLInputElement).checked)}
                         />
-                        {index + 1}
-                    </label>
-                ))}
+                    ))}
+                </div>
+
+                <span className="br-name size">SIZE</span>
+                <div className="br-scale" aria-hidden="true" />
+                <div className="br-range" id="br-size" style={{ '--lo': String(lo / 6), '--hi': String(hi / 6) }}>
+                    <div className="track lit" />
+                    <div className="track dark" />
+                    <div className="pin min" />
+                    <div className="pin max" />
+                    <input
+                        type="range"
+                        className="min"
+                        id="br-size-min"
+                        min={0}
+                        max={6}
+                        step={1}
+                        value={lo}
+                        aria-label="Size minimum"
+                        aria-valuetext={`${beatLabel(model.repeatSizeMinExp)} beat`}
+                        onInput={(event) => model.setRepeatSizeMin(value(event) + repeatSizeBase)}
+                    />
+                    <input
+                        type="range"
+                        className="max"
+                        id="br-size-max"
+                        min={0}
+                        max={6}
+                        step={1}
+                        value={hi}
+                        aria-label="Size maximum"
+                        aria-valuetext={`${beatLabel(model.repeatSizeMaxExp)} beat`}
+                        onInput={(event) => model.setRepeatSizeMax(value(event) + repeatSizeBase)}
+                    />
+                </div>
+                <span className="br-name mix">MIX</span>
+                <div className="br-slider long mix">
+                    <div className="track" />
+                    <div className="thumb" />
+                    <input
+                        type="range"
+                        id="br-mix"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={model.repeatMix}
+                        aria-label="Mix"
+                        onInput={onSlider((mix) => model.setRepeatMix(mix))}
+                    />
+                </div>
+
+                <span className="br-name length">LENGTH</span>
+                <output className="br-value length" id="br-length-value" htmlFor="br-length" aria-hidden="true" data-i={length}>
+                    {beatLabel(model.repeatLengthExp)}
+                </output>
+                <div className="br-slider short length">
+                    <div className="track" />
+                    <div className="thumb" />
+                    <input
+                        type="range"
+                        id="br-length"
+                        min={0}
+                        max={5}
+                        step={1}
+                        value={length}
+                        aria-label="Length"
+                        aria-valuetext={`${beatLabel(model.repeatLengthExp)} beat`}
+                        onInput={onSlider((index) => model.setRepeatLength(index + repeatLengthBase))}
+                    />
+                </div>
+                <span className="br-name chance">CHANCE</span>
+                <div className="br-slider short chance">
+                    <div className="track" />
+                    <div className="thumb" />
+                    <input
+                        type="range"
+                        id="br-chance"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={model.repeatChance}
+                        aria-label="Chance"
+                        onInput={onSlider((chance) => model.setRepeatChance(chance))}
+                    />
+                </div>
             </div>
-        </fieldset>
+            <div className="case" />
+        </section>
     )
 }
 
@@ -904,7 +946,7 @@ function randomUnit(): number {
 }
 
 function placeThumb(input: HTMLInputElement) {
-    const slider = input.closest('.slider, .seek, .mix-slider, .fx-slider')
+    const slider = input.closest('.slider, .seek, .mix-slider, .fx-slider, .br-slider')
     if (!(slider instanceof HTMLElement)) {
         return
     }

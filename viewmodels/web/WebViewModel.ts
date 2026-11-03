@@ -499,19 +499,19 @@ export class WebViewModel {
         this.actions?.setRepeatEnabled(on)
     }
 
-    // Min stops at max, and max stops at min.
+    // Moving min past max pushes max along, and the other way round, so min never passes max.
     setRepeatSizeMin(exponent: number) {
-        if (!Number.isInteger(exponent) || exponent < repeatSizeMin) {
+        if (!Number.isInteger(exponent) || exponent < repeatSizeMin || exponent > repeatSizeMax) {
             return
         }
-        this.setRepeatSizeRange(Math.min(exponent, this.repeatSizeMaxExp), this.repeatSizeMaxExp)
+        this.setRepeatSizeRange(exponent, Math.max(exponent, this.repeatSizeMaxExp))
     }
 
     setRepeatSizeMax(exponent: number) {
-        if (!Number.isInteger(exponent) || exponent > repeatSizeMax) {
+        if (!Number.isInteger(exponent) || exponent < repeatSizeMin || exponent > repeatSizeMax) {
             return
         }
-        this.setRepeatSizeRange(this.repeatSizeMinExp, Math.max(exponent, this.repeatSizeMinExp))
+        this.setRepeatSizeRange(Math.min(exponent, this.repeatSizeMinExp), exponent)
     }
 
     setRepeatLength(exponent: number) {
@@ -564,7 +564,6 @@ export class WebViewModel {
 
     private setRepeatSizeRange(min: number, max: number) {
         if (min === this.repeatSizeMinExp && max === this.repeatSizeMaxExp) {
-            this.notify()
             return
         }
         this.repeatSizeMinExp = min

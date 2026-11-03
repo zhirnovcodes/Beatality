@@ -3,7 +3,7 @@
 .beatality-skin {
   position: relative;
   width: 496px;
-  height: 707px;   /* top 210 + effects 200 + samples 297 */
+  height: 779px;   /* top 210 + effects 200 + beat repeat 72 + samples 297 */
   user-select: none;
 }
 .beatality-skin .part {
@@ -13,7 +13,8 @@
 }
 .beatality-skin .part.top     { top: 0;     height: 210px; }
 .beatality-skin .part.effects { top: 210px; height: 200px; }
-.beatality-skin .part.bottom  { top: 410px; height: 297px; }
+.beatality-skin .part.beatrepeat { top: 410px; height: 72px; }
+.beatality-skin .part.bottom  { top: 482px; height: 297px; }
 
 /* window layer (glass / screen) below, metal case above it */
 .beatality-skin .part > .window,
@@ -29,6 +30,8 @@
 .beatality-skin .top     > .case   { background-image: url("../shapes/top_case.png"); }
 .beatality-skin .bottom  > .window { background-image: url("../shapes/bottom_screen.png"); }
 .beatality-skin .bottom  > .case   { background-image: url("../shapes/bottom_case.png"); }
+.beatality-skin .beatrepeat > .window { background-image: url("../shapes/beatrepeat_screen.png"); }
+.beatality-skin .beatrepeat > .case   { background-image: url("../shapes/beatrepeat_case.png"); }
 .beatality-skin .effects > .window { background-image: url("../shapes/effects_screen.png"); }
 .beatality-skin .effects > .case   { background-image: url("../shapes/effects_case.png"); }
 
@@ -507,3 +510,95 @@
 .beatality-skin .sample-panel .slider.beat > .track { width: 56px; background-image: url("../shapes/slider_track_beat.png"); }
 .beatality-skin .sample-panel .slider.beat > .thumb { left: calc(3px + var(--pos) * 50px - 7px); }
 .beatality-skin .sample-panel .slider.beat > input[type="range"] { width: 68px; }
+
+/* ---------- Beat Repeat part (496 x 72, between EFFECTS and SAMPLES) ----------
+   Case and screen from beatrepeat_shapes.svg (beatrepeat_case.png, beatrepeat_screen.png). BEAT REPEAT is engraved on the tongue.
+   Under the tongue: ON / OFF button and POS. with 8 toggles. Sliders in a 2 x 2 grid, captions on their left, no value text:
+   SIZE (min / max with a split pin, every value above it; the groove is dark only between MIN and MAX) over MIX,
+   LENGTH over CHANCE. Pixel art: grooves and pins 1 art px = 2 CSS px; scale digits and toggles 1 = 1. */
+.beatality-skin .br-power {
+  position: absolute; left: 22px; top: 35px; width: 28px; height: 16px; margin: 0; padding: 0; cursor: pointer;
+  background: #03060a; border: 1px dotted #5a9a10; border-radius: 0;
+  font: 400 8px/14px "Silkscreen", monospace; color: #2c5a0a; text-align: center;
+}
+.beatality-skin .br-power[aria-pressed="true"] { color: #d8ff20; text-shadow: 0 0 2px rgba(216, 255, 32, 0.6); border-color: #9ae020; }
+.beatality-skin .br-power:focus-visible { outline: 1px dotted #0b1d02; outline-offset: 1px; }
+
+.beatality-skin .br-name {
+  position: absolute; height: 10px; font: 700 7.5px/10px "Orbitron", sans-serif; letter-spacing: 0.9px; white-space: nowrap; color: #000;
+}
+.beatality-skin .br-name.pos    { left: 55px;  top: 38px; }
+.beatality-skin .br-name.size   { left: 202px; top: 21px; }
+.beatality-skin .br-name.mix    { left: 202px; top: 38px; }
+.beatality-skin .br-name.length { left: 374px; top: 21px; }
+.beatality-skin .br-name.chance { left: 374px; top: 38px; }
+
+.beatality-skin .br-pos {
+  position: absolute; top: 37px; width: 12px; height: 12px; margin: 0; appearance: none; cursor: pointer;
+  background: url("../shapes/br_pos.png") 0 0 / 100% 100% no-repeat; image-rendering: pixelated;
+}
+.beatality-skin .br-pos:checked { background-image: url("../shapes/br_pos_on.png"); }
+.beatality-skin .br-pos:focus-visible { outline: 1px dotted #0b1d02; outline-offset: 1px; }
+
+.beatality-skin .br-scale {
+  position: absolute; left: 228px; top: 12px; width: 144px; height: 7px;
+  background: url("../shapes/br_size_scale.png") 0 0 / 100% 100% no-repeat; image-rendering: pixelated;
+}
+
+/* plain sliders: groove + small pin */
+.beatality-skin .br-slider { --pos: 0; position: absolute; height: 12px; }
+.beatality-skin .br-slider.long  { left: 236px; width: 128px; --travel: 122px; }
+.beatality-skin .br-slider.short { left: 422px; width: 54px;  --travel: 48px; }
+.beatality-skin .br-slider.mix    { top: 37px; }
+.beatality-skin .br-slider.length { top: 20px; }
+.beatality-skin .br-slider.chance { top: 37px; }
+.beatality-skin .br-slider > .track,
+.beatality-skin .br-slider > .thumb,
+.beatality-skin .br-range > div { position: absolute; pointer-events: none; image-rendering: pixelated; background: 0 0 / 100% 100% no-repeat; }
+.beatality-skin .br-slider > .track { left: 0; top: 6px; width: 100%; height: 8px; }
+.beatality-skin .br-slider.long  > .track { background-image: url("../shapes/slider_track_long.png"); }
+.beatality-skin .br-slider.short > .track { background-image: url("../shapes/br_track_short.png"); }
+.beatality-skin .br-slider > .thumb {
+  top: 2px; width: 14px; height: 10px; left: calc(3px + var(--pos) * var(--travel) - 7px);
+  background-image: url("../shapes/slider_thumb_small.png");
+}
+.beatality-skin .br-slider > input[type="range"] {
+  position: absolute; left: -6px; top: -2px; width: calc(100% + 12px); height: 16px; margin: 0; opacity: 0; cursor: pointer;
+}
+
+/* SIZE: min / max. The lit groove underneath, the dark groove shown only from MIN to MAX, the pin split in two halves
+   (left half = MIN, right half = MAX). Two range inputs on top; each one's thumb is only on its own side of the value. */
+.beatality-skin .br-range { --lo: 0; --hi: 1; position: absolute; left: 236px; top: 20px; width: 128px; height: 12px; }
+.beatality-skin .br-range > .track { left: 0; top: 6px; width: 128px; height: 8px; }
+.beatality-skin .br-range > .track.lit  { background-image: url("../shapes/br_track_long_lit.png"); }
+.beatality-skin .br-range > .track.dark {
+  background-image: url("../shapes/slider_track_long.png");
+  clip-path: inset(0 calc(128px - 3px - var(--hi) * 122px) 0 calc(3px + var(--lo) * 122px));
+}
+.beatality-skin .br-range > .pin { top: 2px; width: 8px; height: 10px; }
+.beatality-skin .br-range > .pin.min { left: calc(3px + var(--lo) * 122px - 7px); background-image: url("../shapes/br_pin_min.png"); }
+.beatality-skin .br-range > .pin.max { left: calc(3px + var(--hi) * 122px - 1px); background-image: url("../shapes/br_pin_max.png"); }
+.beatality-skin .br-range > input[type="range"] {
+  position: absolute; left: -1px; top: -2px; width: 130px; height: 16px; margin: 0; padding: 0;
+  appearance: none; -webkit-appearance: none; background: transparent; opacity: 0; pointer-events: none;
+}
+.beatality-skin .br-range > input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 8px; height: 16px; pointer-events: auto; cursor: pointer;
+}
+.beatality-skin .br-range > input.min::-webkit-slider-thumb { transform: translateX(-4px); }   /* covers x - 8 .. x */
+.beatality-skin .br-range > input.max::-webkit-slider-thumb { transform: translateX(4px); }    /* covers x .. x + 8 */
+.beatality-skin .br-range > input[type="range"]::-moz-range-thumb { width: 8px; height: 16px; pointer-events: auto; cursor: pointer; border: 0; }
+
+/* LENGTH value above its slider (1/16 .. 2): just the number, in the SIZE values' pixel digits (br_len_<index>.png, 24 x 7);
+   skin.js sets data-i; the text stays in the element for screen readers but is not drawn */
+.beatality-skin .br-value {
+  position: absolute; height: 7px; font-size: 0; color: transparent;
+  background: 0 0 / 100% 100% no-repeat; image-rendering: pixelated;
+}
+.beatality-skin .br-value.length { left: 437px; top: 12px; width: 24px; }
+.beatality-skin .br-value.length[data-i="0"] { background-image: url("../shapes/br_len_0.png"); }
+.beatality-skin .br-value.length[data-i="1"] { background-image: url("../shapes/br_len_1.png"); }
+.beatality-skin .br-value.length[data-i="2"] { background-image: url("../shapes/br_len_2.png"); }
+.beatality-skin .br-value.length[data-i="3"] { background-image: url("../shapes/br_len_3.png"); }
+.beatality-skin .br-value.length[data-i="4"] { background-image: url("../shapes/br_len_4.png"); }
+.beatality-skin .br-value.length[data-i="5"] { background-image: url("../shapes/br_len_5.png"); }
