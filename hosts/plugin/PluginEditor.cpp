@@ -87,8 +87,8 @@ Editor::Editor(Processor& processorIn) : juce::AudioProcessorEditor(processorIn)
         missing.setColour(juce::Label::textColourId, juce::Colours::white);
         addAndMakeVisible(missing);
     }
-    // 688 is the skin. The strip below it holds the unstyled warp controls.
-    setSize(496, 724);
+    // The skin is 707 tall. The error line under it adds 21.
+    setSize(496, 728);
 }
 
 Editor::~Editor() {

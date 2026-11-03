@@ -30,6 +30,14 @@ const state = {
     outputPan: 0,
 }
 
+// Warp modes in the engine's order: the index is the mode number setWarp takes.
+const warpModes = ['none', 'beat', 'pitch']
+// The BEAT slider's steps, in beats. Its index over the last index is the engine's warp param.
+const beatSteps = ['1/32', '1/16', '1/8', '1/4', '1/2', '1', '2']
+// The sample BPM field accepts this range, one decimal place.
+const bpmMin = 20
+const bpmMax = 999
+
 const plays = []
 let pictures = { names: [], rates: [], frames: [], peaks: [] }
 let selected = -1
@@ -201,7 +209,8 @@ function drawWave(canvas, index) {
         return
     }
 
-    const bpm = state.bpm > 0 ? state.bpm : 120
+    // The file is drawn at its own BPM, where every warp mode measures its slices. The project BPM does not move it.
+    const bpm = play.bpm > 0 ? play.bpm : 120
     const beats = Math.max(1, state.loopBeats)
     const sliceBeats = 2 ** state.sliceExp
     const pxPerBeat = width / beats
@@ -344,21 +353,30 @@ function syncPanel() {
     }
 }
 
-// The unstyled warp row under the skin. A field the user is typing in is left alone.
+// The file name, BPM, WARP, and BEAT of the selected sample. A field the user is typing in is left alone.
 function syncWarpPanel(play) {
-    const panel = document.getElementById('warp-panel')
-    if (panel instanceof HTMLFieldSetElement) {
-        panel.disabled = !play
+    const name = document.getElementById('track-name')
+    if (name) {
+        name.textContent = play ? play.name : ''
+        name.title = play ? play.name : ''
     }
-    const mode = document.getElementById('warp-mode')
-    const param = document.getElementById('warp-param')
-    const bpm = document.getElementById('warp-bpm')
-    if (mode instanceof HTMLSelectElement && document.activeElement !== mode) {
-        mode.value = String(play ? play.warp : 0)
+    const warp = play ? play.warp : 0
+    const label = document.getElementById('track-warp')
+    if (label) {
+        label.dataset.value = warpModes[warp] || 'none'
+        label.textContent = (warpModes[warp] || 'none').toUpperCase()
     }
-    if (param instanceof HTMLInputElement && document.activeElement !== param) {
-        param.value = String(play ? play.warpParam : 0)
+    const beat = document.getElementById('track-beat')
+    if (beat instanceof HTMLInputElement) {
+        // BEAT changes the sound only in beat mode, so it is disabled in the others.
+        beat.disabled = warp !== 1
+        setRange('track-beat', Math.round((play ? play.warpParam : 0) * (beatSteps.length - 1)))
+        const caption = document.querySelector('.sample-panel .name.beat .value')
+        if (caption) {
+            caption.textContent = beatSteps[Number(beat.value)] || ''
+        }
     }
+    const bpm = document.getElementById('track-bpm')
     if (bpm instanceof HTMLInputElement && document.activeElement !== bpm) {
         bpm.value = (play ? play.bpm : 120).toFixed(1)
     }
@@ -659,23 +677,42 @@ function commitWarp() {
     void native('setWarp', selected, play.warp, play.bpm, play.warpParam)
 }
 
-// The waveform is not redrawn: it shows the file at the project tempo, whatever the warp.
+// BEAT and the sample BPM. The waveform is drawn at the sample BPM, so a new BPM redraws it.
 function onWarp(event) {
     const play = plays[selected]
     const input = event.currentTarget
-    if (!play) {
+    if (!play || !(input instanceof HTMLInputElement)) {
         return
     }
-    if (input instanceof HTMLSelectElement && input.id === 'warp-mode') {
-        play.warp = Number(input.value)
-    } else if (input instanceof HTMLInputElement && input.id === 'warp-param') {
-        play.warpParam = Number(input.value)
-    } else if (input instanceof HTMLInputElement && input.id === 'warp-bpm') {
+    if (input.id === 'track-beat') {
+        // The slider is an index into beatSteps. The engine param is that index over the last one.
+        placeThumb(input)
+        play.warpParam = Number(input.value) / (beatSteps.length - 1)
+        const caption = document.querySelector('.sample-panel .name.beat .value')
+        if (caption) {
+            caption.textContent = beatSteps[Number(input.value)] || ''
+        }
+    } else if (input.id === 'track-bpm') {
         const parsed = Number.parseFloat(input.value.trim().replace(',', '.'))
-        const bpm = Number.isFinite(parsed) ? Math.min(999.9, Math.max(1, Math.round(parsed * 10) / 10)) : play.bpm
+        const bpm = Number.isFinite(parsed) ? Math.min(bpmMax, Math.max(bpmMin, Math.round(parsed * 10) / 10)) : play.bpm
         play.bpm = bpm
         input.value = bpm.toFixed(1)
+        const canvas = document.querySelectorAll('#sample-grid .row')[selected]?.querySelector('canvas')
+        if (canvas instanceof HTMLCanvasElement) {
+            drawWave(canvas, selected)
+        }
     }
+    commitWarp()
+}
+
+// Steps WARP through none → beat → pitch, wrapping, for the selected sample.
+function stepWarp(delta) {
+    const play = plays[selected]
+    if (!play || selected < 0) {
+        return
+    }
+    play.warp = (play.warp + delta + warpModes.length) % warpModes.length
+    syncWarpPanel(play)
     commitWarp()
 }
 
@@ -899,13 +936,14 @@ function wire() {
             startTime.blur()
         }
     })
-    document.getElementById('warp-mode')?.addEventListener('change', onWarp)
-    document.getElementById('warp-param')?.addEventListener('input', onWarp)
-    const warpBpm = document.getElementById('warp-bpm')
-    warpBpm?.addEventListener('change', onWarp)
-    warpBpm?.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' && warpBpm instanceof HTMLInputElement) {
-            warpBpm.blur()
+    document.getElementById('warp-prev')?.addEventListener('click', () => stepWarp(-1))
+    document.getElementById('warp-next')?.addEventListener('click', () => stepWarp(1))
+    document.getElementById('track-beat')?.addEventListener('input', onWarp)
+    const trackBpm = document.getElementById('track-bpm')
+    trackBpm?.addEventListener('change', onWarp)
+    trackBpm?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && trackBpm instanceof HTMLInputElement) {
+            trackBpm.blur()
         }
     })
     document.getElementById('track-loop')?.addEventListener('change', () => {
