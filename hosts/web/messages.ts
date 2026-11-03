@@ -147,6 +147,38 @@ export interface ShiftChanceMessage {
     chance: number
 }
 
+export interface RepeatEnabledMessage {
+    type: 'repeatEnabled'
+    on: boolean
+}
+
+export interface RepeatSizeRangeMessage {
+    type: 'repeatSizeRange'
+    min: number
+    max: number
+}
+
+export interface RepeatLengthMessage {
+    type: 'repeatLength'
+    exponent: number
+}
+
+export interface RepeatChanceMessage {
+    type: 'repeatChance'
+    chance: number
+}
+
+export interface RepeatPositionMessage {
+    type: 'repeatPosition'
+    index: number
+    on: boolean
+}
+
+export interface RepeatMixMessage {
+    type: 'repeatMix'
+    mix: number
+}
+
 export interface TrackMessage {
     type: 'track'
     index: number
@@ -228,6 +260,12 @@ export type HostMessage =
     | TranceChanceMessage
     | ShiftPowerMessage
     | ShiftChanceMessage
+    | RepeatEnabledMessage
+    | RepeatSizeRangeMessage
+    | RepeatLengthMessage
+    | RepeatChanceMessage
+    | RepeatPositionMessage
+    | RepeatMixMessage
     | TrackMessage
     | OutputMessage
     | FreeMessage

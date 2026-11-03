@@ -203,6 +203,36 @@ export class EngineClient {
         this.node?.port.postMessage({ type: 'shiftChance', chance })
     }
 
+    async setRepeatEnabled(on: boolean): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'repeatEnabled', on })
+    }
+
+    async setRepeatSizeRange(min: number, max: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'repeatSizeRange', min, max })
+    }
+
+    async setRepeatLength(exponent: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'repeatLength', exponent })
+    }
+
+    async setRepeatChance(chance: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'repeatChance', chance })
+    }
+
+    async setRepeatPosition(index: number, on: boolean): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'repeatPosition', index, on })
+    }
+
+    async setRepeatMix(mix: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'repeatMix', mix })
+    }
+
     async setTrack(index: number, play: SampleSettings): Promise<void> {
         await this.start()
         this.node?.port.postMessage(trackMessage(index, play))

@@ -37,6 +37,12 @@ interface Core {
     bt_set_trance_chance: (engine: number, chance: number) => void
     bt_set_shift_power: (engine: number, power: number) => void
     bt_set_shift_chance: (engine: number, chance: number) => void
+    bt_set_repeat_enabled: (engine: number, on: number) => void
+    bt_set_repeat_size_range: (engine: number, min: number, max: number) => void
+    bt_set_repeat_length: (engine: number, exponent: number) => void
+    bt_set_repeat_chance: (engine: number, chance: number) => void
+    bt_set_repeat_position: (engine: number, index: number, on: number) => void
+    bt_set_repeat_mix: (engine: number, mix: number) => void
     bt_set_track: (
         engine: number,
         index: number,
@@ -210,6 +216,38 @@ interface ShiftChanceMessage {
     chance: number
 }
 
+interface RepeatEnabledMessage {
+    type: 'repeatEnabled'
+    on: boolean
+}
+
+interface RepeatSizeRangeMessage {
+    type: 'repeatSizeRange'
+    min: number
+    max: number
+}
+
+interface RepeatLengthMessage {
+    type: 'repeatLength'
+    exponent: number
+}
+
+interface RepeatChanceMessage {
+    type: 'repeatChance'
+    chance: number
+}
+
+interface RepeatPositionMessage {
+    type: 'repeatPosition'
+    index: number
+    on: boolean
+}
+
+interface RepeatMixMessage {
+    type: 'repeatMix'
+    mix: number
+}
+
 interface TrackMessage {
     type: 'track'
     index: number
@@ -291,6 +329,12 @@ type HostMessage =
     | TranceChanceMessage
     | ShiftPowerMessage
     | ShiftChanceMessage
+    | RepeatEnabledMessage
+    | RepeatSizeRangeMessage
+    | RepeatLengthMessage
+    | RepeatChanceMessage
+    | RepeatPositionMessage
+    | RepeatMixMessage
     | TrackMessage
     | OutputMessage
     | FreeMessage
@@ -529,6 +573,24 @@ class BeatalityProcessor extends AudioWorkletProcessor {
             this.postSnapshot(0)
         } else if (message.type === 'shiftChance') {
             this.core!.bt_set_shift_chance(this.engine, message.chance)
+            this.postSnapshot(0)
+        } else if (message.type === 'repeatEnabled') {
+            this.core!.bt_set_repeat_enabled(this.engine, message.on ? 1 : 0)
+            this.postSnapshot(0)
+        } else if (message.type === 'repeatSizeRange') {
+            this.core!.bt_set_repeat_size_range(this.engine, message.min, message.max)
+            this.postSnapshot(0)
+        } else if (message.type === 'repeatLength') {
+            this.core!.bt_set_repeat_length(this.engine, message.exponent)
+            this.postSnapshot(0)
+        } else if (message.type === 'repeatChance') {
+            this.core!.bt_set_repeat_chance(this.engine, message.chance)
+            this.postSnapshot(0)
+        } else if (message.type === 'repeatPosition') {
+            this.core!.bt_set_repeat_position(this.engine, message.index, message.on ? 1 : 0)
+            this.postSnapshot(0)
+        } else if (message.type === 'repeatMix') {
+            this.core!.bt_set_repeat_mix(this.engine, message.mix)
             this.postSnapshot(0)
         } else if (message.type === 'track') {
             this.core!.bt_set_track(

@@ -20,6 +20,7 @@ struct Instance {
     bt::SliceSnapshot snapshot;
     bt::NoteGate gate;
     bt::Effects effects;
+    bt::BeatRepeatSettings repeat;
     float velocity = 1.0f;
 
     Instance(double sampleRate, std::uint64_t seed) : engine(sampleRate, seed) {}
@@ -27,6 +28,10 @@ struct Instance {
 
 void storeEffects(Instance& instance) {
     instance.engine.setEffectsSettings(instance.effects);
+}
+
+void storeRepeat(Instance& instance) {
+    instance.engine.setBeatRepeat(instance.repeat);
 }
 
 void applyGate(Instance& instance, bt::Gate signal) {
@@ -304,6 +309,59 @@ BT_EXPORT void bt_set_shift_chance(Instance* instance, double chance) {
     }
     instance->effects.shiftChance = chance;
     storeEffects(*instance);
+}
+
+// on is 0 or 1.
+BT_EXPORT void bt_set_repeat_enabled(Instance* instance, int on) {
+    if (instance == nullptr) {
+        return;
+    }
+    instance->repeat.enabled = on != 0;
+    storeRepeat(*instance);
+}
+
+// 2^exponent beats, -5..1. min is not above max.
+BT_EXPORT void bt_set_repeat_size_range(Instance* instance, int min, int max) {
+    if (instance == nullptr || min < bt::BeatRepeatSettings::kSizeMin || max > bt::BeatRepeatSettings::kSizeMax || min > max) {
+        return;
+    }
+    instance->repeat.sizeMin = min;
+    instance->repeat.sizeMax = max;
+    storeRepeat(*instance);
+}
+
+// 2^exponent beats of tail, -4..1.
+BT_EXPORT void bt_set_repeat_length(Instance* instance, int exponent) {
+    if (instance == nullptr || exponent < bt::BeatRepeatSettings::kLengthMin || exponent > bt::BeatRepeatSettings::kLengthMax) {
+        return;
+    }
+    instance->repeat.length = exponent;
+    storeRepeat(*instance);
+}
+
+BT_EXPORT void bt_set_repeat_chance(Instance* instance, double chance) {
+    if (instance == nullptr || !(chance >= bt::BeatRepeatSettings::kChanceMin) || chance > bt::BeatRepeatSettings::kChanceMax) {
+        return;
+    }
+    instance->repeat.chance = chance;
+    storeRepeat(*instance);
+}
+
+// index is 0..7. on is 0 or 1.
+BT_EXPORT void bt_set_repeat_position(Instance* instance, int index, int on) {
+    if (instance == nullptr || index < 0 || index >= bt::RepeatSequence::kPositions) {
+        return;
+    }
+    instance->repeat.positions[index] = on != 0;
+    storeRepeat(*instance);
+}
+
+BT_EXPORT void bt_set_repeat_mix(Instance* instance, double mix) {
+    if (instance == nullptr || !(mix >= bt::BeatRepeatSettings::kMixMin) || mix > bt::BeatRepeatSettings::kMixMax) {
+        return;
+    }
+    instance->repeat.mix = mix;
+    storeRepeat(*instance);
 }
 
 // start is a fraction of the file, 0..1. length is 0..1. loop is 0 or 1.

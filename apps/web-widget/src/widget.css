@@ -23,6 +23,27 @@ body {
     width: 496px;
 }
 
+.beat-repeat {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 20px;
+    width: 496px;
+    box-sizing: border-box;
+    font-size: 14px;
+}
+
+.beat-repeat > label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.beat-repeat .positions {
+    display: flex;
+    gap: 10px;
+}
+
 #preview {
     font: 14px/1 system-ui, sans-serif;
     padding: 6px 16px;

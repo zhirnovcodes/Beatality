@@ -1,7 +1,10 @@
 #pragma once
 
+#include "BeatRepeat.h"
+#include "BeatRepeatSettings.h"
 #include "Clock.h"
 #include "Effects.h"
+#include "RepeatSequence.h"
 #include "Rng.h"
 #include "SampleBank.h"
 #include "SampleBuffer.h"
@@ -52,6 +55,8 @@ public:
     void setAttack(int ms);
     // Replaces every effect knob.
     void setEffectsSettings(const Effects& settings);
+    // Replaces every beat repeat knob. The rolls are drawn with the sequence.
+    void setBeatRepeat(const BeatRepeatSettings& settings);
     // volume is 0..1.2 and scales the mix. The host multiplies that by note velocity.
     // pan is -1..1 and balances the two channels.
     void setOutput(double volume, double pan);
@@ -81,6 +86,11 @@ private:
     Rng rng_;
     int attackMs_ = kAttackMinMs;
     Effects effects_{};
+    // Its own generator, so the slice picks for a seed stay the same.
+    Rng repeatRng_;
+    BeatRepeatSettings beatRepeatSettings_{};
+    RepeatSequence repeatSequence_;
+    BeatRepeat beatRepeat_;
     double volume_ = 1;
     double pan_ = 0;
     SliceGrid grid_;

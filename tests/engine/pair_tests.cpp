@@ -1,3 +1,4 @@
+#include "BeatRepeat.h"
 #include "Curve.h"
 #include "SliceEngine.h"
 
@@ -870,6 +871,142 @@ void testShiftFollowsPowerAndBeat() {
     CHECK(diff > 100.0);
 }
 
+// The input is its own frame index, so a repeated frame reads back where it was recorded.
+std::vector<float> repeatRun(const bt::BeatRepeatSettings& repeat, const bt::RepeatSequence& rolls, int frames) {
+    const bt::ClockSettings settings{10000, 120};
+    const bt::SliceGrid grid;
+    bt::Clock clock;
+    bt::BeatRepeat effect(settings.sampleRate);
+    std::vector<float> out(static_cast<std::size_t>(frames));
+    for (int t = 0; t < frames; ++t) {
+        const float in = static_cast<float>(t);
+        out[static_cast<std::size_t>(t)] = effect.render({in, -in}, settings, clock, grid, repeat, rolls).l;
+        clock.tick();
+    }
+    return out;
+}
+
+float largestStep(const std::vector<float>& out) {
+    float step = 0.0f;
+    for (std::size_t i = 1; i < out.size(); ++i) {
+        step = std::fmax(step, std::fabs(out[i] - out[i - 1]));
+    }
+    return step;
+}
+
+void testBeatRepeatRecordsThenRepeats() {
+    // 5000 frames a beat. Position 1 is beat 1 of the 8 beat loop.
+    bt::Rng rng(3);
+    bt::RepeatSequence rolls;
+    rolls.generate(rng);
+    bt::BeatRepeatSettings repeat;
+    repeat.enabled = true;
+    repeat.length = 1;
+    repeat.chance = 1;
+    repeat.positions[1] = true;
+    const int fade = bt::attackFrames(1.0, 10000);
+
+    // One beat recorded, then a 2 beat tail of it.
+    const auto out = repeatRun(repeat, rolls, 45000);
+    CHECK(out[4000] == 4000.0f);
+    CHECK(out[7000] == 7000.0f);
+    CHECK(out[10000 + fade + 10] == 5000.0f + fade + 10);
+    CHECK(out[14999] == 9999.0f);
+    CHECK(out[15000 + fade] == 5000.0f + fade);
+    CHECK(out[19999] == 9999.0f);
+    CHECK(out[20000 + fade] == 20000.0f + fade);
+    // Every join crossfades. The widest is back to dry, 20000 against the 10000 frame continuation.
+    CHECK(largestStep(out) < 10000.0f / fade + 2.0f);
+
+    // A half beat tail cuts the first copy halfway.
+    repeat.length = -1;
+    const auto cut = repeatRun(repeat, rolls, 20000);
+    CHECK(cut[11000] == 6000.0f);
+    CHECK(cut[12500 + fade] == 12500.0f + fade);
+
+    repeat.length = 1;
+    repeat.mix = 0.5;
+    const auto half = repeatRun(repeat, rolls, 20000);
+    CHECK(near(half[16000], 0.5 * 16000 + 0.5 * 6000));
+
+    repeat.mix = 1;
+    repeat.enabled = false;
+    const auto off = repeatRun(repeat, rolls, 20000);
+    CHECK(off[16000] == 16000.0f);
+
+    repeat.enabled = true;
+    repeat.chance = 0;
+    const auto missed = repeatRun(repeat, rolls, 20000);
+    CHECK(missed[16000] == 16000.0f);
+
+    repeat.chance = 1;
+    rolls.clear();
+    const auto cleared = repeatRun(repeat, rolls, 20000);
+    CHECK(cleared[16000] == 16000.0f);
+}
+
+void testBeatRepeatSizeIsPickedFromTheRange() {
+    bt::BeatRepeatSettings repeat;
+    repeat.sizeMin = -4;
+    repeat.sizeMax = 0;
+    CHECK(repeat.beats(0.0f) == 1.0 / 16.0);
+    CHECK(repeat.beats(0.5f) == 1.0 / 4.0);
+    CHECK(repeat.beats(0.999f) == 1.0);
+
+    bt::Rng rng(3);
+    bt::RepeatSequence rolls;
+    rolls.generate(rng);
+    repeat.enabled = true;
+    repeat.sizeMin = bt::BeatRepeatSettings::kSizeMin;
+    repeat.sizeMax = bt::BeatRepeatSettings::kSizeMax;
+    repeat.length = 1;
+    repeat.chance = 1;
+    repeat.positions[1] = true;
+    const double beats = repeat.beats(rolls.sizeRollAt(1));
+    const int size = static_cast<int>(std::llround(beats * 5000));
+    int fade = bt::attackFrames(beats, 10000);
+    if (fade > size / 2) {
+        fade = size / 2;
+    }
+
+    // The first copy plays back what was recorded from beat 1.
+    const auto out = repeatRun(repeat, rolls, 20000);
+    CHECK(out[5000 + size + fade + 1] == 5000.0f + fade + 1);
+}
+
+void testBeatRepeatEndsAtTheLoopAndOnANewFiring() {
+    bt::Rng rng(3);
+    bt::RepeatSequence rolls;
+    rolls.generate(rng);
+    bt::BeatRepeatSettings repeat;
+    repeat.enabled = true;
+    repeat.length = 1;
+    repeat.chance = 1;
+    repeat.positions[1] = true;
+    repeat.positions[2] = true;
+    const int fade = bt::attackFrames(1.0, 10000);
+
+    // Beat 2 fires and records again, so the beat 1 recording never plays.
+    const auto out = repeatRun(repeat, rolls, 45000);
+    CHECK(out[12000] == 12000.0f);
+    CHECK(out[17000] == 12000.0f);
+    CHECK(out[24999] == 14999.0f);
+    CHECK(out[25000 + fade] == 25000.0f + fade);
+    CHECK(largestStep(out) < 10000.0f / fade + 2.0f);
+
+    // Position 7 records a half beat from beat 7. The loop end at 40000 cuts the 2 beat tail.
+    repeat.sizeMin = -1;
+    repeat.sizeMax = -1;
+    repeat.positions[1] = false;
+    repeat.positions[2] = false;
+    repeat.positions[7] = true;
+    const int halfFade = bt::attackFrames(0.5, 10000);
+    const auto wrapped = repeatRun(repeat, rolls, 45000);
+    CHECK(wrapped[36000] == 36000.0f);
+    CHECK(wrapped[39000] == 36500.0f);
+    CHECK(wrapped[40000 + halfFade] == 40000.0f + halfFade);
+}
+
 } // namespace
 
 int main() {
@@ -896,6 +1033,9 @@ int main() {
     testFlangerFollowsPowerAndBeat();
     testTranceFollowsPowerAndBeat();
     testShiftFollowsPowerAndBeat();
+    testBeatRepeatRecordsThenRepeats();
+    testBeatRepeatSizeIsPickedFromTheRange();
+    testBeatRepeatEndsAtTheLoopAndOnANewFiring();
 
     if (g_failed != 0) {
         std::printf("%d check(s) failed\n", g_failed);

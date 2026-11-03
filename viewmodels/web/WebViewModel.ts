@@ -38,6 +38,12 @@ export interface ViewActions {
     setTranceChance: (chance: number) => void
     setShiftPower: (power: number) => void
     setShiftChance: (chance: number) => void
+    setRepeatEnabled: (on: boolean) => void
+    setRepeatSizeRange: (min: number, max: number) => void
+    setRepeatLength: (exponent: number) => void
+    setRepeatChance: (chance: number) => void
+    setRepeatPosition: (index: number, on: boolean) => void
+    setRepeatMix: (mix: number) => void
     setOutput: (volume: number, pan: number) => void
 }
 
@@ -60,6 +66,11 @@ const expMin = -4
 const expMax = 4
 const beatExpMin = -4
 const beatExpMax = 1
+const repeatSizeMin = -5
+const repeatSizeMax = 1
+const repeatLengthMin = -4
+const repeatLengthMax = 1
+const repeatPositionCount = 8
 
 function sliceBeats(exponent: number): number {
     return 2 ** exponent
@@ -128,6 +139,13 @@ export class WebViewModel {
     tranceChance = 0
     shiftPower = 1
     shiftChance = 0
+    repeatEnabled = false
+    repeatSizeMinExp = 0
+    repeatSizeMaxExp = 0
+    repeatLengthExp = 0
+    repeatChance = 0
+    repeatPositions: boolean[] = Array(repeatPositionCount).fill(false)
+    repeatMix = 1
     outputVolume = 1
     outputPan = 0
     factoryBanks: FactoryBank[] = []
@@ -470,6 +488,89 @@ export class WebViewModel {
         this.shiftChance = chance
         this.notify()
         this.actions?.setShiftChance(chance)
+    }
+
+    setRepeatEnabled(on: boolean) {
+        if (on === this.repeatEnabled) {
+            return
+        }
+        this.repeatEnabled = on
+        this.notify()
+        this.actions?.setRepeatEnabled(on)
+    }
+
+    // Min stops at max, and max stops at min.
+    setRepeatSizeMin(exponent: number) {
+        if (!Number.isInteger(exponent) || exponent < repeatSizeMin) {
+            return
+        }
+        this.setRepeatSizeRange(Math.min(exponent, this.repeatSizeMaxExp), this.repeatSizeMaxExp)
+    }
+
+    setRepeatSizeMax(exponent: number) {
+        if (!Number.isInteger(exponent) || exponent > repeatSizeMax) {
+            return
+        }
+        this.setRepeatSizeRange(this.repeatSizeMinExp, Math.max(exponent, this.repeatSizeMinExp))
+    }
+
+    setRepeatLength(exponent: number) {
+        if (!Number.isInteger(exponent) || exponent < repeatLengthMin || exponent > repeatLengthMax) {
+            return
+        }
+        if (exponent === this.repeatLengthExp) {
+            return
+        }
+        this.repeatLengthExp = exponent
+        this.notify()
+        this.actions?.setRepeatLength(exponent)
+    }
+
+    setRepeatChance(chance: number) {
+        if (!Number.isFinite(chance) || chance < 0 || chance > 1) {
+            return
+        }
+        if (chance === this.repeatChance) {
+            return
+        }
+        this.repeatChance = chance
+        this.notify()
+        this.actions?.setRepeatChance(chance)
+    }
+
+    setRepeatPosition(index: number, on: boolean) {
+        if (!Number.isInteger(index) || index < 0 || index >= repeatPositionCount) {
+            return
+        }
+        if (on === this.repeatPositions[index]) {
+            return
+        }
+        this.repeatPositions = this.repeatPositions.map((value, i) => (i === index ? on : value))
+        this.notify()
+        this.actions?.setRepeatPosition(index, on)
+    }
+
+    setRepeatMix(mix: number) {
+        if (!Number.isFinite(mix) || mix < 0 || mix > 1) {
+            return
+        }
+        if (mix === this.repeatMix) {
+            return
+        }
+        this.repeatMix = mix
+        this.notify()
+        this.actions?.setRepeatMix(mix)
+    }
+
+    private setRepeatSizeRange(min: number, max: number) {
+        if (min === this.repeatSizeMinExp && max === this.repeatSizeMaxExp) {
+            this.notify()
+            return
+        }
+        this.repeatSizeMinExp = min
+        this.repeatSizeMaxExp = max
+        this.notify()
+        this.actions?.setRepeatSizeRange(min, max)
     }
 
     // Master mix. Volume is 0..1.2 and snaps to 1. Pan is -1..1 and snaps to 0.

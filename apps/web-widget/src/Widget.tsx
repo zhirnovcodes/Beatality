@@ -726,8 +726,97 @@ export function Widget({
                     </div>
                 </section>
             </div>
+            <BeatRepeatPanel model={model} />
             <p id="error">{model.error}</p>
         </>
+    )
+}
+
+// Plain controls until beat repeat has its place in the skin.
+// Size is 1/32 .. 2 beats, picked between min and max. The tail is 1/16 .. 2 beats.
+function BeatRepeatPanel({ model }: { model: WebViewModel }) {
+    const sizes = [-5, -4, -3, -2, -1, 0, 1]
+    const lengths = [-4, -3, -2, -1, 0, 1]
+    const pick = (apply: (exponent: number) => void) => (event: Event) => {
+        const select = event.currentTarget as HTMLSelectElement
+        apply(Number(select.value))
+    }
+    return (
+        <fieldset className="beat-repeat">
+            <legend>Beat repeat</legend>
+            <label>
+                <input
+                    type="checkbox"
+                    checked={model.repeatEnabled}
+                    onChange={(event) => model.setRepeatEnabled((event.currentTarget as HTMLInputElement).checked)}
+                />
+                On
+            </label>
+            <label>
+                Size min
+                <select value={model.repeatSizeMinExp} onChange={pick((exponent) => model.setRepeatSizeMin(exponent))}>
+                    {sizes.map((exponent) => (
+                        <option key={exponent} value={exponent} disabled={exponent > model.repeatSizeMaxExp}>
+                            {beatLabel(exponent)}
+                        </option>
+                    ))}
+                </select>
+            </label>
+            <label>
+                Size max
+                <select value={model.repeatSizeMaxExp} onChange={pick((exponent) => model.setRepeatSizeMax(exponent))}>
+                    {sizes.map((exponent) => (
+                        <option key={exponent} value={exponent} disabled={exponent < model.repeatSizeMinExp}>
+                            {beatLabel(exponent)}
+                        </option>
+                    ))}
+                </select>
+            </label>
+            <label>
+                Length
+                <select value={model.repeatLengthExp} onChange={pick((exponent) => model.setRepeatLength(exponent))}>
+                    {lengths.map((exponent) => (
+                        <option key={exponent} value={exponent}>
+                            {beatLabel(exponent)} beat
+                        </option>
+                    ))}
+                </select>
+            </label>
+            <label>
+                Chance {Math.round(model.repeatChance * 100)}%
+                <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={model.repeatChance}
+                    onInput={(event) => model.setRepeatChance((event.currentTarget as HTMLInputElement).valueAsNumber)}
+                />
+            </label>
+            <label>
+                Mix {Math.round(model.repeatMix * 100)}%
+                <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={model.repeatMix}
+                    onInput={(event) => model.setRepeatMix((event.currentTarget as HTMLInputElement).valueAsNumber)}
+                />
+            </label>
+            <div className="positions" role="group" aria-label="Positions">
+                {model.repeatPositions.map((on, index) => (
+                    <label key={index}>
+                        <input
+                            type="checkbox"
+                            checked={on}
+                            onChange={(event) => model.setRepeatPosition(index, (event.currentTarget as HTMLInputElement).checked)}
+                        />
+                        {index + 1}
+                    </label>
+                ))}
+            </div>
+        </fieldset>
     )
 }
 

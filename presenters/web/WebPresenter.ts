@@ -112,6 +112,12 @@ export class WebPresenter {
             setTranceChance: (chance) => void this.perform(() => this.client.setTranceChance(chance)),
             setShiftPower: (power) => void this.perform(() => this.client.setShiftPower(power)),
             setShiftChance: (chance) => void this.perform(() => this.client.setShiftChance(chance)),
+            setRepeatEnabled: (on) => void this.perform(() => this.client.setRepeatEnabled(on)),
+            setRepeatSizeRange: (min, max) => void this.perform(() => this.client.setRepeatSizeRange(min, max)),
+            setRepeatLength: (exponent) => void this.perform(() => this.client.setRepeatLength(exponent)),
+            setRepeatChance: (chance) => void this.perform(() => this.client.setRepeatChance(chance)),
+            setRepeatPosition: (index, on) => void this.perform(() => this.client.setRepeatPosition(index, on)),
+            setRepeatMix: (mix) => void this.perform(() => this.client.setRepeatMix(mix)),
             setOutput: (volume, pan) => void this.perform(() => this.client.setOutput(volume, pan)),
         })
         client.onSnapshot = (snapshot) => {
