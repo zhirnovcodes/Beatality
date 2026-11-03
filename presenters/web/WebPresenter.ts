@@ -118,7 +118,7 @@ export class WebPresenter {
             setRepeatChance: (chance) => void this.perform(() => this.client.setRepeatChance(chance)),
             setRepeatPosition: (index, on) => void this.perform(() => this.client.setRepeatPosition(index, on)),
             setRepeatMix: (mix) => void this.perform(() => this.client.setRepeatMix(mix)),
-            setOutput: (volume, pan) => void this.perform(() => this.client.setOutput(volume, pan)),
+            setOutput: (volume, panMin, panMax) => void this.perform(() => this.client.setOutput(volume, panMin, panMax)),
         })
         client.onSnapshot = (snapshot) => {
             this.playSlot = snapshot.playing ? snapshot.playSlot : -1
@@ -422,6 +422,39 @@ export class WebPresenter {
                 row.append(cell)
             }
             row.addEventListener('click', () => this.choose(index))
+            // Dragging the row grabs the wave. Left brings later audio in, so start goes up.
+            let downX = 0
+            let downStart = 0
+            let dragging = false
+            row.addEventListener('pointerdown', (event) => {
+                const start = this.rowAt(index)?.presenter.read()?.start
+                if (start === undefined || event.button !== 0) {
+                    return
+                }
+                row.setPointerCapture(event.pointerId)
+                downX = event.clientX
+                downStart = start
+                dragging = false
+            })
+            row.addEventListener('pointermove', (event) => {
+                const presenter = this.rowAt(index)?.presenter
+                if (!presenter || !row.hasPointerCapture(event.pointerId)) {
+                    return
+                }
+                const dx = event.clientX - downX
+                if (!dragging && Math.abs(dx) < 3) {
+                    return
+                }
+                dragging = true
+                presenter.editStart(downStart - dx * presenter.startPerPixel())
+            })
+            const release = (event: PointerEvent) => {
+                if (row.hasPointerCapture(event.pointerId)) {
+                    row.releasePointerCapture(event.pointerId)
+                }
+            }
+            row.addEventListener('pointerup', release)
+            row.addEventListener('pointercancel', release)
             rows.push(row)
         }
         this.list.replaceChildren(...rows)

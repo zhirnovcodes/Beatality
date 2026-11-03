@@ -44,7 +44,7 @@ export interface ViewActions {
     setRepeatChance: (chance: number) => void
     setRepeatPosition: (index: number, on: boolean) => void
     setRepeatMix: (mix: number) => void
-    setOutput: (volume: number, pan: number) => void
+    setOutput: (volume: number, panMin: number, panMax: number) => void
 }
 
 export interface ViewState {
@@ -119,6 +119,9 @@ export class WebViewModel {
     playhead = 0
     error = ''
     bpm = 120
+    // The host's tempo. While bpmSync is on, the engine plays this instead of bpm.
+    bpmSync = false
+    projectBpm = 120
     loopBeats = 8
     sliceExp = 0
     attackMs = 2
@@ -147,7 +150,8 @@ export class WebViewModel {
     repeatPositions: boolean[] = Array(repeatPositionCount).fill(false)
     repeatMix = 1
     outputVolume = 1
-    outputPan = 0
+    outputPanMin = 0
+    outputPanMax = 0
     factoryBanks: FactoryBank[] = []
 
     private actions: ViewActions | null = null
@@ -208,13 +212,14 @@ export class WebViewModel {
     }
 
     // Pack settings, without sending them back to the engine.
-    adopt(settings: { bpm: number; loopBeats: number; sliceExp: number; attackMs: number; outputVolume: number; outputPan: number }) {
+    adopt(settings: { bpm: number; loopBeats: number; sliceExp: number; attackMs: number; outputVolume: number; outputPanMin: number; outputPanMax: number }) {
         this.bpm = settings.bpm
         this.loopBeats = settings.loopBeats
         this.sliceExp = fitSlice(settings.sliceExp, settings.loopBeats)
         this.attackMs = settings.attackMs
         this.outputVolume = settings.outputVolume
-        this.outputPan = settings.outputPan
+        this.outputPanMin = settings.outputPanMin
+        this.outputPanMax = settings.outputPanMax
         this.notify()
     }
 
@@ -236,6 +241,11 @@ export class WebViewModel {
         this.actions?.randomize()
     }
 
+    // The tempo the engine plays.
+    get engineBpm(): number {
+        return this.bpmSync ? this.projectBpm : this.bpm
+    }
+
     setBpm(bpm: number) {
         if (!(bpm > 0) || !Number.isFinite(bpm)) {
             return
@@ -245,7 +255,32 @@ export class WebViewModel {
         }
         this.bpm = bpm
         this.notify()
-        this.actions?.setBpm(bpm)
+        if (!this.bpmSync) {
+            this.actions?.setBpm(bpm)
+        }
+    }
+
+    setBpmSync(on: boolean) {
+        if (on === this.bpmSync) {
+            return
+        }
+        this.bpmSync = on
+        this.notify()
+        this.actions?.setBpm(this.engineBpm)
+    }
+
+    setProjectBpm(bpm: number) {
+        if (!(bpm > 0) || !Number.isFinite(bpm)) {
+            return
+        }
+        if (bpm === this.projectBpm) {
+            return
+        }
+        this.projectBpm = bpm
+        this.notify()
+        if (this.bpmSync) {
+            this.actions?.setBpm(bpm)
+        }
     }
 
     setLoop(beats: number) {
@@ -572,20 +607,40 @@ export class WebViewModel {
         this.actions?.setRepeatSizeRange(min, max)
     }
 
-    // Master mix. Volume is 0..1.2 and snaps to 1. Pan is -1..1 and snaps to 0.
-    setOutput(volume: number, pan: number) {
-        if (!Number.isFinite(volume) || !Number.isFinite(pan)) {
+    // Master mix. Volume is 0..1.2 and snaps to 1. Each pan end is -1..1 and snaps to 0.
+    // Each slice's pan roll is scaled onto panMin..panMax.
+    setOutput(volume: number, panMin: number, panMax: number) {
+        if (!Number.isFinite(volume) || !Number.isFinite(panMin) || !Number.isFinite(panMax)) {
             return
         }
         const nextVolume = snapTo(volume, 0, 1.2, 1)
-        const nextPan = snapTo(pan, -1, 1, 0)
-        if (nextVolume === this.outputVolume && nextPan === this.outputPan) {
+        const nextPanMin = snapTo(panMin, -1, 1, 0)
+        const nextPanMax = Math.max(nextPanMin, snapTo(panMax, -1, 1, 0))
+        if (nextVolume === this.outputVolume && nextPanMin === this.outputPanMin && nextPanMax === this.outputPanMax) {
             return
         }
         this.outputVolume = nextVolume
-        this.outputPan = nextPan
+        this.outputPanMin = nextPanMin
+        this.outputPanMax = nextPanMax
         this.notify()
-        this.actions?.setOutput(nextVolume, nextPan)
+        this.actions?.setOutput(nextVolume, nextPanMin, nextPanMax)
+    }
+
+    // Moving min past max pushes max along, and the other way round, so min never passes max.
+    setOutputPanMin(pan: number) {
+        if (!Number.isFinite(pan)) {
+            return
+        }
+        const next = snapTo(pan, -1, 1, 0)
+        this.setOutput(this.outputVolume, next, Math.max(next, this.outputPanMax))
+    }
+
+    setOutputPanMax(pan: number) {
+        if (!Number.isFinite(pan)) {
+            return
+        }
+        const next = snapTo(pan, -1, 1, 0)
+        this.setOutput(this.outputVolume, Math.min(next, this.outputPanMin), next)
     }
 
     show(state: ViewState) {

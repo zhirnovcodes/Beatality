@@ -2,6 +2,7 @@
 
 const state = {
     bpm: 120,
+    bpmSync: false,
     loopBeats: 8,
     sliceExp: 0,
     attackMs: 2,
@@ -22,6 +23,13 @@ const state = {
     tranceChance: 0,
     shiftPower: 1,
     shiftChance: 0,
+    repeatEnabled: false,
+    repeatSizeMin: 0,
+    repeatSizeMax: 0,
+    repeatLength: 0,
+    repeatChance: 0,
+    repeatPositions: [false, false, false, false, false, false, false, false],
+    repeatMix: 1,
     playhead: 0,
     playTrack: -1,
     playSlot: -1,
@@ -95,7 +103,7 @@ function columns() {
 }
 
 function placeThumb(input) {
-    const slider = input.closest('.slider, .seek, .mix-slider, .fx-slider')
+    const slider = input.closest('.slider, .seek, .mix-slider, .fx-slider, .br-slider')
     if (!(slider instanceof HTMLElement)) {
         return
     }
@@ -527,11 +535,11 @@ function applyBankSettings(bank) {
     const bpm = clampBpm(Number(bank.bpm))
     if (bpm !== null) {
         state.bpm = bpm
-        const input = document.getElementById('bpm')
-        if (input instanceof HTMLInputElement) {
-            input.value = String(bpm)
-        }
     }
+    if (bank.bpmSync != null) {
+        state.bpmSync = Boolean(bank.bpmSync)
+    }
+    paintBpm()
     const loop = Number(bank.loop)
     const slices = Number(bank.slices)
     const attack = Number(bank.attack)
@@ -616,6 +624,26 @@ function applyBankSettings(bank) {
         state.shiftChance = Number(bank.shiftChance)
         setRange('fx-shift-chance', state.shiftChance)
     }
+    if (bank.repeatEnabled != null) {
+        state.repeatEnabled = Boolean(bank.repeatEnabled)
+    }
+    if (Number.isInteger(Number(bank.repeatSizeMin)) && Number.isInteger(Number(bank.repeatSizeMax))) {
+        state.repeatSizeMin = Number(bank.repeatSizeMin)
+        state.repeatSizeMax = Number(bank.repeatSizeMax)
+    }
+    if (Number.isInteger(Number(bank.repeatLength))) {
+        state.repeatLength = Number(bank.repeatLength)
+    }
+    if (bank.repeatChance != null && Number.isFinite(Number(bank.repeatChance))) {
+        state.repeatChance = Number(bank.repeatChance)
+    }
+    if (Array.isArray(bank.repeatPositions)) {
+        state.repeatPositions = state.repeatPositions.map((on, index) => Boolean(bank.repeatPositions[index]))
+    }
+    if (bank.repeatMix != null && Number.isFinite(Number(bank.repeatMix))) {
+        state.repeatMix = Number(bank.repeatMix)
+    }
+    paintBeatRepeat()
     const volume = Number(bank.volume)
     const pan = Number(bank.pan)
     if (Number.isFinite(volume)) {
@@ -811,13 +839,14 @@ function labelEffectTime(exponent) {
 }
 
 function paintSliders() {
-    document.querySelectorAll('.slider input, .mix-slider input, .fx-slider input').forEach((input) => {
+    document.querySelectorAll('.slider input, .mix-slider input, .fx-slider input, .br-slider input').forEach((input) => {
         if (input instanceof HTMLInputElement) {
             placeThumb(input)
         }
     })
     setRange('playhead', 0)
     labelEffectTime(state.globalBeat)
+    paintBeatRepeat()
     syncCaptions()
 }
 
@@ -881,12 +910,8 @@ function wire() {
     document.querySelector('.bpm-btn.plus')?.addEventListener('click', () => bumpBpm(1))
     document.querySelector('.bpm-btn.minus')?.addEventListener('click', () => bumpBpm(-1))
     document.getElementById('bpm')?.addEventListener('input', commitBpm)
-    document.getElementById('bpm')?.addEventListener('blur', () => {
-        const input = document.getElementById('bpm')
-        if (input instanceof HTMLInputElement) {
-            input.value = String(state.bpm)
-        }
-    })
+    document.getElementById('bpm')?.addEventListener('blur', paintBpm)
+    document.getElementById('bpm-sync')?.addEventListener('click', onBpmSync)
 
     document.getElementById('loop')?.addEventListener('input', onLoop)
     document.getElementById('slice')?.addEventListener('input', onSlice)
@@ -919,6 +944,14 @@ function wire() {
     document.getElementById('fx-shift-power')?.addEventListener('input', onShiftPower)
     document.getElementById('fx-shift-chance')?.addEventListener('input', onShiftChance)
     document.getElementById('fx-randomize')?.addEventListener('click', shuffleEffects)
+
+    document.getElementById('br-power')?.addEventListener('click', onRepeatPower)
+    document.querySelectorAll('.br-pos').forEach((box) => box.addEventListener('change', onRepeatPosition))
+    document.getElementById('br-size-min')?.addEventListener('input', onRepeatSize)
+    document.getElementById('br-size-max')?.addEventListener('input', onRepeatSize)
+    document.getElementById('br-length')?.addEventListener('input', onRepeatLength)
+    document.getElementById('br-chance')?.addEventListener('input', onRepeatChance)
+    document.getElementById('br-mix')?.addEventListener('input', onRepeatMix)
 
     document.getElementById('master-volume')?.addEventListener('input', onMaster)
     document.getElementById('master-pan')?.addEventListener('input', onMaster)
@@ -1025,7 +1058,32 @@ function wire() {
     void native('ready')
 }
 
+// Synced, the digits read 5YN (a 7-segment 5 stands in for the S), and the field and + / - do nothing.
+function paintBpm() {
+    const input = document.getElementById('bpm')
+    if (input instanceof HTMLInputElement) {
+        input.value = state.bpmSync ? '5YN' : String(state.bpm)
+        input.readOnly = state.bpmSync
+        input.setAttribute('aria-label', state.bpmSync ? 'BPM, synced to the project' : 'BPM')
+    }
+    document.querySelectorAll('.bpm-btn').forEach((button) => {
+        if (button instanceof HTMLButtonElement) {
+            button.disabled = state.bpmSync
+        }
+    })
+    document.getElementById('bpm-sync')?.setAttribute('aria-pressed', state.bpmSync ? 'true' : 'false')
+}
+
+function onBpmSync() {
+    state.bpmSync = !state.bpmSync
+    paintBpm()
+    void native('setBpmSync', state.bpmSync)
+}
+
 function bumpBpm(delta) {
+    if (state.bpmSync) {
+        return
+    }
     const bpm = clampBpm(Math.round(state.bpm) + delta)
     if (bpm === null || bpm === state.bpm) {
         return
@@ -1041,7 +1099,7 @@ function bumpBpm(delta) {
 
 function commitBpm() {
     const input = document.getElementById('bpm')
-    if (!(input instanceof HTMLInputElement)) {
+    if (!(input instanceof HTMLInputElement) || state.bpmSync) {
         return
     }
     const bpm = clampBpm(Number(input.value))
@@ -1332,6 +1390,136 @@ function onShiftChance() {
     }
     state.shiftChance = chance
     void native('setShiftChance', chance)
+}
+
+// Beat repeat. SIZE index 0..6 is the exponent -5..1 (1/32 .. 2 beats). LENGTH index 0..5 is -4..1 (1/16 .. 2 beats).
+const repeatSizeBase = -5
+const repeatLengthBase = -4
+
+function paintBeatRepeat() {
+    const power = document.getElementById('br-power')
+    if (power) {
+        power.setAttribute('aria-pressed', state.repeatEnabled ? 'true' : 'false')
+        power.textContent = state.repeatEnabled ? 'ON' : 'OFF'
+    }
+    state.repeatPositions.forEach((on, index) => {
+        const box = document.getElementById('br-pos-' + String(index + 1))
+        if (box instanceof HTMLInputElement) {
+            box.checked = on
+        }
+    })
+    const lo = state.repeatSizeMin - repeatSizeBase
+    const hi = state.repeatSizeMax - repeatSizeBase
+    const range = document.getElementById('br-size')
+    if (range) {
+        range.style.setProperty('--lo', String(lo / 6))
+        range.style.setProperty('--hi', String(hi / 6))
+    }
+    const min = document.getElementById('br-size-min')
+    const max = document.getElementById('br-size-max')
+    if (min instanceof HTMLInputElement && max instanceof HTMLInputElement) {
+        min.value = String(lo)
+        max.value = String(hi)
+        min.setAttribute('aria-valuetext', sliceLabel(state.repeatSizeMin) + ' beat')
+        max.setAttribute('aria-valuetext', sliceLabel(state.repeatSizeMax) + ' beat')
+    }
+    const length = state.repeatLength - repeatLengthBase
+    setRange('br-length', length)
+    const lengthInput = document.getElementById('br-length')
+    if (lengthInput instanceof HTMLInputElement) {
+        lengthInput.setAttribute('aria-valuetext', sliceLabel(state.repeatLength) + ' beat')
+    }
+    const value = document.getElementById('br-length-value')
+    if (value) {
+        value.textContent = sliceLabel(state.repeatLength)
+        value.dataset.i = String(length)
+    }
+    setRange('br-chance', state.repeatChance)
+    setRange('br-mix', state.repeatMix)
+}
+
+function onRepeatPower() {
+    state.repeatEnabled = !state.repeatEnabled
+    paintBeatRepeat()
+    void native('setRepeatEnabled', state.repeatEnabled)
+}
+
+function onRepeatPosition(event) {
+    const box = event.currentTarget
+    if (!(box instanceof HTMLInputElement)) {
+        return
+    }
+    const index = Number(box.id.slice('br-pos-'.length)) - 1
+    state.repeatPositions[index] = box.checked
+    void native('setRepeatPosition', index, box.checked)
+}
+
+// Moving one SIZE pin past the other pushes the other along, so min never passes max.
+function onRepeatSize(event) {
+    const input = event.currentTarget
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    const exponent = input.valueAsNumber + repeatSizeBase
+    let min = state.repeatSizeMin
+    let max = state.repeatSizeMax
+    if (input.id === 'br-size-min') {
+        min = exponent
+        max = Math.max(max, exponent)
+    } else {
+        max = exponent
+        min = Math.min(min, exponent)
+    }
+    const changed = min !== state.repeatSizeMin || max !== state.repeatSizeMax
+    state.repeatSizeMin = min
+    state.repeatSizeMax = max
+    paintBeatRepeat()
+    if (changed) {
+        void native('setRepeatSizeRange', min, max)
+    }
+}
+
+function onRepeatLength() {
+    const input = document.getElementById('br-length')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    placeThumb(input)
+    const exponent = input.valueAsNumber + repeatLengthBase
+    if (exponent === state.repeatLength) {
+        return
+    }
+    state.repeatLength = exponent
+    paintBeatRepeat()
+    void native('setRepeatLength', exponent)
+}
+
+function onRepeatChance() {
+    const input = document.getElementById('br-chance')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    placeThumb(input)
+    const chance = input.valueAsNumber
+    if (chance === state.repeatChance) {
+        return
+    }
+    state.repeatChance = chance
+    void native('setRepeatChance', chance)
+}
+
+function onRepeatMix() {
+    const input = document.getElementById('br-mix')
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    placeThumb(input)
+    const mix = input.valueAsNumber
+    if (mix === state.repeatMix) {
+        return
+    }
+    state.repeatMix = mix
+    void native('setRepeatMix', mix)
 }
 
 function onMaster(event) {

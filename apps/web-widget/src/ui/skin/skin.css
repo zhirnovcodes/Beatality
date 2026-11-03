@@ -181,13 +181,25 @@
 
 /* raised buttons: body 18 x 9, bevelled; image adds 4 px round it for the shadow */
 .beatality-skin .bpm-btn {
-  position: absolute; left: 18px; width: 26px; height: 17px;
+  position: absolute; left: 15px; width: 26px; height: 17px;
   padding: 0; border: 0; font-size: 0; cursor: pointer;
   background: url("../shapes/bpm_btn.png") 0 0 / 100% 100% no-repeat;
 }
 .beatality-skin .bpm-btn.plus  { top: 66px; }
 .beatality-skin .bpm-btn.minus { top: 80px; }
 .beatality-skin .bpm-btn:active { background-image: url("../shapes/bpm_btn_pressed.png"); }
+.beatality-skin .bpm-btn:disabled { cursor: default; opacity: 0.5; }
+
+/* SYNC: black box, dotted lime edge, pixel text (like the reference "EFFECT OFF" button), above the SAMPLES BPM caption,
+   on the glass at (84, 25), 48 x 17; its right edge lines up with the caption bar's right end (x 132). Text is always "SYNC": dim green when off, lit lime when on (aria-pressed="true"). */
+.beatality-skin .bpm-sync {
+  position: absolute; left: 84px; top: 25px; width: 48px; height: 17px; margin: 0; padding: 0; cursor: pointer;
+  background: #03060a; border: 1px dotted #5a9a10; border-radius: 0;
+  font: 400 8px/15px "Silkscreen", monospace; letter-spacing: 1px; color: #2c5a0a; text-align: center; white-space: nowrap;
+}
+.beatality-skin .bpm-sync[aria-pressed="true"] { color: #d8ff20; text-shadow: 0 0 2px rgba(216, 255, 32, 0.6); border-color: #9ae020; }
+.beatality-skin .bpm-sync:active { background: #0c1408; }
+.beatality-skin .bpm-sync:focus-visible { outline: 1px dotted #0b1d02; outline-offset: 1px; }
 
 /* ---------- Upper part: Loop / Slice / Attack, right of the BPM display ----------
    One convex glass bar (slider_captions.png) level with the BPM caption holds the three captions:
@@ -393,7 +405,8 @@
    Captions: dark bars like the BPM caption, same font and size (Orbitron Bold 9.5 px, lime, glow), text right-aligned.
    VOLUME bar starts under the case at the left, as wide as "SAMPLES BPM"; PAN bar in the middle.
    Sliders: the top sliders' pixel design (groove + yellow pin, no ticks) with a small mark at the snap point.
-   Volume 0..1.2, snaps to 1, default 1. Pan -1..1, snaps to 0, default 0. */
+   Volume 0..1.2, snaps to 1, default 1. Pan is a min / max range like the beat repeat SIZE: each end -1..1, snaps to 0,
+   default 0 / 0. Each slice's pan roll is scaled onto that range. */
 .beatality-skin .mix-caption {
   position: absolute; top: 102px; height: 17px; box-sizing: border-box; padding-right: 6px;
   font: 700 9.5px/17px "Orbitron", sans-serif; letter-spacing: 1.14px; white-space: nowrap; text-align: right;
@@ -420,6 +433,33 @@
 .beatality-skin .mix-slider > input[type="range"] {
   position: absolute; left: -6px; top: -2px; width: calc(100% + 12px); height: 18px; margin: 0; opacity: 0; cursor: pointer;
 }
+
+/* PAN min / max, drawn like SIZE: the lit groove underneath, the dark pan groove shown only from MIN to MAX,
+   the SIZE pin halves (left = MIN, right = MAX).
+   Two range inputs on top; each one's thumb is only on its own side of the value. */
+.beatality-skin .mix-range { --lo: 0.5; --hi: 0.5; position: absolute; top: 104px; height: 14px; }
+.beatality-skin .mix-range.pan { left: 366px; width: 112px; --len: 106px; }
+.beatality-skin .mix-range > div { position: absolute; pointer-events: none; image-rendering: pixelated; background: 0 0 / 100% 100% no-repeat; }
+.beatality-skin .mix-range > .track { left: 0; top: 6px; width: 100%; height: 8px; }
+.beatality-skin .mix-range > .track.lit  { background-image: url("../shapes/br_track_long_lit.png"); }
+.beatality-skin .mix-range > .track.dark {
+  background-image: url("../shapes/slider_track_pan.png");
+  clip-path: inset(0 calc(100% - 3px - var(--hi) * var(--len)) 0 calc(3px + var(--lo) * var(--len)));
+}
+.beatality-skin .mix-range > .snap { top: 1px; width: 2px; height: 5px; background: #0b1d02; left: calc(3px + 0.5 * var(--len) - 1px); }
+.beatality-skin .mix-range > .pin { top: 2px; width: 9px; height: 11px; }
+.beatality-skin .mix-range > .pin.min { left: calc(3px + var(--lo) * var(--len) - 8px); background-image: url("../shapes/br_pin_min.png"); }
+.beatality-skin .mix-range > .pin.max { left: calc(3px + var(--hi) * var(--len) - 1px); background-image: url("../shapes/br_pin_max.png"); }
+.beatality-skin .mix-range > input[type="range"] {
+  position: absolute; left: -1px; top: -2px; width: calc(var(--len) + 8px); height: 18px; margin: 0; padding: 0;
+  appearance: none; -webkit-appearance: none; background: transparent; opacity: 0; pointer-events: none;
+}
+.beatality-skin .mix-range > input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 8px; height: 18px; pointer-events: auto; cursor: pointer;
+}
+.beatality-skin .mix-range > input.min::-webkit-slider-thumb { transform: translateX(-4px); }   /* covers x - 8 .. x */
+.beatality-skin .mix-range > input.max::-webkit-slider-thumb { transform: translateX(4px); }    /* covers x .. x + 8 */
+.beatality-skin .mix-range > input[type="range"]::-moz-range-thumb { width: 8px; height: 18px; pointer-events: auto; cursor: pointer; border: 0; }
 
 /* Bank list covers the sample grid. SELECT, LOAD FILE, and X cover the sample panel.
    .picking-bank greys the five round buttons and swaps those two screens. */
@@ -575,8 +615,8 @@
   background-image: url("../shapes/slider_track_long.png");
   clip-path: inset(0 calc(128px - 3px - var(--hi) * 122px) 0 calc(3px + var(--lo) * 122px));
 }
-.beatality-skin .br-range > .pin { top: 2px; width: 8px; height: 10px; }
-.beatality-skin .br-range > .pin.min { left: calc(3px + var(--lo) * 122px - 7px); background-image: url("../shapes/br_pin_min.png"); }
+.beatality-skin .br-range > .pin { top: 2px; width: 9px; height: 11px; }
+.beatality-skin .br-range > .pin.min { left: calc(3px + var(--lo) * 122px - 8px); background-image: url("../shapes/br_pin_min.png"); }
 .beatality-skin .br-range > .pin.max { left: calc(3px + var(--hi) * 122px - 1px); background-image: url("../shapes/br_pin_max.png"); }
 .beatality-skin .br-range > input[type="range"] {
   position: absolute; left: -1px; top: -2px; width: 130px; height: 16px; margin: 0; padding: 0;

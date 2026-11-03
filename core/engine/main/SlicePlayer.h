@@ -15,12 +15,14 @@ class SlicePlayer {
 public:
     SlicePlayer(double sampleRate, std::uint64_t seed);
 
-    // slot is the slice index. roll is this slice's chance draw.
-    // Knob changes go through setEffects and do not restart the curve.
-    void setSlice(const SampleSettings& play, const WarpSettings& warp, int slot, EffectId effect, float roll);
+    // slot is the slice index. roll is this slice's chance draw. panRoll is its pan draw, -1..1.
+    // Knob changes go through setEffects and setPanRange and do not restart the curve.
+    void setSlice(const SampleSettings& play, const WarpSettings& warp, int slot, EffectId effect, float roll, float panRoll);
     // Same slice, a new window or warp. Does not restart the curve.
     void setPlay(const SampleSettings& play, const WarpSettings& warp);
     void setEffects(const Effects& effects);
+    // The pan roll is scaled from -1..1 onto min..max. Both are -1..1.
+    void setPanRange(double min, double max);
 
     // One sample from the slice the engine passes in.
     void render(const SampleBuffer& slice, const ClockSettings& settings, const Clock& clock, const SliceGrid& grid, int attackMs,
@@ -44,6 +46,9 @@ private:
     int slot_ = 0;
     EffectId effect_ = EffectId::None;
     float roll_ = 1.0f;
+    float panRoll_ = 0.0f;
+    double panMin_ = 0;
+    double panMax_ = 0;
     int at_ = 0;
     bool running_ = false;
 };

@@ -401,7 +401,7 @@ void testOutputVolumeAndPan() {
         bt::SliceEngine engine(kRate, 1);
         engine.append({1, left.data(), right.data(), static_cast<int>(left.size())});
         engine.setIndexedTrack(0, 0.0, 1.0, false, 0.5, 0.0);
-        engine.setOutput(volume, pan);
+        engine.setOutput(volume, pan, pan);
         engine.play();
         std::vector<float> outL(201);
         std::vector<float> outR(201);
@@ -431,13 +431,39 @@ void testOutputVolumeAndPan() {
     std::vector<float> open(201);
     std::vector<float> openR(201);
     engine.render(open.data(), openR.data(), 201);
-    engine.setOutput(0.0, 0.0);
+    engine.setOutput(0.0, 0.0, 0.0);
     std::vector<float> closed(40);
     std::vector<float> closedR(40);
     engine.render(closed.data(), closedR.data(), 40);
     CHECK(closed[20] == 0.0f);
     CHECK(closedR[20] == 0.0f);
     CHECK(near(open[200], 0.5f));
+}
+
+// Each slice pans by its own roll, scaled onto the output pan range.
+void testSlicePanFollowsTheRange() {
+    constexpr int kRate = 10000;
+    std::vector<float> left(8000, 0.5f);
+    std::vector<float> right(8000, 0.5f);
+
+    bt::SliceEngine engine(kRate, 3);
+    engine.append({1, left.data(), right.data(), static_cast<int>(left.size())});
+    engine.setOutput(1.0, -0.5, 0.25);
+    engine.randomize();
+    engine.play();
+    std::vector<float> outL(201);
+    std::vector<float> outR(201);
+    engine.render(outL.data(), outR.data(), 201);
+
+    bt::Sequence sequence;
+    bt::Rng rng(3);
+    bt::SliceGrid grid;
+    sequence.generate(grid.slotCount(), 1, rng);
+    const float roll = sequence.panRollAt(0);
+    CHECK(roll >= -1.0f && roll < 1.0f);
+    const double pan = -0.5 + (roll + 1.0) * 0.5 * 0.75;
+    CHECK(near(outL[200], 0.5f * static_cast<float>(pan <= 0.0 ? 1.0 : 1.0 - pan)));
+    CHECK(near(outR[200], 0.5f * static_cast<float>(pan >= 0.0 ? 1.0 : 1.0 + pan)));
 }
 
 void testPlayheadIsTheFractionOfTheLoop() {
@@ -1023,6 +1049,7 @@ int main() {
     testTrackWindowIsWhatPlays();
     testIndexedTrackKeepsTheSliceGrid();
     testOutputVolumeAndPan();
+    testSlicePanFollowsTheRange();
     testPlayheadIsTheFractionOfTheLoop();
     testSetTrackKeepsGain();
     testEmptyTrackIsSilent();

@@ -196,7 +196,8 @@ export interface TrackMessage {
 export interface OutputMessage {
     type: 'output'
     volume: number
-    pan: number
+    panMin: number
+    panMax: number
 }
 
 export interface FreeMessage {
@@ -226,7 +227,8 @@ export interface PackMessage {
     slices: number
     attack: number
     volume: number
-    pan: number
+    panMin: number
+    panMax: number
     savedCount: number
     slots: number[]
     tracks: PackTrackMessage[]

@@ -87,8 +87,8 @@ Editor::Editor(Processor& processorIn) : juce::AudioProcessorEditor(processorIn)
         missing.setColour(juce::Label::textColourId, juce::Colours::white);
         addAndMakeVisible(missing);
     }
-    // The skin is 707 tall. The error line under it adds 21.
-    setSize(496, 728);
+    // The skin is 779 tall. The error line under it adds 21.
+    setSize(496, 800);
 }
 
 Editor::~Editor() {
@@ -346,6 +346,48 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
             }
             completion(true);
         })
+        .withNativeFunction("setBpmSync", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setBpmSync(static_cast<bool>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setRepeatEnabled", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setRepeatEnabled(static_cast<bool>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setRepeatSizeRange", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (args.size() >= 2) {
+                processor.setRepeatSizeRange(static_cast<int>(args[0]), static_cast<int>(args[1]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setRepeatLength", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setRepeatLength(static_cast<int>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setRepeatChance", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setRepeatChance(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setRepeatPosition", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (args.size() >= 2) {
+                processor.setRepeatPosition(static_cast<int>(args[0]), static_cast<bool>(args[1]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setRepeatMix", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setRepeatMix(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
         .withNativeFunction("setOutput", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
             if (args.size() >= 2) {
                 processor.setOutput(static_cast<double>(args[0]), static_cast<double>(args[1]));
@@ -488,6 +530,7 @@ void Editor::pushBank() {
     object->setProperty("warpParams", warpParams);
     object->setProperty("missing", missingTracks);
     object->setProperty("bpm", processor.bpm());
+    object->setProperty("bpmSync", processor.bpmSync());
     object->setProperty("loop", processor.loopBeats());
     object->setProperty("slices", processor.sliceExponent());
     object->setProperty("attack", processor.attackMs());
@@ -508,6 +551,18 @@ void Editor::pushBank() {
     object->setProperty("tranceChance", processor.tranceChance());
     object->setProperty("shiftPower", processor.shiftPower());
     object->setProperty("shiftChance", processor.shiftChance());
+    const bt::BeatRepeatSettings& repeat = processor.beatRepeat();
+    juce::Array<juce::var> positions;
+    for (const bool on : repeat.positions) {
+        positions.add(on);
+    }
+    object->setProperty("repeatEnabled", repeat.enabled);
+    object->setProperty("repeatSizeMin", repeat.sizeMin);
+    object->setProperty("repeatSizeMax", repeat.sizeMax);
+    object->setProperty("repeatLength", repeat.length);
+    object->setProperty("repeatChance", repeat.chance);
+    object->setProperty("repeatPositions", positions);
+    object->setProperty("repeatMix", repeat.mix);
     object->setProperty("volume", processor.outputVolume());
     object->setProperty("pan", processor.outputPan());
     deliver("onBank", juce::var(object));

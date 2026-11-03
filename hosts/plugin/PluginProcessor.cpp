@@ -204,7 +204,7 @@ AppendPayload* payloadFromReader(juce::AudioFormatReader& reader, double rate, s
 class CommandQueue {
 public:
     struct Slot {
-        enum class Kind { Randomize, Remove, Append, Clear, Bpm, Loop, Slice, Attack, GlobalPower, GlobalBeat, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, ReversePower, ReverseChance, FilterPower, FilterChance, FlangerPower, FlangerChance, TrancePower, TranceChance, ShiftPower, ShiftChance, Track, Warp, Output, Pack };
+        enum class Kind { Randomize, Remove, Append, Clear, Bpm, BpmSync, Loop, Slice, Attack, GlobalPower, GlobalBeat, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, ReversePower, ReverseChance, FilterPower, FilterChance, FlangerPower, FlangerChance, TrancePower, TranceChance, ShiftPower, ShiftChance, RepeatEnabled, RepeatSizeRange, RepeatLength, RepeatChance, RepeatPosition, RepeatMix, Track, Warp, Output, Pack };
         Kind kind = Kind::Randomize;
         AppendPayload* append = nullptr;
         PackPayload* pack = nullptr;
@@ -368,7 +368,8 @@ struct Processor::Impl {
         engine->setSlice(sliceExp);
         engine->setAttack(attackMs);
         engine->setEffectsSettings(effects);
-        engine->setOutput(outputVolume, outputPan);
+        engine->setBeatRepeat(repeat);
+        engine->setOutput(outputVolume, outputPan, outputPan);
     }
 
     void applyAppend(AppendPayload* payload) {
@@ -444,6 +445,31 @@ struct Processor::Impl {
     }
 
     void applyBpm(double value) {
+        ownBpm = value;
+        playBpm();
+    }
+
+    void applyBpmSync(bool on) {
+        bpmSync = on;
+        playBpm();
+    }
+
+    // Called every block with the host's tempo, or 0 when the host has none.
+    void followHost(double value) {
+        if (value == hostBpm) {
+            return;
+        }
+        hostBpm = value;
+        if (bpmSync) {
+            playBpm();
+        }
+    }
+
+    // The host's tempo while synced and the host has one. Otherwise the plugin's own.
+    double playedBpm() const { return bpmSync && hostBpm > 0.0 ? hostBpm : ownBpm; }
+
+    void playBpm() {
+        const double value = playedBpm();
         if (engine == nullptr) {
             bpm = value;
             return;
@@ -570,13 +596,50 @@ struct Processor::Impl {
         applyEffects();
     }
 
+    void applyRepeat() {
+        if (engine != nullptr) {
+            engine->setBeatRepeat(repeat);
+        }
+    }
+
+    void applyRepeatEnabled(bool on) {
+        repeat.enabled = on;
+        applyRepeat();
+    }
+
+    void applyRepeatSizeRange(int min, int max) {
+        repeat.sizeMin = min;
+        repeat.sizeMax = max;
+        applyRepeat();
+    }
+
+    void applyRepeatLength(int exponent) {
+        repeat.length = exponent;
+        applyRepeat();
+    }
+
+    void applyRepeatChance(double chance) {
+        repeat.chance = chance;
+        applyRepeat();
+    }
+
+    void applyRepeatPosition(int index, bool on) {
+        repeat.positions[index] = on;
+        applyRepeat();
+    }
+
+    void applyRepeatMix(double mix) {
+        repeat.mix = mix;
+        applyRepeat();
+    }
+
     void applyOutput(double volume, double pan) {
         outputVolume = volume;
         outputPan = pan;
         if (engine == nullptr) {
             return;
         }
-        engine->setOutput(volume, pan);
+        engine->setOutput(volume, pan, pan);
     }
 
     void applyTrack(int index, double start, double length, bool loop, double volume, double pan) {
@@ -626,6 +689,9 @@ struct Processor::Impl {
             break;
         case CommandQueue::Slot::Kind::Bpm:
             applyBpm(slot.first);
+            break;
+        case CommandQueue::Slot::Kind::BpmSync:
+            applyBpmSync(slot.flag);
             break;
         case CommandQueue::Slot::Kind::Loop:
             applyLoop(slot.number);
@@ -687,6 +753,24 @@ struct Processor::Impl {
         case CommandQueue::Slot::Kind::ShiftChance:
             applyShiftChance(slot.first);
             break;
+        case CommandQueue::Slot::Kind::RepeatEnabled:
+            applyRepeatEnabled(slot.flag);
+            break;
+        case CommandQueue::Slot::Kind::RepeatSizeRange:
+            applyRepeatSizeRange(slot.index, slot.number);
+            break;
+        case CommandQueue::Slot::Kind::RepeatLength:
+            applyRepeatLength(slot.number);
+            break;
+        case CommandQueue::Slot::Kind::RepeatChance:
+            applyRepeatChance(slot.first);
+            break;
+        case CommandQueue::Slot::Kind::RepeatPosition:
+            applyRepeatPosition(slot.index, slot.flag);
+            break;
+        case CommandQueue::Slot::Kind::RepeatMix:
+            applyRepeatMix(slot.first);
+            break;
         case CommandQueue::Slot::Kind::Track:
             applyTrack(slot.index, slot.first, slot.second, slot.flag, slot.third, slot.fourth);
             break;
@@ -712,7 +796,8 @@ struct Processor::Impl {
             engine->clear();
         }
         sources.clear();
-        bpm = pack->bpm;
+        ownBpm = pack->bpm;
+        bpm = playedBpm();
         loopBeats = pack->loop;
         sliceExp = pack->slices;
         attackMs = pack->attack;
@@ -723,7 +808,7 @@ struct Processor::Impl {
             engine->setLoop(loopBeats);
             engine->setSlice(sliceExp);
             engine->setAttack(attackMs);
-            engine->setOutput(outputVolume, outputPan);
+            engine->setOutput(outputVolume, outputPan, outputPan);
         }
         int index = 0;
         for (PackTrackPayload& track : pack->tracks) {
@@ -935,11 +1020,16 @@ struct Processor::Impl {
         int savedCount = 0;
         std::uint16_t slots[bt::Sequence::kMaxSlots]{};
     } sequenceMirror;
+    // The tempo the engine plays. ownBpm is the plugin's own; hostBpm is the host's, 0 when it has none.
     double bpm = 120;
+    double ownBpm = 120;
+    double hostBpm = 0;
+    bool bpmSync = false;
     int loopBeats = 8;
     int sliceExp = 0;
     int attackMs = bt::SliceEngine::kAttackMinMs;
     bt::Effects effects;
+    bt::BeatRepeatSettings repeat;
     double outputVolume = 1;
     double outputPan = 0;
 };
@@ -979,6 +1069,15 @@ void Processor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&
     while (impl->queue.pop(slot)) {
         impl->applySlot(slot);
     }
+    double hostBpm = 0.0;
+    if (juce::AudioPlayHead* playHead = getPlayHead()) {
+        if (const auto info = playHead->getPosition()) {
+            if (const auto tempo = info->getBpm()) {
+                hostBpm = *tempo;
+            }
+        }
+    }
+    impl->followHost(hostBpm > 0.0 && std::isfinite(hostBpm) ? hostBpm : 0.0);
 
     int position = 0;
     for (const auto metadata : midi) {
@@ -1162,6 +1261,14 @@ void Processor::setBpm(double bpm) {
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::Bpm;
     slot.first = bpm;
+    impl->queue.push(slot);
+}
+
+void Processor::setBpmSync(bool on) {
+    savedBpmSync = on;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::BpmSync;
+    slot.flag = on;
     impl->queue.push(slot);
 }
 
@@ -1382,6 +1489,72 @@ void Processor::setShiftChance(double chance) {
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::ShiftChance;
     slot.first = chance;
+    impl->queue.push(slot);
+}
+
+void Processor::setRepeatEnabled(bool on) {
+    savedRepeat.enabled = on;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::RepeatEnabled;
+    slot.flag = on;
+    impl->queue.push(slot);
+}
+
+void Processor::setRepeatSizeRange(int min, int max) {
+    if (min < bt::BeatRepeatSettings::kSizeMin || max > bt::BeatRepeatSettings::kSizeMax || min > max) {
+        return;
+    }
+    savedRepeat.sizeMin = min;
+    savedRepeat.sizeMax = max;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::RepeatSizeRange;
+    slot.index = min;
+    slot.number = max;
+    impl->queue.push(slot);
+}
+
+void Processor::setRepeatLength(int exponent) {
+    if (exponent < bt::BeatRepeatSettings::kLengthMin || exponent > bt::BeatRepeatSettings::kLengthMax) {
+        return;
+    }
+    savedRepeat.length = exponent;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::RepeatLength;
+    slot.number = exponent;
+    impl->queue.push(slot);
+}
+
+void Processor::setRepeatChance(double chance) {
+    if (!std::isfinite(chance) || chance < bt::BeatRepeatSettings::kChanceMin || chance > bt::BeatRepeatSettings::kChanceMax) {
+        return;
+    }
+    savedRepeat.chance = chance;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::RepeatChance;
+    slot.first = chance;
+    impl->queue.push(slot);
+}
+
+void Processor::setRepeatPosition(int index, bool on) {
+    if (index < 0 || index >= bt::RepeatSequence::kPositions) {
+        return;
+    }
+    savedRepeat.positions[index] = on;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::RepeatPosition;
+    slot.index = index;
+    slot.flag = on;
+    impl->queue.push(slot);
+}
+
+void Processor::setRepeatMix(double mix) {
+    if (!std::isfinite(mix) || mix < bt::BeatRepeatSettings::kMixMin || mix > bt::BeatRepeatSettings::kMixMax) {
+        return;
+    }
+    savedRepeat.mix = mix;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::RepeatMix;
+    slot.first = mix;
     impl->queue.push(slot);
 }
 

@@ -23,6 +23,19 @@ body {
     width: 496px;
 }
 
+.page-sources label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 16px;
+    font: 14px/1 system-ui, sans-serif;
+}
+
+.page-sources input {
+    width: 64px;
+    font: 14px/1 system-ui, sans-serif;
+}
+
 #preview {
     font: 14px/1 system-ui, sans-serif;
     padding: 6px 16px;
@@ -35,6 +48,11 @@ body {
 #preview:disabled {
     cursor: default;
     opacity: 0.45;
+}
+
+/* Horizontal drags move the sample's start. Vertical ones still scroll the list. */
+.beatality-skin .sample-grid .row {
+    touch-action: pan-y;
 }
 
 .beatality-skin .sample-grid .row > .spectrum {

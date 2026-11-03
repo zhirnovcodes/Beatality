@@ -1,5 +1,6 @@
 #pragma once
 
+#include "BeatRepeatSettings.h"
 #include "Effects.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -45,6 +46,8 @@ public:
     void removeFirstTrack();
     void randomizeTracks();
     void setBpm(double bpm);
+    // On, the engine plays the host's tempo. Off, or with no host tempo, it plays bpm().
+    void setBpmSync(bool on);
     void setLoop(int beats);
     void setSlice(int exponent);
     void setAttack(int ms);
@@ -65,6 +68,15 @@ public:
     void setTranceChance(double chance);
     void setShiftPower(double power);
     void setShiftChance(double chance);
+    void setRepeatEnabled(bool on);
+    // 2^exponent beats, -5..1. min is not above max.
+    void setRepeatSizeRange(int min, int max);
+    // 2^exponent beats of tail, -4..1.
+    void setRepeatLength(int exponent);
+    void setRepeatChance(double chance);
+    // index is 0..7.
+    void setRepeatPosition(int index, bool on);
+    void setRepeatMix(double mix);
     void setOutput(double volume, double pan);
     void setTrack(int index, double start, double length, bool loop, double volume, double pan);
     // mode is 0 none, 1 beat, 2 pitch. bpm is the sample's own tempo, 1..999.9. param is 0..1.
@@ -81,6 +93,7 @@ public:
     bool clearBank();
 
     double bpm() const { return savedBpm; }
+    bool bpmSync() const { return savedBpmSync; }
     int loopBeats() const { return savedLoop; }
     int sliceExponent() const { return savedSlice; }
     int attackMs() const { return savedAttack; }
@@ -101,6 +114,7 @@ public:
     double tranceChance() const { return saved.tranceChance; }
     double shiftPower() const { return saved.shiftPower; }
     double shiftChance() const { return saved.shiftChance; }
+    const bt::BeatRepeatSettings& beatRepeat() const { return savedRepeat; }
     double outputVolume() const { return savedVolume; }
     double outputPan() const { return savedPan; }
     double trackStart(int index) const;
@@ -151,10 +165,12 @@ private:
     juce::String error;
     juce::String savedName = "Pack";
     double savedBpm = 120;
+    bool savedBpmSync = false;
     int savedLoop = 8;
     int savedSlice = 0;
     int savedAttack = 2;
     bt::Effects saved;
+    bt::BeatRepeatSettings savedRepeat;
     double savedVolume = 1;
     double savedPan = 0;
     std::atomic<std::uint32_t> view{0};

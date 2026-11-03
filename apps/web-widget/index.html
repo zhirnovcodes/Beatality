@@ -9,6 +9,11 @@
         <div class="page">
             <div class="page-sources">
                 <button id="preview" type="button" disabled>Play</button>
+                <!-- Stands in for the host's tempo. The widget plays it while its SYNC is on. -->
+                <label>
+                    Project BPM
+                    <input id="project-bpm" type="number" min="1" max="999" step="1" value="120" />
+                </label>
             </div>
             <div id="app"></div>
         </div>

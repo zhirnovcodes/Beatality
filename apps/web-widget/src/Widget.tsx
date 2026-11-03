@@ -48,8 +48,9 @@ export function Widget({
     useEffect(() => {
         const root = skin.current
         const bpm = bpmRef.current
-        if (bpm && document.activeElement !== bpm) {
-            bpm.value = String(clampBpm(model.bpm) ?? Math.round(model.bpm))
+        if (bpm && (model.bpmSync || document.activeElement !== bpm)) {
+            // 7-segment "5" stands in for the S.
+            bpm.value = model.bpmSync ? '5YN' : String(clampBpm(model.bpm) ?? Math.round(model.bpm))
         }
         if (!root) {
             return
@@ -82,6 +83,9 @@ export function Widget({
 
     const commitBpm = (event: Event) => {
         const input = event.currentTarget as HTMLInputElement
+        if (model.bpmSync) {
+            return
+        }
         const bpm = clampBpm(Number(input.value))
         if (bpm !== null) {
             model.setBpm(bpm)
@@ -123,16 +127,21 @@ export function Widget({
 
     const onMasterVolume = (event: Event) => {
         const input = event.currentTarget as HTMLInputElement
-        model.setOutput(input.valueAsNumber, model.outputPan)
+        model.setOutput(input.valueAsNumber, model.outputPanMin, model.outputPanMax)
         input.value = String(model.outputVolume)
         placeThumb(input)
     }
 
-    const onMasterPan = (event: Event) => {
+    const onMasterPanMin = (event: Event) => {
         const input = event.currentTarget as HTMLInputElement
-        model.setOutput(model.outputVolume, input.valueAsNumber)
-        input.value = String(model.outputPan)
-        placeThumb(input)
+        model.setOutputPanMin(input.valueAsNumber)
+        input.value = String(model.outputPanMin)
+    }
+
+    const onMasterPanMax = (event: Event) => {
+        const input = event.currentTarget as HTMLInputElement
+        model.setOutputPanMax(input.valueAsNumber)
+        input.value = String(model.outputPanMax)
     }
 
     const onFx = (apply: (value: number) => void) => (event: Event) => {
@@ -201,15 +210,39 @@ export function Widget({
                                 maxLength={3}
                                 spellcheck={false}
                                 autoComplete="off"
-                                aria-label="BPM"
+                                aria-label={model.bpmSync ? 'BPM, synced to the project' : 'BPM'}
+                                readOnly={model.bpmSync}
                                 onChange={commitBpm}
                             />
                         </div>
-                        <button type="button" className="bpm-btn plus" aria-label="BPM up" onClick={() => bumpBpm(1)}>
+                        <button
+                            type="button"
+                            className="bpm-btn plus"
+                            aria-label="BPM up"
+                            disabled={model.bpmSync}
+                            onClick={() => bumpBpm(1)}
+                        >
                             +
                         </button>
-                        <button type="button" className="bpm-btn minus" aria-label="BPM down" onClick={() => bumpBpm(-1)}>
+                        <button
+                            type="button"
+                            className="bpm-btn minus"
+                            aria-label="BPM down"
+                            disabled={model.bpmSync}
+                            onClick={() => bumpBpm(-1)}
+                        >
                             -
+                        </button>
+                        {/* On, the engine plays the project's tempo. */}
+                        <button
+                            type="button"
+                            className="bpm-sync"
+                            id="bpm-sync"
+                            aria-pressed={model.bpmSync}
+                            aria-label="Sync"
+                            onClick={() => model.setBpmSync(!model.bpmSync)}
+                        >
+                            SYNC
                         </button>
 
                         <span className="mix-caption volume">VOLUME</span>
@@ -230,20 +263,38 @@ export function Widget({
                             />
                         </div>
                         <span className="mix-caption pan">PAN</span>
-                        <div className="mix-slider pan">
-                            <div className="track" />
+                        {/* Each slice's pan roll is scaled onto MIN..MAX. */}
+                        <div
+                            className="mix-range pan"
+                            id="master-pan"
+                            style={{ '--lo': String((model.outputPanMin + 1) / 2), '--hi': String((model.outputPanMax + 1) / 2) }}
+                        >
+                            <div className="track lit" />
+                            <div className="track dark" />
                             <div className="snap" />
-                            <div className="thumb" />
+                            <div className="pin min" />
+                            <div className="pin max" />
                             <input
                                 type="range"
-                                id="master-pan"
+                                className="min"
+                                id="master-pan-min"
                                 min={-1}
                                 max={1}
                                 step={0.01}
-                                value={model.outputPan}
-                                data-snap="0"
-                                aria-label="Pan"
-                                onInput={onMasterPan}
+                                value={model.outputPanMin}
+                                aria-label="Pan minimum"
+                                onInput={onMasterPanMin}
+                            />
+                            <input
+                                type="range"
+                                className="max"
+                                id="master-pan-max"
+                                min={-1}
+                                max={1}
+                                step={0.01}
+                                value={model.outputPanMax}
+                                aria-label="Pan maximum"
+                                onInput={onMasterPanMax}
                             />
                         </div>
 

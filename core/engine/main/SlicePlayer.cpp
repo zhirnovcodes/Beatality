@@ -18,12 +18,13 @@ double unit(double value) {
 
 SlicePlayer::SlicePlayer(double sampleRate, std::uint64_t seed) : bank_(sampleRate, seed) { curve_.stop(0); }
 
-void SlicePlayer::setSlice(const SampleSettings& play, const WarpSettings& warp, int slot, EffectId effect, float roll) {
+void SlicePlayer::setSlice(const SampleSettings& play, const WarpSettings& warp, int slot, EffectId effect, float roll, float panRoll) {
     play_ = play;
     warp_ = warp;
     slot_ = slot;
     effect_ = effect;
     roll_ = roll;
+    panRoll_ = panRoll;
     bank_.clean();
     curve_ = Curve();
     at_ = 0;
@@ -39,6 +40,11 @@ void SlicePlayer::setPlay(const SampleSettings& play, const WarpSettings& warp) 
 }
 
 void SlicePlayer::setEffects(const Effects& effects) { effects_ = effects; }
+
+void SlicePlayer::setPanRange(double min, double max) {
+    panMin_ = min;
+    panMax_ = max;
+}
 
 void SlicePlayer::stop() {
     if (curve_.fadingOut()) {
@@ -93,8 +99,11 @@ void SlicePlayer::render(const SampleBuffer& slice, const ClockSettings& setting
         sample = reader.read(clock.localIn(slot_, settings, grid));
     }
 
-    left = sample.l * gain;
-    right = sample.r * gain;
+    const double pan = panMin_ + (static_cast<double>(panRoll_) + 1.0) * 0.5 * (panMax_ - panMin_);
+    const float leftGain = static_cast<float>(pan <= 0.0 ? 1.0 : 1.0 - pan);
+    const float rightGain = static_cast<float>(pan >= 0.0 ? 1.0 : 1.0 + pan);
+    left = sample.l * gain * leftGain;
+    right = sample.r * gain * rightGain;
 }
 
 } // namespace bt

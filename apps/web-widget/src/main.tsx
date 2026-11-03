@@ -66,6 +66,19 @@ preview.addEventListener('click', () => {
     void client.midi(previewHeld ? MidiStatus.On : MidiStatus.Off, previewNote, previewVelocity)
 })
 
+const projectBpm = document.querySelector('#project-bpm')
+if (!(projectBpm instanceof HTMLInputElement)) {
+    throw new Error('missing #project-bpm')
+}
+model.setProjectBpm(projectBpm.valueAsNumber)
+projectBpm.addEventListener('change', () => {
+    const bpm = Math.round(projectBpm.valueAsNumber)
+    if (bpm >= 1 && bpm <= 999) {
+        model.setProjectBpm(bpm)
+    }
+    projectBpm.value = String(model.projectBpm)
+})
+
 async function loadFactory(file: string): Promise<void> {
     if (previewHeld) {
         previewHeld = false
@@ -88,9 +101,11 @@ async function loadFactory(file: string): Promise<void> {
         sliceExp: doc.slices,
         attackMs: doc.attack,
         outputVolume: doc.volume,
-        outputPan: doc.pan,
+        outputPanMin: doc.panMin,
+        outputPanMax: doc.panMax,
     })
-    await client.loadDocument(doc, async (id) => {
+    // The pack's tempo is the widget's own. While synced the engine keeps the project's.
+    await client.loadDocument({ ...doc, bpm: model.engineBpm }, async (id) => {
         const sample = await fetch('/packs/demo/' + encodeURIComponent(id))
         if (!sample.ok) {
             return null

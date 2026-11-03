@@ -378,12 +378,12 @@ BT_EXPORT void bt_set_track(Instance* instance, int index, double start, double 
     instance->engine.setWarp(index, bt::WarpSettings{.mode = mode, .bpm = bpm, .param = param});
 }
 
-// volume is 0..1.2 and multiplies note velocity. pan is -1..1.
-BT_EXPORT void bt_set_output(Instance* instance, double volume, double pan) {
+// volume is 0..1.2 and multiplies note velocity. panMin and panMax are -1..1, panMin never above panMax.
+BT_EXPORT void bt_set_output(Instance* instance, double volume, double panMin, double panMax) {
     if (instance == nullptr) {
         return;
     }
-    instance->engine.setOutput(volume, pan);
+    instance->engine.setOutput(volume, panMin, panMax);
 }
 
 BT_EXPORT void bt_render(Instance* instance, float* left, float* right, int frames) {

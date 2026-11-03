@@ -59,7 +59,7 @@ void SliceEngine::play() {
         if (!sequence_.empty() && bank_.count() > 0) {
             const int track = sequence_.indexAt(0, bank_.count());
             playingBuffer_ = bank_.at(track);
-            playing_.setSlice(bank_.play(track), bank_.warp(track), 0, sequence_.effectAt(0), sequence_.rollAt(0));
+            playing_.setSlice(bank_.play(track), bank_.warp(track), 0, sequence_.effectAt(0), sequence_.rollAt(0), sequence_.panRollAt(0));
             playingSlot_ = 0;
         } else {
             playingSlot_ = -1;
@@ -95,7 +95,7 @@ void SliceEngine::randomize() {
     if (slot >= 0 && !sequence_.empty() && bank_.count() > 0) {
         const int track = sequence_.indexAt(slot, bank_.count());
         playingBuffer_ = bank_.at(track);
-            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot));
+            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot));
         playingSlot_ = slot;
     } else {
         playingSlot_ = -1;
@@ -114,7 +114,7 @@ void SliceEngine::append(const SampleBuffer& buffer) {
     if (slot >= 0 && bank_.count() > 0) {
         const int track = sequence_.indexAt(slot, bank_.count());
         playingBuffer_ = bank_.at(track);
-            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot));
+            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot));
         playingSlot_ = slot;
     } else {
         playingSlot_ = -1;
@@ -198,7 +198,7 @@ void SliceEngine::remove(int index) {
     if (slot >= 0 && !sequence_.empty()) {
         const int track = sequence_.indexAt(slot, bank_.count());
         playingBuffer_ = bank_.at(track);
-            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot));
+            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot));
         playingSlot_ = slot;
     } else {
         playingSlot_ = -1;
@@ -265,7 +265,7 @@ void SliceEngine::setLoop(int beats) {
     if (slot >= 0 && !sequence_.empty() && bank_.count() > 0) {
         const int track = sequence_.indexAt(slot, bank_.count());
         playingBuffer_ = bank_.at(track);
-            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot));
+            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot));
         playingSlot_ = slot;
     } else {
         playingSlot_ = -1;
@@ -286,7 +286,7 @@ void SliceEngine::setSlice(int exponent) {
     if (slot >= 0 && !sequence_.empty() && bank_.count() > 0) {
         const int track = sequence_.indexAt(slot, bank_.count());
         playingBuffer_ = bank_.at(track);
-            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot));
+            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot));
         playingSlot_ = slot;
     } else {
         playingSlot_ = -1;
@@ -303,9 +303,12 @@ void SliceEngine::setEffectsSettings(const Effects& settings) {
 
 void SliceEngine::setBeatRepeat(const BeatRepeatSettings& settings) { beatRepeatSettings_ = settings; }
 
-void SliceEngine::setOutput(double volume, double pan) {
+void SliceEngine::setOutput(double volume, double panMin, double panMax) {
     volume_ = clamp(volume, 0.0, 1.2);
-    pan_ = clamp(pan, -1.0, 1.0);
+    panMin_ = clamp(panMin, -1.0, 1.0);
+    panMax_ = clamp(panMax, panMin_, 1.0);
+    playing_.setPanRange(panMin_, panMax_);
+    outgoing_.setPanRange(panMin_, panMax_);
 }
 
 void SliceEngine::render(float* left, float* right, int frames) {
@@ -317,7 +320,7 @@ void SliceEngine::render(float* left, float* right, int frames) {
                 if (arriving >= 0) {
                     const int track = sequence_.indexAt(arriving, bank_.count());
                     playingBuffer_ = bank_.at(track);
-            playing_.setSlice(bank_.play(track), bank_.warp(track), arriving, sequence_.effectAt(arriving), sequence_.rollAt(arriving));
+            playing_.setSlice(bank_.play(track), bank_.warp(track), arriving, sequence_.effectAt(arriving), sequence_.rollAt(arriving), sequence_.panRollAt(arriving));
                     playingSlot_ = arriving;
                 } else {
                     playingSlot_ = -1;
@@ -352,14 +355,12 @@ void SliceEngine::render(float* left, float* right, int frames) {
         }
     }
     const float volume = static_cast<float>(volume_);
-    const float leftGain = static_cast<float>(pan_ <= 0.0 ? 1.0 : 1.0 - pan_) * volume;
-    const float rightGain = static_cast<float>(pan_ >= 0.0 ? 1.0 : 1.0 + pan_) * volume;
-    if (leftGain == 1.0f && rightGain == 1.0f) {
+    if (volume == 1.0f) {
         return;
     }
     for (int i = 0; i < frames; ++i) {
-        left[i] *= leftGain;
-        right[i] *= rightGain;
+        left[i] *= volume;
+        right[i] *= volume;
     }
 }
 

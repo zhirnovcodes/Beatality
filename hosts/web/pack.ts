@@ -36,7 +36,9 @@ export interface PackDocument {
     slices: number
     attack: number
     volume: number
-    pan: number
+    // Each slice's pan roll is scaled onto panMin..panMax. Older packs have one pan, read as both.
+    panMin: number
+    panMax: number
     sequence: { savedCount: number; slots: number[] }
     tracks: PackTrack[]
 }
@@ -127,9 +129,12 @@ export function decodePack(text: string): PackDocument | null {
     const attack = integer(record.attack)
     const volume = finite(record.volume)
     const pan = finite(record.pan)
-    if (bpm === null || !(bpm > 0) || loop === null || slices === null || attack === null || volume === null || pan === null) {
+    const panMin = finite(record.panMin) ?? pan
+    const panMax = finite(record.panMax) ?? pan
+    if (bpm === null || !(bpm > 0) || loop === null || slices === null || attack === null || volume === null || panMin === null || panMax === null) {
         return null
     }
+    const fittedPanMin = clamp(panMin, -1, 1)
     const fittedLoop = clamp(loop, 1, 32)
     const fittedSlice = fitSlice(clamp(slices, expMin, expMax), fittedLoop)
     const sequence = decodeSequence(record.sequence)
@@ -146,7 +151,8 @@ export function decodePack(text: string): PackDocument | null {
         slices: fittedSlice,
         attack: clamp(attack, 2, 16),
         volume: clamp(volume, 0, 1.2),
-        pan: clamp(pan, -1, 1),
+        panMin: fittedPanMin,
+        panMax: clamp(panMax, fittedPanMin, 1),
         sequence,
         tracks,
     }

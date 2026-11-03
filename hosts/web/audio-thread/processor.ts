@@ -55,7 +55,7 @@ interface Core {
         bpm: number,
         param: number,
     ) => void
-    bt_set_output: (engine: number, volume: number, pan: number) => void
+    bt_set_output: (engine: number, volume: number, panMin: number, panMax: number) => void
     bt_render: (engine: number, left: number, right: number, frames: number) => void
     bt_snapshot: (engine: number) => void
     bt_snapshot_count: (engine: number) => number
@@ -265,7 +265,8 @@ interface TrackMessage {
 interface OutputMessage {
     type: 'output'
     volume: number
-    pan: number
+    panMin: number
+    panMax: number
 }
 
 interface FreeMessage {
@@ -295,7 +296,8 @@ interface PackMessage {
     slices: number
     attack: number
     volume: number
-    pan: number
+    panMin: number
+    panMax: number
     savedCount: number
     slots: number[]
     tracks: PackTrackMessage[]
@@ -606,7 +608,7 @@ class BeatalityProcessor extends AudioWorkletProcessor {
                 message.warpParam,
             )
         } else if (message.type === 'output') {
-            this.core!.bt_set_output(this.engine, message.volume, message.pan)
+            this.core!.bt_set_output(this.engine, message.volume, message.panMin, message.panMax)
         } else if (message.type === 'free') {
             this.freeId(message.id)
         } else if (message.type === 'pack') {
@@ -645,7 +647,7 @@ class BeatalityProcessor extends AudioWorkletProcessor {
         core.bt_set_loop(this.engine, message.loop)
         core.bt_set_slice(this.engine, message.slices)
         core.bt_set_attack(this.engine, message.attack)
-        core.bt_set_output(this.engine, message.volume, message.pan)
+        core.bt_set_output(this.engine, message.volume, message.panMin, message.panMax)
         if (message.slots.length > 0) {
             const ptr = core.bt_alloc(message.slots.length * 2)
             if (ptr !== 0) {

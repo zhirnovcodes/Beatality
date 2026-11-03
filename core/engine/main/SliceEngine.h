@@ -58,8 +58,8 @@ public:
     // Replaces every beat repeat knob. The rolls are drawn with the sequence.
     void setBeatRepeat(const BeatRepeatSettings& settings);
     // volume is 0..1.2 and scales the mix. The host multiplies that by note velocity.
-    // pan is -1..1 and balances the two channels.
-    void setOutput(double volume, double pan);
+    // panMin and panMax are -1..1, panMin never above panMax. Each slice's pan roll is scaled onto that range.
+    void setOutput(double volume, double panMin, double panMax);
     // Keeps the volume and pan already on that slot.
     void setTrack(int index, double start, double length, bool loop);
     // Web track. start is a fraction of the file, 0..1.
@@ -92,7 +92,8 @@ private:
     RepeatSequence repeatSequence_;
     BeatRepeat beatRepeat_;
     double volume_ = 1;
-    double pan_ = 0;
+    double panMin_ = 0;
+    double panMax_ = 0;
     SliceGrid grid_;
     Sequence sequence_;
     SampleBank bank_;

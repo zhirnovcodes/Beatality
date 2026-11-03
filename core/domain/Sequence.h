@@ -46,11 +46,14 @@ public:
     float rollAt(int slot) const;
     // Chosen when the slot is written. assign stores none, so a loaded pack stays dry.
     EffectId effectAt(int slot) const;
+    // Drawn in [-1, 1) by generate and append. assign stores 0, the middle of the pan range.
+    float panRollAt(int slot) const;
 
 private:
     std::uint16_t slots_[kMaxSlots]{};
     float rolls_[kMaxSlots]{};
     EffectId effects_[kMaxSlots]{};
+    float panRolls_[kMaxSlots]{};
     int size_ = 0;
     int savedCount_ = 0;
 };

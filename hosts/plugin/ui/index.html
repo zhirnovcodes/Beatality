@@ -5,7 +5,7 @@
 <title>Beatality</title>
 <link rel="stylesheet" href="/ui/skin/skin.css">
 <style>
-  html, body { margin: 0; width: 496px; height: 728px; overflow: hidden; background: #2a2c30; }
+  html, body { margin: 0; width: 496px; height: 800px; overflow: hidden; background: #2a2c30; }
   #error {
     height: 21px; margin: 0; padding: 0 8px;
     color: #ff8d8d; font: 12px/21px system-ui, sans-serif;
@@ -29,6 +29,8 @@
       </div>
       <button type="button" class="bpm-btn plus" aria-label="BPM up">+</button>
       <button type="button" class="bpm-btn minus" aria-label="BPM down">-</button>
+      <!-- On, the engine plays the host's tempo and the digits read 5YN. -->
+      <button type="button" class="bpm-sync" id="bpm-sync" aria-pressed="false" aria-label="Sync">SYNC</button>
 
       <span class="mix-caption volume">VOLUME</span>
       <div class="mix-slider volume"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
@@ -117,6 +119,44 @@
         <ol class="fx-scale" aria-hidden="true" style="left: 102px"><li>2</li><li>1</li><li>1/2</li><li>1/4</li><li>1/8</li><li>1/16</li></ol>
       </div>
       <button type="button" class="fx-randomize" id="fx-randomize">RANDOMIZE</button>
+    </div>
+    <div class="case"></div>
+  </section>
+  <section class="part beatrepeat" aria-label="Beat repeat">
+    <div class="window"></div>
+    <div class="content">
+      <!-- ON / OFF | POS. 8 toggles | SIZE (min / max, 1/32 .. 2, index 0..6) over MIX (0..1) | LENGTH (1/16 .. 2, index 0..5) over CHANCE (0..1) -->
+      <button type="button" class="br-power" id="br-power" aria-pressed="false">OFF</button>
+      <span class="br-name pos">POS.</span>
+      <div class="br-positions" role="group" aria-label="Positions">
+        <input type="checkbox" class="br-pos" id="br-pos-1" style="left: 84px" aria-label="Position 1">
+        <input type="checkbox" class="br-pos" id="br-pos-2" style="left: 98px" aria-label="Position 2">
+        <input type="checkbox" class="br-pos" id="br-pos-3" style="left: 112px" aria-label="Position 3">
+        <input type="checkbox" class="br-pos" id="br-pos-4" style="left: 126px" aria-label="Position 4">
+        <input type="checkbox" class="br-pos" id="br-pos-5" style="left: 140px" aria-label="Position 5">
+        <input type="checkbox" class="br-pos" id="br-pos-6" style="left: 154px" aria-label="Position 6">
+        <input type="checkbox" class="br-pos" id="br-pos-7" style="left: 168px" aria-label="Position 7">
+        <input type="checkbox" class="br-pos" id="br-pos-8" style="left: 182px" aria-label="Position 8">
+      </div>
+
+      <span class="br-name size">SIZE</span>
+      <div class="br-scale" aria-hidden="true"></div>
+      <div class="br-range" id="br-size">
+        <div class="track lit"></div><div class="track dark"></div><div class="pin min"></div><div class="pin max"></div>
+        <input type="range" class="min" id="br-size-min" min="0" max="6" step="1" value="5" aria-label="Size minimum">
+        <input type="range" class="max" id="br-size-max" min="0" max="6" step="1" value="5" aria-label="Size maximum">
+      </div>
+      <span class="br-name mix">MIX</span>
+      <div class="br-slider long mix"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="br-mix" min="0" max="1" step="0.01" value="1" aria-label="Mix"></div>
+
+      <span class="br-name length">LENGTH</span>
+      <output class="br-value length" id="br-length-value" for="br-length" aria-hidden="true" data-i="4">1</output>
+      <div class="br-slider short length"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="br-length" min="0" max="5" step="1" value="4" aria-label="Length"></div>
+      <span class="br-name chance">CHANCE</span>
+      <div class="br-slider short chance"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="br-chance" min="0" max="1" step="0.01" value="0" aria-label="Chance"></div>
     </div>
     <div class="case"></div>
   </section>

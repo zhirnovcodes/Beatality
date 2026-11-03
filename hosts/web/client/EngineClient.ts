@@ -238,9 +238,9 @@ export class EngineClient {
         this.node?.port.postMessage(trackMessage(index, play))
     }
 
-    async setOutput(volume: number, pan: number): Promise<void> {
+    async setOutput(volume: number, panMin: number, panMax: number): Promise<void> {
         await this.start()
-        this.node?.port.postMessage({ type: 'output', volume, pan })
+        this.node?.port.postMessage({ type: 'output', volume, panMin, panMax })
     }
 
     // Empties the bank. A sounding voice fades out.
@@ -316,7 +316,8 @@ export class EngineClient {
             slices: doc.slices,
             attack: doc.attack,
             volume: doc.volume,
-            pan: doc.pan,
+            panMin: doc.panMin,
+            panMax: doc.panMax,
             savedCount: doc.sequence.savedCount,
             slots: doc.sequence.slots,
             tracks,
@@ -366,7 +367,8 @@ export class EngineClient {
                 slices: install.slices,
                 attack: install.attack,
                 volume: install.volume,
-                pan: install.pan,
+                panMin: install.panMin,
+                panMax: install.panMax,
                 savedCount: install.savedCount,
                 slots: install.slots,
                 tracks,
@@ -551,7 +553,8 @@ export interface PackInstall {
     slices: number
     attack: number
     volume: number
-    pan: number
+    panMin: number
+    panMax: number
     savedCount: number
     slots: number[]
     tracks: PackInstallTrack[]

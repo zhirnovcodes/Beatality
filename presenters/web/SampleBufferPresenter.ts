@@ -66,6 +66,16 @@ export class SampleBufferPresenter {
         return picture.samples.length / picture.sampleRate
     }
 
+    // How much start moves when the wave moves one pixel. 0 when there is no sample.
+    startPerPixel(): number {
+        const picture = this.picture
+        if (!picture || picture.samples.length === 0) {
+            return 0
+        }
+        const imageWidth = this.place(picture).imageWidth
+        return imageWidth > 0 ? 1 / imageWidth : 0
+    }
+
     read(): TrackEdit | null {
         if (!this.picture) {
             return null
