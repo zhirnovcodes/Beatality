@@ -48,6 +48,13 @@ function holdSnap(input: HTMLInputElement): number {
     return value
 }
 
+// The BEAT slider's steps, in beats. Its index over the last index is the engine's warp param.
+const beatSteps = ['1/32', '1/16', '1/8', '1/4', '1/2', '1', '2']
+
+// The sample BPM field accepts this range, one decimal place.
+const bpmMin = 20
+const bpmMax = 999
+
 // Skin sample row. The grid is 424px wide and each row is 28px tall.
 const skinRow = { width: 424, height: 28, offset: 0, chrome: false }
 
@@ -65,9 +72,10 @@ export class WebPresenter {
     private lengthInput: HTMLInputElement | null = null
     private startTimeInput: HTMLInputElement | null = null
     private loopInput: HTMLInputElement | null = null
-    private warpModeInput: HTMLSelectElement | null = null
-    private warpParamInput: HTMLInputElement | null = null
-    private warpBpmInput: HTMLInputElement | null = null
+    private bpmInput: HTMLInputElement | null = null
+    private warpOutput: HTMLOutputElement | null = null
+    private beatInput: HTMLInputElement | null = null
+    private beatCaption: HTMLElement | null = null
     private selectionListener: (index: number) => void = () => {}
 
     constructor(
@@ -143,13 +151,25 @@ export class WebPresenter {
         const length = panel.querySelector('#length')
         const startTime = panel.querySelector('#start-time')
         const loop = panel.querySelector('#track-loop')
+        const bpm = panel.querySelector('#track-bpm')
+        const warpPrev = panel.querySelector('#warp-prev')
+        const warpNext = panel.querySelector('#warp-next')
+        const warp = panel.querySelector('#track-warp')
+        const beat = panel.querySelector('#track-beat')
+        const beatCaption = panel.querySelector('.name.beat .value')
         if (
             !(volume instanceof HTMLInputElement) ||
             !(pan instanceof HTMLInputElement) ||
             !(start instanceof HTMLInputElement) ||
             !(length instanceof HTMLInputElement) ||
             !(startTime instanceof HTMLInputElement) ||
-            !(loop instanceof HTMLInputElement)
+            !(loop instanceof HTMLInputElement) ||
+            !(bpm instanceof HTMLInputElement) ||
+            !(warpPrev instanceof HTMLButtonElement) ||
+            !(warpNext instanceof HTMLButtonElement) ||
+            !(warp instanceof HTMLOutputElement) ||
+            !(beat instanceof HTMLInputElement) ||
+            !(beatCaption instanceof HTMLElement)
         ) {
             throw new Error('missing sample panel')
         }
@@ -160,6 +180,10 @@ export class WebPresenter {
         this.lengthInput = length
         this.startTimeInput = startTime
         this.loopInput = loop
+        this.bpmInput = bpm
+        this.warpOutput = warp
+        this.beatInput = beat
+        this.beatCaption = beatCaption
         volume.addEventListener('input', () => {
             this.editSelected({ volume: holdSnap(volume) })
         })
@@ -183,37 +207,11 @@ export class WebPresenter {
                 startTime.blur()
             }
         })
-        this.syncPanel()
-    }
-
-    // Warp mode, warp param, and the sample's own BPM for the selected row.
-    // These go to the engine only. The waveform keeps showing the file at the project tempo.
-    bindWarp(panel: HTMLFieldSetElement) {
-        if (this.warpModeInput) {
-            return
-        }
-        const mode = panel.querySelector('#warp-mode')
-        const param = panel.querySelector('#warp-param')
-        const bpm = panel.querySelector('#warp-bpm')
-        if (!(mode instanceof HTMLSelectElement) || !(param instanceof HTMLInputElement) || !(bpm instanceof HTMLInputElement)) {
-            throw new Error('missing warp panel')
-        }
-        this.warpModeInput = mode
-        this.warpParamInput = param
-        this.warpBpmInput = bpm
-        mode.addEventListener('change', () => {
-            const warp = warpModes.find((item) => item === mode.value)
-            if (warp) {
-                this.editWarp({ warp })
-            }
-        })
-        param.addEventListener('input', () => {
-            this.editWarp({ warpParam: Number(param.value) })
-        })
+        // BPM, WARP, and BEAT go to the engine only. The waveform keeps showing the file at its own BPM.
         bpm.addEventListener('change', () => {
             const parsed = Number.parseFloat(bpm.value.trim().replace(',', '.'))
             const current = this.client.registry.playAt(this.selected)
-            const value = Number.isFinite(parsed) ? sampleBpm(parsed) : (current?.bpm ?? 120)
+            const value = Number.isFinite(parsed) ? Math.min(bpmMax, Math.max(bpmMin, sampleBpm(parsed))) : (current?.bpm ?? 120)
             bpm.value = value.toFixed(1)
             this.editWarp({ bpm: value })
         })
@@ -222,7 +220,26 @@ export class WebPresenter {
                 bpm.blur()
             }
         })
+        warpPrev.addEventListener('click', () => this.stepWarp(-1))
+        warpNext.addEventListener('click', () => this.stepWarp(1))
+        // The slider is an index into beatSteps. The engine param is that index over the last one.
+        beat.addEventListener('input', () => {
+            placeThumb(beat)
+            beatCaption.textContent = beatSteps[Number(beat.value)] ?? ''
+            this.editWarp({ warpParam: Number(beat.value) / (beatSteps.length - 1) })
+        })
         this.syncPanel()
+    }
+
+    // Steps WARP through none → beat → pitch, wrapping, for the selected sample.
+    private stepWarp(delta: 1 | -1) {
+        const current = this.client.registry.playAt(this.selected)
+        if (this.selected < 0 || !current) {
+            return
+        }
+        const at = warpModes.indexOf(current.warp)
+        this.editWarp({ warp: warpModes[(at + delta + warpModes.length) % warpModes.length] })
+        this.syncWarp()
     }
 
     private editWarp(patch: Partial<SampleSettings>) {
@@ -464,15 +481,22 @@ export class WebPresenter {
 
     private syncWarp() {
         const play = this.selected >= 0 ? this.client.registry.playAt(this.selected) : null
-        const mode = this.warpModeInput
-        const param = this.warpParamInput
-        const bpm = this.warpBpmInput
-        if (mode && document.activeElement !== mode) {
-            mode.value = play?.warp ?? 'none'
+        const warp = play?.warp ?? 'none'
+        if (this.warpOutput) {
+            this.warpOutput.dataset.value = warp
+            this.warpOutput.textContent = warp.toUpperCase()
         }
-        if (param && document.activeElement !== param) {
-            param.value = String(play?.warpParam ?? 0)
+        const beat = this.beatInput
+        if (beat) {
+            // BEAT changes the sound only in beat mode, so it is disabled in the others.
+            beat.disabled = warp !== 'beat'
+            const index = Math.round((play?.warpParam ?? 0) * (beatSteps.length - 1))
+            this.writeRange(beat, index)
+            if (this.beatCaption) {
+                this.beatCaption.textContent = beatSteps[Number(beat.value)] ?? ''
+            }
         }
+        const bpm = this.bpmInput
         if (bpm && document.activeElement !== bpm) {
             bpm.value = (play?.bpm ?? 120).toFixed(1)
         }

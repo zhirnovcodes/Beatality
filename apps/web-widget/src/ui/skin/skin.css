@@ -3,7 +3,7 @@
 .beatality-skin {
   position: relative;
   width: 496px;
-  height: 667px;   /* top 210 + effects 200 + samples 257 */
+  height: 707px;   /* top 210 + effects 200 + samples 297 */
   user-select: none;
 }
 .beatality-skin .part {
@@ -13,7 +13,7 @@
 }
 .beatality-skin .part.top     { top: 0;     height: 210px; }
 .beatality-skin .part.effects { top: 210px; height: 200px; }
-.beatality-skin .part.bottom  { top: 410px; height: 257px; }
+.beatality-skin .part.bottom  { top: 410px; height: 297px; }
 
 /* window layer (glass / screen) below, metal case above it */
 .beatality-skin .part > .window,
@@ -240,8 +240,10 @@
 /* ---------- Lower part: controls under the sample screen ----------
    Left: five round buttons ADD, REMOVE, CLEAR, LOAD, SAVE (floppy); labels engraved in bottom_case.png,
    a recess round each button cut into it too.
-   Right: one convex green screen (bottom_panel.png, 234 x 52 at x 236) — three columns:
-     VOLUME slider, PAN under it | START slider, LENGTH under it | start time field (sec), LOOP toggle under it.
+   Right: short convex panel (bottom_panel.png, 234 x 32 at x 236, y 201) with the selected sample's file name;
+   the bank picker buttons take its place while LOAD is open.
+   Under the buttons: dark green screen under the case (458 x 44 at x 12, y 246; in bottom_screen.png / bottom_case.png)
+   with the selected sample's controls.
    Sliders: same pixel design (short groove 64 px), no ticks; a small mark shows the snap point (Volume 1, Pan 0). */
 .beatality-skin .round-btn {
   position: absolute; top: 201px; width: 24px; height: 24px;
@@ -277,64 +279,94 @@
   pointer-events: none;
 }
 
-.beatality-skin .sample-panel {
-  position: absolute; left: 236px; top: 198px; width: 234px; height: 52px;
-  margin: 0; padding: 0; border: 0; min-width: 0;
+/* file name of the selected sample: short convex panel right of the buttons (bottom_panel.png, 234 x 32 at x 236, y 201;
+   top level with the buttons' tops, right end at x 470 like the sample list screen) */
+.beatality-skin .track-name {
+  position: absolute; left: 236px; top: 201px; width: 234px; height: 32px; box-sizing: border-box; padding: 0 14px;
   background: url("../shapes/bottom_panel.png") 0 0 / 100% 100% no-repeat;
+  font: 700 12px/32px Consolas, "Courier New", monospace; color: #0b1d02;   /* keeps the file name's case */
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.beatality-skin .sample-panel .col { position: absolute; top: 1px; width: 64px; height: 46px; }
-.beatality-skin .sample-panel .col.c1 { left: 10px; }
-.beatality-skin .sample-panel .col.c2 { left: 85px; }
-.beatality-skin .sample-panel .col.c3 { left: 160px; }
+.beatality-skin.picking-bank .track-name { visibility: hidden; }
 
-/* captions: Orbitron Bold, black, no background */
+/* selected sample's controls: a dark green screen under the metal case, like the sample list screen (458 x 44 at x 12, y 246,
+   radius 5, right end at 470 like the sample list screen; drawn in bottom_screen.png, the case's opening and its drop shadow in bottom_case.png).
+   Two rows (sliders' grooves at y 15 and 33 inside the panel):
+   VOL / PAN | START / LENGTH | start time field / LOOP | BPM over its field | WARP over < value > | BEAT over its slider.
+   Captions: Orbitron Bold, lime with a soft glow, no background. Sliders: pixel groove (66 px, slider_track_props.png) and the small pin. */
+.beatality-skin .sample-panel {
+  position: absolute; left: 12px; top: 246px; width: 458px; height: 44px;
+  margin: 0; padding: 0; border: 0; min-width: 0;
+  background: none;   /* the dark screen is part of bottom_screen.png, the case round it in bottom_case.png */
+}
+.beatality-skin.picking-bank .sample-panel > * { visibility: hidden; }
+
 .beatality-skin .sample-panel .name {
-  position: absolute; left: 0; height: 9px;
-  font: 700 7.5px/9px "Orbitron", sans-serif; letter-spacing: 0.9px; white-space: nowrap;
-  color: #000;
+  position: absolute; height: 10px;
+  font: 700 7.5px/10px "Orbitron", sans-serif; letter-spacing: 0.9px; white-space: nowrap;
+  color: #c4ff34; text-shadow: 0 0 2px rgba(196, 255, 52, 0.45);   /* lime on the dark screen, like the top captions */
 }
-.beatality-skin .sample-panel .name.top    { top: 1px; }
-.beatality-skin .sample-panel .name.bottom { top: 24px; }
-.beatality-skin .sample-panel .name.loop   { top: 34px; height: 10px; line-height: 10px; }   /* level with "SEC" */
+.beatality-skin .sample-panel .name.vol    { left: 12px;  top: 8px; }
+.beatality-skin .sample-panel .name.pan    { left: 12px;  top: 26px; }
+.beatality-skin .sample-panel .name.start  { left: 112px; top: 8px; }
+.beatality-skin .sample-panel .name.length { left: 112px; top: 26px; }
+.beatality-skin .sample-panel .name.loop   { left: 216px; top: 26px; }
+.beatality-skin .sample-panel .name.bpm    { left: 270px; top: 6px; width: 38px; text-align: center; }
+.beatality-skin .sample-panel .name.warp   { left: 318px; top: 6px; width: 56px; text-align: center; }
+.beatality-skin .sample-panel .name.beat   { left: 381px; top: 6px; width: 66px; text-align: center; }
+.beatality-skin .sample-panel .name .value { font-weight: 700; }
 
-/* short pixel sliders (64 px), 11 px apart horizontally; thumb sits on the groove */
-.beatality-skin .sample-panel .slider { left: 0; width: 64px; height: 12px; }
-.beatality-skin .sample-panel .slider.top    { top: 9px; }
-.beatality-skin .sample-panel .slider.bottom { top: 32px; }
-.beatality-skin .sample-panel .col.c1 .slider.top    { --snap: 0.833333; }   /* volume snaps to 1 */
-.beatality-skin .sample-panel .col.c1 .slider.bottom { --snap: 0.5; }         /* pan snaps to 0 */
-.beatality-skin .sample-panel .slider > .track { top: 6px; width: 64px; background-image: url("../shapes/slider_track_short.png"); }
-.beatality-skin .sample-panel .slider > .thumb {   /* smaller pin: 14 x 10 (slider_thumb_small.png), tip on the groove */
-  top: 2px; width: 14px; height: 10px; left: calc(3px + var(--pos) * 58px - 7px);
+/* pixel sliders (66 px); thumb sits on the groove. BEAT keeps 56 px. */
+.beatality-skin .sample-panel .slider { width: 66px; height: 12px; }
+.beatality-skin .sample-panel .slider.vol    { left: 40px;  top: 6px; --snap: 0.833333; }   /* volume snaps to 1 */
+.beatality-skin .sample-panel .slider.pan    { left: 40px;  top: 24px; --snap: 0.5; }       /* pan snaps to 0 */
+.beatality-skin .sample-panel .slider.start  { left: 140px; top: 6px; }
+.beatality-skin .sample-panel .slider.length { left: 140px; top: 24px; }
+.beatality-skin .sample-panel .slider.beat   { left: 386px; top: 24px; width: 56px; }
+/* BEAT works only in BEAT mode; the page disables it otherwise */
+.beatality-skin .sample-panel .slider.beat:has(input:disabled) { opacity: 0.4; }
+.beatality-skin .sample-panel .slider > .track { top: 6px; width: 66px; background-image: url("../shapes/slider_track_props.png"); }
+.beatality-skin .sample-panel .slider > .thumb {   /* small pin: 14 x 10 (slider_thumb_small.png), tip on the groove */
+  top: 2px; width: 14px; height: 10px; left: calc(3px + var(--pos) * 60px - 7px);
   background-image: url("../shapes/slider_thumb_small.png");
 }
 .beatality-skin .sample-panel .slider > .snap {
   position: absolute; top: 3px; width: 2px; height: 3px; background: #0b1d02; pointer-events: none;
-  left: calc(3px + var(--snap) * 58px - 1px);
+  left: calc(3px + var(--snap) * 60px - 1px);
 }
-.beatality-skin .sample-panel .slider > input[type="range"] { left: -6px; top: -2px; width: 76px; height: 16px; }
+.beatality-skin .sample-panel .slider > input[type="range"] { left: -6px; top: -2px; width: 78px; height: 16px; }
 
-/* start time field (seconds), under START */
-.beatality-skin .sample-panel .time { position: absolute; left: 0; top: 9px; height: 14px; width: 64px; }   /* top row, above LOOP: bottom at 23 = top groove bottom */
-.beatality-skin .sample-panel .time input {
-  position: absolute; left: 0; top: 0; width: 42px; height: 14px; box-sizing: border-box;
+/* text fields: start time (seconds) and the sample's BPM */
+.beatality-skin .sample-panel .field {
+  position: absolute; height: 14px; box-sizing: border-box;
   margin: 0; padding: 0 3px; border: 1px solid #10300a; border-radius: 0; outline: none;
   background: #ecff7a; box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.25);
   font: 400 8px/12px "Silkscreen", monospace; color: #0b1d02; text-align: right;
 }
-.beatality-skin .sample-panel .time input:focus { background: #f6ffb0; }
-.beatality-skin .sample-panel .time .unit {
-  position: absolute; left: 46px; top: 2px;
-  font: 700 7.5px/10px "Orbitron", sans-serif; letter-spacing: 0.9px; color: #000;
-}
+.beatality-skin .sample-panel .field:focus { background: #f6ffb0; }
+.beatality-skin .sample-panel .field.time { left: 216px; top: 6px; width: 44px; }
+.beatality-skin .sample-panel .field.bpm  { left: 270px; top: 23px; width: 38px; }
 
 .beatality-skin .sample-panel .toggle {
-  position: absolute; left: 46px; top: 32px; width: 14px; height: 14px;   /* bottom at 46, level with the field */
+  position: absolute; left: 246px; top: 23px; width: 14px; height: 14px;
   margin: 0; appearance: none; cursor: pointer; image-rendering: pixelated;
   background: url("../shapes/loop_toggle.png") 0 0 / 100% 100% no-repeat;
 }
 .beatality-skin .sample-panel .toggle:checked { background-image: url("../shapes/loop_toggle_on.png"); }
 .beatality-skin .sample-panel .toggle:focus-visible { outline: 1px dotted #0b1d02; outline-offset: 1px; }
+
+/* WARP: < value > ; arrows are pixel buttons (black box, yellow triangle, 12 x 16) */
+.beatality-skin .sample-panel .warp-btn {
+  position: absolute; top: 22px; width: 12px; height: 16px; margin: 0; padding: 0; border: 0; cursor: pointer;
+  background: 0 0 / 100% 100% no-repeat; image-rendering: pixelated;
+}
+.beatality-skin .sample-panel .warp-btn.prev { left: 318px; background-image: url("../shapes/warp_left.png"); }
+.beatality-skin .sample-panel .warp-btn.next { left: 362px; background-image: url("../shapes/warp_right.png"); }
+.beatality-skin .sample-panel .warp-btn:active { filter: brightness(0.75); }
+.beatality-skin .sample-panel .warp-value {
+  position: absolute; left: 330px; top: 23px; width: 32px; height: 14px; text-align: center;
+  font: 400 8px/14px "Silkscreen", monospace; color: #c4ff34;
+}
 
 /* ---------- Upper part: playhead position (like the reference's seek bar) ----------
    Dotted band across the whole glass (seek_band.png, 496 x 14 at y 127; its ends run under the case),
@@ -390,28 +422,27 @@
    .picking-bank greys the five round buttons and swaps those two screens. */
 .beatality-skin .bank-view { display: none; padding: 16px 8px 10px; font: 700 13px/16px Consolas, "Courier New", monospace; }
 .beatality-skin.picking-bank .bank-view { display: block; }
-.beatality-skin.picking-bank .sample-grid,
-.beatality-skin.picking-bank .sample-panel { display: none; }
+.beatality-skin.picking-bank .sample-grid { display: none; }   /* the file name and the per-sample controls are hidden too (see above) */
 .beatality-skin .bank-view .header { text-align: center; color: #e2ff7a; letter-spacing: 0.5px; margin-bottom: 8px; }
 .beatality-skin .bank-list { margin: 0; padding: 0; list-style: none; }
 .beatality-skin .bank-list > li { padding: 0 4px; color: #c8ff3a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 .beatality-skin .bank-list > li[aria-selected="true"] { background: #050d02; color: #f0ff9a; }
 
 .beatality-skin .bank-panel {
-  display: none; position: absolute; left: 236px; top: 198px; width: 234px; height: 52px;
+  display: none; position: absolute; left: 236px; top: 201px; width: 234px; height: 32px;
   background: url("../shapes/bottom_panel.png") 0 0 / 100% 100% no-repeat;
   align-items: center; justify-content: center; gap: 6px;
 }
 .beatality-skin.picking-bank .bank-panel { display: flex; }
 .beatality-skin .bank-btn {
-  height: 24px; margin: 0; padding: 0 7px; cursor: pointer;
+  height: 22px; margin: 0; padding: 0 7px; cursor: pointer;
   border: 1px solid #c9d0b4; outline: 1px solid #020600; border-radius: 0;
   background: #030a01; color: #d6ff3c;
-  font: 700 13px/22px Consolas, "Courier New", monospace; letter-spacing: 0.5px;
+  font: 700 13px/20px Consolas, "Courier New", monospace; letter-spacing: 0.5px;
 }
 .beatality-skin .bank-btn:active { background: #0f2a04; }
 .beatality-skin .bank-btn:disabled { cursor: default; background: #6f7166; border-color: #8a8c80; color: #d2d98a; }
-.beatality-skin .bank-btn.close { width: 24px; padding: 0; }
+.beatality-skin .bank-btn.close { width: 22px; padding: 0; }
 
 /* ---------- Effects part: RANDOMIZE, caption boxes, vertical sliders ----------
    Caption boxes sit on the screen above each group. Sliders are pixel art (fx_*.png is 2x):
@@ -473,3 +504,6 @@
 .beatality-skin .fx-scale > li:nth-child(4) { top: 59px; }
 .beatality-skin .fx-scale > li:nth-child(5) { top: 76px; }
 .beatality-skin .fx-scale > li:nth-child(6) { top: 94px; }
+.beatality-skin .sample-panel .slider.beat > .track { width: 56px; background-image: url("../shapes/slider_track_beat.png"); }
+.beatality-skin .sample-panel .slider.beat > .thumb { left: calc(3px + var(--pos) * 50px - 7px); }
+.beatality-skin .sample-panel .slider.beat > input[type="range"] { width: 68px; }

@@ -7,14 +7,12 @@ export function Widget({
     model,
     grid,
     bindPanel,
-    bindWarp,
     listenSelection,
     chosen,
 }: {
     model: WebViewModel
     grid: HTMLElement
     bindPanel: (panel: HTMLFieldSetElement) => void
-    bindWarp: (panel: HTMLFieldSetElement) => void
     listenSelection: (listener: (index: number) => void) => void
     chosen: () => number
 }) {
@@ -36,11 +34,7 @@ export function Widget({
             bindPanel(panel)
         }
     }).current
-    const onWarp = useRef((panel: HTMLFieldSetElement | null) => {
-        if (panel) {
-            bindWarp(panel)
-        }
-    }).current
+    const chosenName = model.tracks[chosenIndex]?.name ?? ''
 
     useEffect(() => model.subscribe(() => setTick((tick) => tick + 1)), [model])
     useEffect(() => listenSelection(setChosenIndex), [listenSelection])
@@ -654,94 +648,85 @@ export function Widget({
                                 X
                             </button>
                         </div>
+                        {/* Selected sample's file name, right of the buttons. The bank picker buttons take its place. */}
+                        <div className="track-name" id="track-name" title={chosenName}>
+                            {chosenName}
+                        </div>
+                        {/* Selected sample's controls, on the dark screen under the buttons:
+                            VOL / PAN | ST. (start) / LEN. (length) | start time / LOOP | BPM | WARP (none, beat, pitch) | BEAT (1/32 .. 2) */}
                         <fieldset className="sample-panel" id="selected-sample" disabled={chosenIndex < 0} ref={onPanel}>
-                            <div className="col c1">
-                                <span className="name top">VOLUME</span>
-                                <div className="slider top">
-                                    <div className="track" />
-                                    <div className="snap" />
-                                    <div className="thumb" />
-                                    <input
-                                        type="range"
-                                        id="volume"
-                                        min={0}
-                                        max={1.2}
-                                        step={0.01}
-                                        defaultValue={1}
-                                        aria-label="Volume"
-                                        data-snap="1"
-                                    />
-                                </div>
-                                <span className="name bottom">PAN</span>
-                                <div className="slider bottom">
-                                    <div className="track" />
-                                    <div className="snap" />
-                                    <div className="thumb" />
-                                    <input
-                                        type="range"
-                                        id="pan"
-                                        min={-1}
-                                        max={1}
-                                        step={0.01}
-                                        defaultValue={0}
-                                        aria-label="Pan"
-                                        data-snap="0"
-                                    />
-                                </div>
+                            <span className="name vol">VOL</span>
+                            <div className="slider vol">
+                                <div className="track" />
+                                <div className="snap" />
+                                <div className="thumb" />
+                                <input type="range" id="volume" min={0} max={1.2} step={0.01} defaultValue={1} aria-label="Volume" data-snap="1" />
                             </div>
-                            <div className="col c2">
-                                <span className="name top">START</span>
-                                <div className="slider top">
-                                    <div className="track" />
-                                    <div className="thumb" />
-                                    <input type="range" id="start" min={0} max={1} step={0.001} defaultValue={0} aria-label="Start" />
-                                </div>
-                                <span className="name bottom">LENGTH</span>
-                                <div className="slider bottom">
-                                    <div className="track" />
-                                    <div className="thumb" />
-                                    <input type="range" id="length" min={0} max={1} step={0.001} defaultValue={1} aria-label="Length" />
-                                </div>
+                            <span className="name pan">PAN</span>
+                            <div className="slider pan">
+                                <div className="track" />
+                                <div className="snap" />
+                                <div className="thumb" />
+                                <input type="range" id="pan" min={-1} max={1} step={0.01} defaultValue={0} aria-label="Pan" data-snap="0" />
                             </div>
-                            <div className="col c3">
-                                <div className="time">
-                                    <input
-                                        type="text"
-                                        id="start-time"
-                                        defaultValue="0.00"
-                                        inputMode="decimal"
-                                        spellcheck={false}
-                                        aria-label="Start (seconds)"
-                                        data-max="0"
-                                    />
-                                    <span className="unit">SEC</span>
-                                </div>
-                                <span className="name loop">LOOP</span>
-                                <input type="checkbox" className="toggle" id="track-loop" aria-label="Loop" />
+
+                            <span className="name start">ST.</span>
+                            <div className="slider start">
+                                <div className="track" />
+                                <div className="thumb" />
+                                <input type="range" id="start" min={0} max={1} step={0.001} defaultValue={0} aria-label="Start" />
+                            </div>
+                            <span className="name length">LEN.</span>
+                            <div className="slider length">
+                                <div className="track" />
+                                <div className="thumb" />
+                                <input type="range" id="length" min={0} max={1} step={0.001} defaultValue={1} aria-label="Length" />
+                            </div>
+
+                            <input
+                                type="text"
+                                className="field time"
+                                id="start-time"
+                                defaultValue="0.00"
+                                inputMode="decimal"
+                                spellcheck={false}
+                                aria-label="Start (seconds)"
+                                data-max="0"
+                            />
+                            <span className="name loop">LOOP</span>
+                            <input type="checkbox" className="toggle" id="track-loop" aria-label="Loop" />
+
+                            <span className="name bpm">BPM</span>
+                            <input
+                                type="text"
+                                className="field bpm"
+                                id="track-bpm"
+                                defaultValue="120.0"
+                                inputMode="decimal"
+                                spellcheck={false}
+                                aria-label="Sample BPM"
+                            />
+
+                            <span className="name warp">WARP</span>
+                            <button type="button" className="warp-btn prev" id="warp-prev" aria-label="Previous warp mode" />
+                            <output className="warp-value" id="track-warp" data-value="none" aria-label="Warp">
+                                NONE
+                            </output>
+                            <button type="button" className="warp-btn next" id="warp-next" aria-label="Next warp mode" />
+
+                            <span className="name beat">
+                                BEAT <b className="value" />
+                            </span>
+                            <div className="slider beat">
+                                <div className="track" />
+                                <div className="thumb" />
+                                <input type="range" id="track-beat" min={0} max={6} step={1} defaultValue={3} aria-label="Beat" />
                             </div>
                         </fieldset>
                     </div>
                 </section>
             </div>
             <p id="error">{model.error}</p>
-            {/* Unstyled warp controls for the selected sample, outside the skin. */}
-            <fieldset id="warp-panel" disabled={chosenIndex < 0} ref={onWarp}>
-                <label>
-                    Warp{' '}
-                    <select id="warp-mode" aria-label="Warp mode">
-                        <option value="none">None</option>
-                        <option value="beat">Beat</option>
-                        <option value="pitch">Pitch</option>
-                    </select>
-                </label>{' '}
-                <label>
-                    Param <input type="range" id="warp-param" min={0} max={1} step={0.01} defaultValue={0} aria-label="Warp param" />
-                </label>{' '}
-                <label>
-                    BPM{' '}
-                    <input type="number" id="warp-bpm" min={1} max={999.9} step={0.1} defaultValue={120} aria-label="Sample BPM" />
-                </label>
-            </fieldset>
         </>
     )
 }
