@@ -56,6 +56,7 @@ void Sequence::clear() {
     clearRolls(rolls_, 0, size_);
     clearEffects(effects_, 0, size_);
     clearRolls(panRolls_, 0, size_);
+    clearRolls(beatRolls_, 0, size_);
     size_ = 0;
     savedCount_ = 0;
 }
@@ -75,11 +76,15 @@ void Sequence::generate(int slotCount, int trackCount, Rng& rng, const Effects& 
     for (int i = 0; i < slotCount; ++i) {
         panRolls_[i] = rng.nextFloat() * 2.0f - 1.0f;
     }
+    for (int i = 0; i < slotCount; ++i) {
+        beatRolls_[i] = rng.nextFloat();
+    }
     if (slotCount < previous) {
         clearFrom(slots_, slotCount, previous);
         clearRolls(rolls_, slotCount, previous);
         clearEffects(effects_, slotCount, previous);
         clearRolls(panRolls_, slotCount, previous);
+        clearRolls(beatRolls_, slotCount, previous);
     }
     size_ = slotCount;
     savedCount_ = trackCount;
@@ -99,6 +104,9 @@ void Sequence::append(int slotCount, Rng& rng, const Effects& settings) {
     for (int i = from; i < slotCount; ++i) {
         panRolls_[i] = rng.nextFloat() * 2.0f - 1.0f;
     }
+    for (int i = from; i < slotCount; ++i) {
+        beatRolls_[i] = rng.nextFloat();
+    }
     size_ = slotCount;
 }
 
@@ -107,6 +115,7 @@ void Sequence::crop(int slotCount) {
     clearRolls(rolls_, slotCount, size_);
     clearEffects(effects_, slotCount, size_);
     clearRolls(panRolls_, slotCount, size_);
+    clearRolls(beatRolls_, slotCount, size_);
     size_ = slotCount;
 }
 
@@ -117,12 +126,14 @@ void Sequence::assign(const std::uint16_t* slots, int size, int savedCount) {
         rolls_[i] = 1.0f;
         effects_[i] = EffectId::None;
         panRolls_[i] = 0.0f;
+        beatRolls_[i] = 0.0f;
     }
     if (size < previous) {
         clearFrom(slots_, size, previous);
         clearRolls(rolls_, size, previous);
         clearEffects(effects_, size, previous);
         clearRolls(panRolls_, size, previous);
+        clearRolls(beatRolls_, size, previous);
     }
     size_ = size;
     savedCount_ = savedCount;
@@ -133,6 +144,8 @@ float Sequence::rollAt(int slot) const { return rolls_[slot]; }
 EffectId Sequence::effectAt(int slot) const { return effects_[slot]; }
 
 float Sequence::panRollAt(int slot) const { return panRolls_[slot]; }
+
+float Sequence::beatRollAt(int slot) const { return beatRolls_[slot]; }
 
 int Sequence::indexAt(int slot, int trackCount) const {
     const int stored = slots_[slot];

@@ -139,7 +139,11 @@ std::optional<PackDocument> decodePack(const juce::String& text) {
     pack.slices = fitSlice(slices, loop);
     pack.attack = attack;
     pack.volume = clamp(static_cast<double>(object->getProperty("volume")), 0.0, 1.2);
-    pack.pan = clamp(static_cast<double>(object->getProperty("pan")), -1.0, 1.0);
+    const double pan = static_cast<double>(object->getProperty("pan"));
+    const double panMin = object->hasProperty("panMin") ? static_cast<double>(object->getProperty("panMin")) : pan;
+    const double panMax = object->hasProperty("panMax") ? static_cast<double>(object->getProperty("panMax")) : pan;
+    pack.panMin = clamp(panMin, -1.0, 1.0);
+    pack.panMax = clamp(panMax, pack.panMin, 1.0);
     pack.savedCount = savedCount;
     pack.slots.reserve(static_cast<std::size_t>(slots->size()));
     for (const juce::var& slot : *slots) {
@@ -178,7 +182,8 @@ juce::String encodePack(const PackDocument& pack) {
     object->setProperty("slices", pack.slices);
     object->setProperty("attack", pack.attack);
     object->setProperty("volume", pack.volume);
-    object->setProperty("pan", pack.pan);
+    object->setProperty("panMin", pack.panMin);
+    object->setProperty("panMax", pack.panMax);
 
     juce::Array<juce::var> slots;
     for (std::uint16_t slot : pack.slots) {

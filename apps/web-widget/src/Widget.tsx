@@ -13,14 +13,14 @@ export function Widget({
     model: WebViewModel
     grid: HTMLElement
     bindPanel: (panel: HTMLFieldSetElement) => void
-    listenSelection: (listener: (index: number) => void) => void
-    chosen: () => number
+    listenSelection: (listener: (selected: readonly number[]) => void) => void
+    chosen: () => readonly number[]
 }) {
     const [, setTick] = useState(0)
     const [loadingPack, setLoadingPack] = useState(false)
     const [bankOpen, setBankOpen] = useState(false)
     const [bankIndex, setBankIndex] = useState(0)
-    const [chosenIndex, setChosenIndex] = useState(-1)
+    const [selection, setSelection] = useState<readonly number[]>([])
     const skin = useRef<HTMLDivElement>(null)
     const bpmRef = useRef<HTMLInputElement>(null)
     const files = useRef<HTMLInputElement>(null)
@@ -34,10 +34,11 @@ export function Widget({
             bindPanel(panel)
         }
     }).current
-    const chosenName = model.tracks[chosenIndex]?.name ?? ''
+    const chosenName =
+        selection.length === 0 ? 'none selected' : selection.length > 1 ? 'multiple selected' : (model.tracks[selection[0]]?.name ?? '')
 
     useEffect(() => model.subscribe(() => setTick((tick) => tick + 1)), [model])
-    useEffect(() => listenSelection(setChosenIndex), [listenSelection])
+    useEffect(() => listenSelection(setSelection), [listenSelection])
     useEffect(() => {
         const root = skin.current
         if (!root) {
@@ -153,7 +154,10 @@ export function Widget({
     const shuffleEffects = () => {
         model.setGlobalPower(randomUnit())
         model.setGlobalChance(randomUnit())
-        model.setGlobalBeat(-4 + Math.floor(Math.random() * 6))
+        const a = -4 + Math.floor(Math.random() * 6)
+        const b = -4 + Math.floor(Math.random() * 6)
+        model.setGlobalBeatMin(Math.min(a, b))
+        model.setGlobalBeatMax(Math.max(a, b))
         model.setDelayPower(randomUnit())
         model.setDelayChance(randomUnit())
         model.setReverbPower(randomUnit())
@@ -186,8 +190,15 @@ export function Widget({
         if (!model.hasTracks) {
             return
         }
-        const index = chosen()
-        model.remove(index < 0 ? 0 : index)
+        const selected = chosen()
+        if (selected.length === 0) {
+            model.remove(0)
+            return
+        }
+        // Highest first, so each index still names its row when its turn comes.
+        for (const index of [...selected].sort((a, b) => b - a)) {
+            model.remove(index)
+        }
     }
 
     const sliceLabel = model.sliceChoices.find((choice) => choice.exponent === model.sliceExp)?.label ?? ''
@@ -390,6 +401,18 @@ export function Widget({
                 <section className="part effects" aria-label="Effects">
                     <div className="window" />
                     <div className="content">
+                        <button
+                            type="button"
+                            className="fx-btn fx-enable"
+                            id="fx-enable"
+                            aria-pressed={model.effectsEnabled}
+                            onClick={() => model.setEffectsEnabled(!model.effectsEnabled)}
+                        >
+                            {model.effectsEnabled ? 'EFFECTS ON' : 'EFFECTS OFF'}
+                        </button>
+                        <button type="button" className="fx-btn fx-shuffle" id="fx-shuffle" onClick={shuffleEffects}>
+                            SHUFFLE
+                        </button>
                         <div className="fx-caps" aria-hidden="true">
                             <FxCap name="GLOBAL" left={31} />
                             <div className="fx-cap" style={{ left: '79px', width: '26px' }}>
@@ -424,18 +447,43 @@ export function Widget({
                                 value={model.globalChance}
                                 onInput={onFx((value) => model.setGlobalChance(value))}
                             />
-                            <FxSlider
-                                id="fx-time"
-                                label="Effect time"
-                                left={80}
-                                min={-4}
-                                max={1}
-                                step={1}
-                                value={model.globalBeatExp}
-                                extraClass="time"
-                                valueText={`${beatLabel(model.globalBeatExp)} beat`}
-                                onInput={onFx((value) => model.setGlobalBeat(value))}
-                            />
+                            <div
+                                className="fx-slider time"
+                                style={{
+                                    left: '80px',
+                                    '--lo': String((model.globalBeatMinExp + 4) / 5),
+                                    '--hi': String((model.globalBeatMaxExp + 4) / 5),
+                                }}
+                            >
+                                <div className="track" />
+                                <div className="fill" />
+                                <div className="thumb max" />
+                                <div className="thumb min" />
+                                <input
+                                    type="range"
+                                    className="min"
+                                    id="fx-time-min"
+                                    min={-4}
+                                    max={1}
+                                    step={1}
+                                    value={model.globalBeatMinExp}
+                                    aria-label="Effect time minimum"
+                                    aria-valuetext={`${beatLabel(model.globalBeatMinExp)} beat`}
+                                    onInput={(event) => model.setGlobalBeatMin((event.currentTarget as HTMLInputElement).valueAsNumber)}
+                                />
+                                <input
+                                    type="range"
+                                    className="max"
+                                    id="fx-time-max"
+                                    min={-4}
+                                    max={1}
+                                    step={1}
+                                    value={model.globalBeatMaxExp}
+                                    aria-label="Effect time maximum"
+                                    aria-valuetext={`${beatLabel(model.globalBeatMaxExp)} beat`}
+                                    onInput={(event) => model.setGlobalBeatMax((event.currentTarget as HTMLInputElement).valueAsNumber)}
+                                />
+                            </div>
                             <FxSlider
                                 id="fx-delay-power"
                                 label="Delay power"
@@ -585,9 +633,6 @@ export function Widget({
                                 <li>1/16</li>
                             </ol>
                         </div>
-                        <button type="button" className="fx-randomize" id="fx-randomize" onClick={shuffleEffects}>
-                            RANDOMIZE
-                        </button>
                     </div>
                     <div className="case" />
                 </section>
@@ -706,7 +751,7 @@ export function Widget({
                         </div>
                         {/* Selected sample's controls, on the dark screen under the buttons:
                             VOL / PAN | ST. (start) / LEN. (length) | start time / LOOP | BPM | WARP (none, beat, pitch) | BEAT (1/32 .. 2) */}
-                        <fieldset className="sample-panel" id="selected-sample" disabled={chosenIndex < 0} ref={onPanel}>
+                        <fieldset className="sample-panel" id="selected-sample" disabled={selection.length === 0} ref={onPanel}>
                             <span className="name vol">VOL</span>
                             <div className="slider vol">
                                 <div className="track" />

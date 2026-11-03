@@ -183,11 +183,22 @@ BT_EXPORT void bt_set_global_power(Instance* instance, double power) {
     storeEffects(*instance);
 }
 
-BT_EXPORT void bt_set_global_beat(Instance* instance, int exponent) {
-    if (instance == nullptr || exponent < bt::Effects::kBeatMin || exponent > bt::Effects::kBeatMax) {
+// on is 0 or 1.
+BT_EXPORT void bt_set_effects_enabled(Instance* instance, int on) {
+    if (instance == nullptr) {
         return;
     }
-    instance->effects.globalBeat = exponent;
+    instance->effects.enabled = on != 0;
+    storeEffects(*instance);
+}
+
+// 2^exponent beats, -4..1. min is not above max.
+BT_EXPORT void bt_set_global_beat_range(Instance* instance, int min, int max) {
+    if (instance == nullptr || min < bt::Effects::kBeatMin || max > bt::Effects::kBeatMax || min > max) {
+        return;
+    }
+    instance->effects.beatMin = min;
+    instance->effects.beatMax = max;
     storeEffects(*instance);
 }
 

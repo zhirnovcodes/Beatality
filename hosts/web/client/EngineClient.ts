@@ -123,9 +123,14 @@ export class EngineClient {
         this.node?.port.postMessage({ type: 'globalPower', power })
     }
 
-    async setGlobalBeat(exponent: number): Promise<void> {
+    async setEffectsEnabled(on: boolean): Promise<void> {
         await this.start()
-        this.node?.port.postMessage({ type: 'globalBeat', exponent })
+        this.node?.port.postMessage({ type: 'effectsEnabled', on })
+    }
+
+    async setGlobalBeatRange(min: number, max: number): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'globalBeatRange', min, max })
     }
 
     async setGlobalChance(chance: number): Promise<void> {

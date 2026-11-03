@@ -621,7 +621,8 @@ void testReverseSplitsTheSlice() {
         effects.globalChance = chance;
         effects.reverseChance = 1;
         effects.reversePower = power;
-        effects.globalBeat = beat;
+        effects.beatMin = beat;
+        effects.beatMax = beat;
         engine.setEffectsSettings(effects);
         engine.append(bufferOf(1, samples));
         engine.play();
@@ -687,7 +688,8 @@ void testFilterFollowsPowerAndBeat() {
         effects.globalChance = chance;
         effects.filterChance = 1;
         effects.filterPower = power;
-        effects.globalBeat = beat;
+        effects.beatMin = beat;
+        effects.beatMax = beat;
         engine.setEffectsSettings(effects);
         engine.append(bufferOf(1, samples));
         engine.play();
@@ -735,7 +737,8 @@ void testFlangerFollowsPowerAndBeat() {
         effects.globalChance = chance;
         effects.flangerChance = 1;
         effects.flangerPower = power;
-        effects.globalBeat = beat;
+        effects.beatMin = beat;
+        effects.beatMax = beat;
         engine.setEffectsSettings(effects);
         engine.append(bufferOf(1, samples));
         engine.play();
@@ -782,7 +785,8 @@ void testTranceFollowsPowerAndBeat() {
         effects.globalChance = chance;
         effects.tranceChance = 1;
         effects.trancePower = power;
-        effects.globalBeat = beat;
+        effects.beatMin = beat;
+        effects.beatMax = beat;
         engine.setEffectsSettings(effects);
         engine.append(bufferOf(1, held));
         engine.play();
@@ -852,7 +856,8 @@ void testShiftFollowsPowerAndBeat() {
         effects.globalChance = chance;
         effects.shiftChance = 1;
         effects.shiftPower = power;
-        effects.globalBeat = beat;
+        effects.beatMin = beat;
+        effects.beatMax = beat;
         engine.setEffectsSettings(effects);
         engine.append(bufferOf(1, tone));
         engine.play();

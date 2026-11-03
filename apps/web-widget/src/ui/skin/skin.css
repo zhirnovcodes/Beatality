@@ -146,7 +146,7 @@
 .beatality-skin .randomize:focus-visible { filter: brightness(1.08); outline: none; }
 
 /* ---------- Upper part: BPM display (like the reference's time display, top-left of the glass) ----------
-   caption bar "SAMPLES BPM" (bpm_caption.png, dark, runs under the case on the left),
+   caption bar "BPM" (bpm_caption.png, dark, runs under the case on the left),
    dot-grid background (bpm_lcd.png), value field #bpm in 7-segment digits with unlit "000" behind it,
    two raised buttons (- and +, no glyphs) left of the digits. */
 @font-face { font-family: "DSEG7 Classic"; src: url("DSEG7Classic-Bold.woff2") format("woff2"); font-weight: 700; }
@@ -181,7 +181,7 @@
 
 /* raised buttons: body 18 x 9, bevelled; image adds 4 px round it for the shadow */
 .beatality-skin .bpm-btn {
-  position: absolute; left: 15px; width: 26px; height: 17px;
+  position: absolute; left: 18px; width: 26px; height: 17px;
   padding: 0; border: 0; font-size: 0; cursor: pointer;
   background: url("../shapes/bpm_btn.png") 0 0 / 100% 100% no-repeat;
 }
@@ -190,16 +190,16 @@
 .beatality-skin .bpm-btn:active { background-image: url("../shapes/bpm_btn_pressed.png"); }
 .beatality-skin .bpm-btn:disabled { cursor: default; opacity: 0.5; }
 
-/* SYNC: black box, dotted lime edge, pixel text (like the reference "EFFECT OFF" button), above the SAMPLES BPM caption,
-   on the glass at (84, 25), 48 x 17; its right edge lines up with the caption bar's right end (x 132). Text is always "SYNC": dim green when off, lit lime when on (aria-pressed="true"). */
+/* SYNC: the same chrome button as BPM + / -, taller (body 18 x 12; image adds 4 px round it for the shadow), "SYN" in pixel
+   letters, at the left end of the BPM caption bar, body at (22, 47), in line with + and -. Off: raised. On (aria-pressed="true"): pushed in. Letters stay dark. */
 .beatality-skin .bpm-sync {
-  position: absolute; left: 84px; top: 25px; width: 48px; height: 17px; margin: 0; padding: 0; cursor: pointer;
-  background: #03060a; border: 1px dotted #5a9a10; border-radius: 0;
-  font: 400 8px/15px "Silkscreen", monospace; letter-spacing: 1px; color: #2c5a0a; text-align: center; white-space: nowrap;
+  position: absolute; left: 18px; top: 43px; width: 26px; height: 20px;
+  padding: 0; border: 0; font-size: 0; cursor: pointer;
+  background: url("../shapes/bpm_sync.png") 0 0 / 100% 100% no-repeat;
 }
-.beatality-skin .bpm-sync[aria-pressed="true"] { color: #d8ff20; text-shadow: 0 0 2px rgba(216, 255, 32, 0.6); border-color: #9ae020; }
-.beatality-skin .bpm-sync:active { background: #0c1408; }
-.beatality-skin .bpm-sync:focus-visible { outline: 1px dotted #0b1d02; outline-offset: 1px; }
+.beatality-skin .bpm-sync[aria-pressed="true"] { background-image: url("../shapes/bpm_sync_on.png"); }
+.beatality-skin .bpm-sync:active { background-image: url("../shapes/bpm_sync_pressed.png"); }
+.beatality-skin .bpm-sync:focus-visible { outline: 1px dotted #c4ff34; outline-offset: -3px; }
 
 /* ---------- Upper part: Loop / Slice / Attack, right of the BPM display ----------
    One convex glass bar (slider_captions.png) level with the BPM caption holds the three captions:
@@ -350,6 +350,8 @@
   left: calc(3px + var(--snap) * 60px - 1px);
 }
 .beatality-skin .sample-panel .slider > input[type="range"] { left: -6px; top: -2px; width: 78px; height: 16px; }
+/* several samples selected and their values differ: no pin until the slider is moved */
+.beatality-skin .sample-panel .slider.mixed > .thumb { visibility: hidden; }
 
 /* text fields: start time (seconds) and the sample's BPM */
 .beatality-skin .sample-panel .field {
@@ -368,6 +370,7 @@
   background: url("../shapes/loop_toggle.png") 0 0 / 100% 100% no-repeat;
 }
 .beatality-skin .sample-panel .toggle:checked { background-image: url("../shapes/loop_toggle_on.png"); }
+.beatality-skin .sample-panel .toggle:indeterminate { background-image: url("../shapes/loop_toggle_on.png"); opacity: 0.45; }   /* differs between the selected samples */
 .beatality-skin .sample-panel .toggle:focus-visible { outline: 1px dotted #0b1d02; outline-offset: 1px; }
 
 /* WARP: < value > ; arrows are pixel buttons (black box, yellow triangle, 12 x 16) */
@@ -487,21 +490,23 @@
 .beatality-skin .bank-btn:disabled { cursor: default; background: #6f7166; border-color: #8a8c80; color: #d2d98a; }
 .beatality-skin .bank-btn.close { width: 22px; padding: 0; }
 
-/* ---------- Effects part: RANDOMIZE, caption boxes, vertical sliders ----------
+/* ---------- Effects part: EFFECTS ON / OFF, SHUFFLE, caption boxes, vertical sliders ----------
    Caption boxes sit on the screen above each group. Sliders are pixel art (fx_*.png is 2x):
    frame 13 x 100, 18 px apart inside a group, groups 4 px apart.
    Order: GLOBAL power, GLOBAL %, clock, then power and % for each effect.
    --pos (0..1) comes from the range input; the green fill rises from the bottom to the handle. */
-.beatality-skin .fx-randomize {
-  position: absolute; left: 216px; top: 179px; width: 64px; height: 20px; margin: 0; cursor: pointer;
-  border: 1px solid #000; border-radius: 0;
-  background: linear-gradient(#ffffff, #e4e6e0 9px, #c8cbc4); color: #111;
-  box-shadow: inset 1px 1px 0 #fff, inset -1px 0 0 #9a9d96, 2px -1px 3px rgba(0, 0, 0, 0.55), -1px -1px 2px rgba(0, 0, 0, 0.25);
-  font: 400 8px/12px "Silkscreen", monospace; letter-spacing: 0.5px; text-align: center; vertical-align: top;
-  display: block; padding: 0 0 6px;
+/* EFFECTS ON / OFF and SHUFFLE: black boxes with a dotted lime edge and pixel text, at the top of the screen.
+   EFFECTS has two states (aria-pressed): lit lime when on, dim green when off. SHUFFLE is lit while held. */
+.beatality-skin .fx-btn {
+  position: absolute; top: 25px; height: 20px; margin: 0; padding: 0; cursor: pointer;
+  background: #03060a; border: 1px dotted #5a9a10; border-radius: 0;
+  font: 400 8px/18px "Silkscreen", monospace; letter-spacing: 0.5px; text-align: center; white-space: nowrap;
 }
-.beatality-skin .fx-randomize:active { background: linear-gradient(#c8cbc4, #e4e6e0); box-shadow: inset 1px 1px 0 #8a8d86, 1px -1px 2px rgba(0, 0, 0, 0.45); }
-.beatality-skin .fx-randomize:focus-visible { outline: 1px dotted #000; outline-offset: -3px; }
+.beatality-skin .fx-btn:focus-visible { outline: 1px dotted #0b1d02; outline-offset: 1px; }
+.beatality-skin .fx-enable { left: 101px; width: 62px; color: #2c5a0a; }
+.beatality-skin .fx-enable[aria-pressed="true"] { color: #d8ff20; text-shadow: 0 0 2px rgba(216, 255, 32, 0.6); border-color: #9ae020; }
+.beatality-skin .fx-shuffle { left: 345px; width: 58px; color: #7f9a66; }
+.beatality-skin .fx-shuffle:active { color: #d8ff20; text-shadow: 0 0 2px rgba(216, 255, 32, 0.6); background: #0c1408; }
 
 .beatality-skin .fx-caps { position: absolute; left: 0; top: 51px; width: 496px; height: 22px; }
 .beatality-skin .fx-cap {
@@ -534,6 +539,25 @@
   opacity: 0; cursor: pointer;
 }
 .beatality-skin .fx-slider.idle > input[type="range"] { cursor: default; }
+
+/* TIME: min / max (like the beat repeat SIZE). The handle is split across its middle: the top half is MAX, the bottom half
+   MIN; together they make the whole handle. The green fill shows only between MIN and MAX. --lo / --hi (0..1) come from
+   the two range inputs; each one's thumb is only on its own side of the value (MAX above, MIN below). */
+.beatality-skin .fx-slider.time { --lo: 0; --hi: 1; }
+.beatality-skin .fx-slider.time > .fill {
+  clip-path: inset(calc(6.5px + (1 - var(--hi)) * 87px) 0 calc(93.5px - (1 - var(--lo)) * 87px) 0);
+}
+.beatality-skin .fx-slider.time > .thumb.max { height: 5px; top: calc(2px + (1 - var(--hi)) * 87px); background-image: url("../shapes/fx_thumb_max.png"); }
+.beatality-skin .fx-slider.time > .thumb.min { height: 6px; top: calc(6px + (1 - var(--lo)) * 87px); background-image: url("../shapes/fx_thumb_min.png"); }
+.beatality-skin .fx-slider.time > input[type="range"] {
+  top: 3.5px; height: 93px; appearance: none; -webkit-appearance: none; background: transparent; pointer-events: none;
+}
+.beatality-skin .fx-slider.time > input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 17px; height: 6px; pointer-events: auto; cursor: pointer;
+}
+.beatality-skin .fx-slider.time > input.max::-webkit-slider-thumb { transform: translateY(-3px); }   /* covers y - 6 .. y */
+.beatality-skin .fx-slider.time > input.min::-webkit-slider-thumb { transform: translateY(3px); }    /* covers y .. y + 6 */
+.beatality-skin .fx-slider.time > input[type="range"]::-moz-range-thumb { width: 17px; height: 6px; pointer-events: auto; cursor: pointer; border: 0; }
 
 .beatality-skin .fx-scale { position: absolute; top: 0; width: 26px; height: 100px; margin: 0; padding: 0; list-style: none; }
 .beatality-skin .fx-scale > li {

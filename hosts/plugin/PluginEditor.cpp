@@ -244,15 +244,21 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
             }
             completion(true);
         })
+        .withNativeFunction("setEffectsEnabled", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setEffectsEnabled(static_cast<bool>(args[0]));
+            }
+            completion(true);
+        })
         .withNativeFunction("setGlobalPower", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
             if (!args.isEmpty()) {
                 processor.setGlobalPower(static_cast<double>(args[0]));
             }
             completion(true);
         })
-        .withNativeFunction("setGlobalBeat", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
-            if (!args.isEmpty()) {
-                processor.setGlobalBeat(static_cast<int>(args[0]));
+        .withNativeFunction("setGlobalBeatRange", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (args.size() >= 2) {
+                processor.setGlobalBeatRange(static_cast<int>(args[0]), static_cast<int>(args[1]));
             }
             completion(true);
         })
@@ -389,8 +395,8 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
             completion(true);
         })
         .withNativeFunction("setOutput", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
-            if (args.size() >= 2) {
-                processor.setOutput(static_cast<double>(args[0]), static_cast<double>(args[1]));
+            if (args.size() >= 3) {
+                processor.setOutput(static_cast<double>(args[0]), static_cast<double>(args[1]), static_cast<double>(args[2]));
             }
             completion(true);
         })
@@ -534,8 +540,10 @@ void Editor::pushBank() {
     object->setProperty("loop", processor.loopBeats());
     object->setProperty("slices", processor.sliceExponent());
     object->setProperty("attack", processor.attackMs());
+    object->setProperty("effectsEnabled", processor.effectsEnabled());
     object->setProperty("globalPower", processor.globalPower());
-    object->setProperty("globalBeat", processor.globalBeat());
+    object->setProperty("globalBeatMin", processor.globalBeatMin());
+    object->setProperty("globalBeatMax", processor.globalBeatMax());
     object->setProperty("globalChance", processor.globalChance());
     object->setProperty("reverbPower", processor.reverbPower());
     object->setProperty("reverbChance", processor.reverbChance());
@@ -564,6 +572,7 @@ void Editor::pushBank() {
     object->setProperty("repeatPositions", positions);
     object->setProperty("repeatMix", repeat.mix);
     object->setProperty("volume", processor.outputVolume());
-    object->setProperty("pan", processor.outputPan());
+    object->setProperty("panMin", processor.outputPanMin());
+    object->setProperty("panMax", processor.outputPanMax());
     deliver("onBank", juce::var(object));
 }

@@ -114,7 +114,8 @@ struct PackPayload {
     int slices = 0;
     int attack = 2;
     double volume = 1;
-    double pan = 0;
+    double panMin = 0;
+    double panMax = 0;
     int savedCount = 0;
     std::vector<std::uint16_t> slots;
     std::vector<PackTrackPayload> tracks;
@@ -204,7 +205,7 @@ AppendPayload* payloadFromReader(juce::AudioFormatReader& reader, double rate, s
 class CommandQueue {
 public:
     struct Slot {
-        enum class Kind { Randomize, Remove, Append, Clear, Bpm, BpmSync, Loop, Slice, Attack, GlobalPower, GlobalBeat, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, ReversePower, ReverseChance, FilterPower, FilterChance, FlangerPower, FlangerChance, TrancePower, TranceChance, ShiftPower, ShiftChance, RepeatEnabled, RepeatSizeRange, RepeatLength, RepeatChance, RepeatPosition, RepeatMix, Track, Warp, Output, Pack };
+        enum class Kind { Randomize, Remove, Append, Clear, Bpm, BpmSync, Loop, Slice, Attack, EffectsEnabled, GlobalPower, GlobalBeatRange, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, ReversePower, ReverseChance, FilterPower, FilterChance, FlangerPower, FlangerChance, TrancePower, TranceChance, ShiftPower, ShiftChance, RepeatEnabled, RepeatSizeRange, RepeatLength, RepeatChance, RepeatPosition, RepeatMix, Track, Warp, Output, Pack };
         Kind kind = Kind::Randomize;
         AppendPayload* append = nullptr;
         PackPayload* pack = nullptr;
@@ -369,7 +370,7 @@ struct Processor::Impl {
         engine->setAttack(attackMs);
         engine->setEffectsSettings(effects);
         engine->setBeatRepeat(repeat);
-        engine->setOutput(outputVolume, outputPan, outputPan);
+        engine->setOutput(outputVolume, outputPanMin, outputPanMax);
     }
 
     void applyAppend(AppendPayload* payload) {
@@ -511,13 +512,19 @@ struct Processor::Impl {
         }
     }
 
+    void applyEffectsEnabled(bool on) {
+        effects.enabled = on;
+        applyEffects();
+    }
+
     void applyGlobalPower(double power) {
         effects.globalPower = power;
         applyEffects();
     }
 
-    void applyGlobalBeat(int exponent) {
-        effects.globalBeat = exponent;
+    void applyGlobalBeatRange(int min, int max) {
+        effects.beatMin = min;
+        effects.beatMax = max;
         applyEffects();
     }
 
@@ -633,13 +640,14 @@ struct Processor::Impl {
         applyRepeat();
     }
 
-    void applyOutput(double volume, double pan) {
+    void applyOutput(double volume, double panMin, double panMax) {
         outputVolume = volume;
-        outputPan = pan;
+        outputPanMin = panMin;
+        outputPanMax = panMax;
         if (engine == nullptr) {
             return;
         }
-        engine->setOutput(volume, pan, pan);
+        engine->setOutput(volume, panMin, panMax);
     }
 
     void applyTrack(int index, double start, double length, bool loop, double volume, double pan) {
@@ -702,11 +710,14 @@ struct Processor::Impl {
         case CommandQueue::Slot::Kind::Attack:
             applyAttack(slot.number);
             break;
+        case CommandQueue::Slot::Kind::EffectsEnabled:
+            applyEffectsEnabled(slot.flag);
+            break;
         case CommandQueue::Slot::Kind::GlobalPower:
             applyGlobalPower(slot.first);
             break;
-        case CommandQueue::Slot::Kind::GlobalBeat:
-            applyGlobalBeat(slot.number);
+        case CommandQueue::Slot::Kind::GlobalBeatRange:
+            applyGlobalBeatRange(slot.index, slot.number);
             break;
         case CommandQueue::Slot::Kind::GlobalChance:
             applyGlobalChance(slot.first);
@@ -778,7 +789,7 @@ struct Processor::Impl {
             applyWarp(slot.index, warpSettings(slot.number, slot.first, slot.second));
             break;
         case CommandQueue::Slot::Kind::Output:
-            applyOutput(slot.first, slot.second);
+            applyOutput(slot.first, slot.second, slot.third);
             break;
         case CommandQueue::Slot::Kind::Pack:
             applyPack(slot.pack);
@@ -802,13 +813,14 @@ struct Processor::Impl {
         sliceExp = pack->slices;
         attackMs = pack->attack;
         outputVolume = pack->volume;
-        outputPan = pack->pan;
+        outputPanMin = pack->panMin;
+        outputPanMax = pack->panMax;
         if (engine != nullptr) {
             engine->setBpm(bpm);
             engine->setLoop(loopBeats);
             engine->setSlice(sliceExp);
             engine->setAttack(attackMs);
-            engine->setOutput(outputVolume, outputPan, outputPan);
+            engine->setOutput(outputVolume, outputPanMin, outputPanMax);
         }
         int index = 0;
         for (PackTrackPayload& track : pack->tracks) {
@@ -1031,7 +1043,8 @@ struct Processor::Impl {
     bt::Effects effects;
     bt::BeatRepeatSettings repeat;
     double outputVolume = 1;
-    double outputPan = 0;
+    double outputPanMin = 0;
+    double outputPanMax = 0;
 };
 
 Processor::Processor()
@@ -1305,6 +1318,14 @@ void Processor::setAttack(int ms) {
     impl->queue.push(slot);
 }
 
+void Processor::setEffectsEnabled(bool on) {
+    saved.enabled = on;
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::EffectsEnabled;
+    slot.flag = on;
+    impl->queue.push(slot);
+}
+
 void Processor::setGlobalPower(double power) {
     if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
@@ -1316,14 +1337,16 @@ void Processor::setGlobalPower(double power) {
     impl->queue.push(slot);
 }
 
-void Processor::setGlobalBeat(int exponent) {
-    if (exponent < bt::Effects::kBeatMin || exponent > bt::Effects::kBeatMax) {
+void Processor::setGlobalBeatRange(int min, int max) {
+    if (min < bt::Effects::kBeatMin || max > bt::Effects::kBeatMax || min > max) {
         return;
     }
-    saved.globalBeat = exponent;
+    saved.beatMin = min;
+    saved.beatMax = max;
     CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::GlobalBeat;
-    slot.number = exponent;
+    slot.kind = CommandQueue::Slot::Kind::GlobalBeatRange;
+    slot.index = min;
+    slot.number = max;
     impl->queue.push(slot);
 }
 
@@ -1558,16 +1581,18 @@ void Processor::setRepeatMix(double mix) {
     impl->queue.push(slot);
 }
 
-void Processor::setOutput(double volume, double pan) {
-    if (!std::isfinite(volume) || !std::isfinite(pan)) {
+void Processor::setOutput(double volume, double panMin, double panMax) {
+    if (!std::isfinite(volume) || !std::isfinite(panMin) || !std::isfinite(panMax)) {
         return;
     }
     savedVolume = volume;
-    savedPan = pan;
+    savedPanMin = panMin;
+    savedPanMax = panMax;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::Output;
     slot.first = volume;
-    slot.second = pan;
+    slot.second = panMin;
+    slot.third = panMax;
     impl->queue.push(slot);
 }
 
@@ -1656,7 +1681,8 @@ bool Processor::loadPackText(const juce::String& text) {
     payload->slices = decoded->slices;
     payload->attack = decoded->attack;
     payload->volume = decoded->volume;
-    payload->pan = decoded->pan;
+    payload->panMin = decoded->panMin;
+    payload->panMax = decoded->panMax;
     payload->savedCount = decoded->savedCount;
     payload->slots = decoded->slots;
 
@@ -1730,7 +1756,8 @@ bool Processor::loadPackText(const juce::String& text) {
     savedSlice = decoded->slices;
     savedAttack = decoded->attack;
     savedVolume = decoded->volume;
-    savedPan = decoded->pan;
+    savedPanMin = decoded->panMin;
+    savedPanMax = decoded->panMax;
     impl->storeSequence(decoded->slots, decoded->savedCount);
     error.clear();
     return true;
@@ -1744,7 +1771,8 @@ juce::String Processor::packText() {
     pack.slices = savedSlice;
     pack.attack = savedAttack;
     pack.volume = savedVolume;
-    pack.pan = savedPan;
+    pack.panMin = savedPanMin;
+    pack.panMax = savedPanMax;
     impl->copySequence(pack.slots, pack.savedCount);
     const int count = std::min(names.size(), static_cast<int>(pictures.size()));
     pack.tracks.reserve(static_cast<std::size_t>(count));

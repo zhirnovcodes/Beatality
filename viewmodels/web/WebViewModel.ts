@@ -22,7 +22,8 @@ export interface ViewActions {
     setSlice: (exponent: number) => void
     setAttack: (ms: number) => void
     setGlobalPower: (power: number) => void
-    setGlobalBeat: (exponent: number) => void
+    setEffectsEnabled: (on: boolean) => void
+    setGlobalBeatRange: (min: number, max: number) => void
     setGlobalChance: (chance: number) => void
     setReverbPower: (power: number) => void
     setReverbChance: (chance: number) => void
@@ -125,8 +126,10 @@ export class WebViewModel {
     loopBeats = 8
     sliceExp = 0
     attackMs = 2
+    effectsEnabled = true
     globalPower = 1
-    globalBeatExp = 0
+    globalBeatMinExp = -3
+    globalBeatMaxExp = -1
     globalChance = 0
     reverbPower = 1
     reverbChance = 0
@@ -333,16 +336,28 @@ export class WebViewModel {
         this.actions?.setGlobalPower(power)
     }
 
-    setGlobalBeat(exponent: number) {
+    setEffectsEnabled(on: boolean) {
+        if (on === this.effectsEnabled) {
+            return
+        }
+        this.effectsEnabled = on
+        this.notify()
+        this.actions?.setEffectsEnabled(on)
+    }
+
+    // Moving min past max pushes max along, and the other way round, so min never passes max.
+    setGlobalBeatMin(exponent: number) {
         if (!Number.isInteger(exponent) || exponent < beatExpMin || exponent > beatExpMax) {
             return
         }
-        if (exponent === this.globalBeatExp) {
+        this.setGlobalBeatRange(exponent, Math.max(exponent, this.globalBeatMaxExp))
+    }
+
+    setGlobalBeatMax(exponent: number) {
+        if (!Number.isInteger(exponent) || exponent < beatExpMin || exponent > beatExpMax) {
             return
         }
-        this.globalBeatExp = exponent
-        this.notify()
-        this.actions?.setGlobalBeat(exponent)
+        this.setGlobalBeatRange(Math.min(exponent, this.globalBeatMinExp), exponent)
     }
 
     setGlobalChance(chance: number) {
@@ -595,6 +610,16 @@ export class WebViewModel {
         this.repeatMix = mix
         this.notify()
         this.actions?.setRepeatMix(mix)
+    }
+
+    private setGlobalBeatRange(min: number, max: number) {
+        if (min === this.globalBeatMinExp && max === this.globalBeatMaxExp) {
+            return
+        }
+        this.globalBeatMinExp = min
+        this.globalBeatMaxExp = max
+        this.notify()
+        this.actions?.setGlobalBeatRange(min, max)
     }
 
     private setRepeatSizeRange(min: number, max: number) {

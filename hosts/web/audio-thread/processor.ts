@@ -21,7 +21,8 @@ interface Core {
     bt_set_slice: (engine: number, exponent: number) => void
     bt_set_attack: (engine: number, ms: number) => void
     bt_set_global_power: (engine: number, power: number) => void
-    bt_set_global_beat: (engine: number, exponent: number) => void
+    bt_set_effects_enabled: (engine: number, on: number) => void
+    bt_set_global_beat_range: (engine: number, min: number, max: number) => void
     bt_set_global_chance: (engine: number, chance: number) => void
     bt_set_reverb_power: (engine: number, power: number) => void
     bt_set_reverb_chance: (engine: number, chance: number) => void
@@ -136,9 +137,15 @@ interface GlobalPowerMessage {
     power: number
 }
 
-interface GlobalBeatMessage {
-    type: 'globalBeat'
-    exponent: number
+interface EffectsEnabledMessage {
+    type: 'effectsEnabled'
+    on: boolean
+}
+
+interface GlobalBeatRangeMessage {
+    type: 'globalBeatRange'
+    min: number
+    max: number
 }
 
 interface GlobalChanceMessage {
@@ -315,7 +322,8 @@ type HostMessage =
     | SliceMessage
     | AttackMessage
     | GlobalPowerMessage
-    | GlobalBeatMessage
+    | EffectsEnabledMessage
+    | GlobalBeatRangeMessage
     | GlobalChanceMessage
     | ReverbPowerMessage
     | ReverbChanceMessage
@@ -528,8 +536,11 @@ class BeatalityProcessor extends AudioWorkletProcessor {
         } else if (message.type === 'globalPower') {
             this.core!.bt_set_global_power(this.engine, message.power)
             this.postSnapshot(0)
-        } else if (message.type === 'globalBeat') {
-            this.core!.bt_set_global_beat(this.engine, message.exponent)
+        } else if (message.type === 'effectsEnabled') {
+            this.core!.bt_set_effects_enabled(this.engine, message.on ? 1 : 0)
+            this.postSnapshot(0)
+        } else if (message.type === 'globalBeatRange') {
+            this.core!.bt_set_global_beat_range(this.engine, message.min, message.max)
             this.postSnapshot(0)
         } else if (message.type === 'globalChance') {
             this.core!.bt_set_global_chance(this.engine, message.chance)

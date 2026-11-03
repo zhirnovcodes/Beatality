@@ -62,7 +62,8 @@ const skinRow = { width: 424, height: 28, offset: 0, chrome: false }
 export class WebPresenter {
     private playSlot = -1
     private playTrack = -1
-    private selected = -1
+    // Rows whose sample controls are on the page. The first is the one WARP steps from.
+    private selected: readonly number[] = []
     private builtColumns = -1
     private rows: SampleRow[] = []
     private panelBound = false
@@ -76,7 +77,7 @@ export class WebPresenter {
     private warpOutput: HTMLOutputElement | null = null
     private beatInput: HTMLInputElement | null = null
     private beatCaption: HTMLElement | null = null
-    private selectionListener: (index: number) => void = () => {}
+    private selectionListener: (selected: readonly number[]) => void = () => {}
 
     constructor(
         private readonly model: WebViewModel,
@@ -96,7 +97,8 @@ export class WebPresenter {
             setSlice: (exponent) => void this.perform(() => this.client.setSlice(exponent)),
             setAttack: (ms) => void this.perform(() => this.client.setAttack(ms)),
             setGlobalPower: (power) => void this.perform(() => this.client.setGlobalPower(power)),
-            setGlobalBeat: (exponent) => void this.perform(() => this.client.setGlobalBeat(exponent)),
+            setEffectsEnabled: (on) => void this.perform(() => this.client.setEffectsEnabled(on)),
+            setGlobalBeatRange: (min, max) => void this.perform(() => this.client.setGlobalBeatRange(min, max)),
             setGlobalChance: (chance) => void this.perform(() => this.client.setGlobalChance(chance)),
             setReverbPower: (power) => void this.perform(() => this.client.setReverbPower(power)),
             setReverbChance: (chance) => void this.perform(() => this.client.setReverbChance(chance)),
@@ -137,12 +139,12 @@ export class WebPresenter {
         this.sync()
     }
 
-    // The row whose sample controls are on the page. -1 when none.
-    chosen(): number {
+    // The rows whose sample controls are on the page. Empty when none.
+    chosen(): readonly number[] {
         return this.selected
     }
 
-    listenSelection(listener: (index: number) => void) {
+    listenSelection(listener: (selected: readonly number[]) => void) {
         this.selectionListener = listener
         listener(this.selected)
     }
@@ -216,10 +218,12 @@ export class WebPresenter {
         // BPM, WARP, and BEAT go to the engine only. The waveform keeps showing the file at its own BPM.
         bpm.addEventListener('change', () => {
             const parsed = Number.parseFloat(bpm.value.trim().replace(',', '.'))
-            const current = this.client.registry.playAt(this.selected)
-            const value = Number.isFinite(parsed) ? Math.min(bpmMax, Math.max(bpmMin, sampleBpm(parsed))) : (current?.bpm ?? 120)
-            bpm.value = value.toFixed(1)
-            this.editWarp({ bpm: value })
+            const current = this.shared((index) => this.client.registry.playAt(index)?.bpm)
+            const value = Number.isFinite(parsed) ? Math.min(bpmMax, Math.max(bpmMin, sampleBpm(parsed))) : current
+            bpm.value = value === undefined ? '--' : value.toFixed(1)
+            if (value !== undefined) {
+                this.editWarp({ bpm: value })
+            }
         })
         bpm.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
@@ -233,14 +237,16 @@ export class WebPresenter {
             placeThumb(beat)
             beatCaption.textContent = beatSteps[Number(beat.value)] ?? ''
             this.editWarp({ warpParam: Number(beat.value) / (beatSteps.length - 1) })
+            this.syncWarp()
         })
         this.syncPanel()
     }
 
-    // Steps WARP through none → beat → pitch, wrapping, for the selected sample.
+    // Steps WARP through none → beat → pitch, wrapping, from the first selected sample's mode.
+    // Every selected sample takes the new mode.
     private stepWarp(delta: 1 | -1) {
-        const current = this.client.registry.playAt(this.selected)
-        if (this.selected < 0 || !current) {
+        const current = this.selected.length > 0 ? this.client.registry.playAt(this.selected[0]) : null
+        if (!current) {
             return
         }
         const at = warpModes.indexOf(current.warp)
@@ -249,14 +255,15 @@ export class WebPresenter {
     }
 
     private editWarp(patch: Partial<SampleSettings>) {
-        const index = this.selected
-        const current = this.client.registry.playAt(index)
-        if (index < 0 || !current) {
-            return
+        for (const index of this.selected) {
+            const current = this.client.registry.playAt(index)
+            if (!current) {
+                continue
+            }
+            const play = { ...current, ...patch }
+            this.client.registry.setPlay(index, play)
+            void this.client.setTrack(index, play)
         }
-        const play = { ...current, ...patch }
-        this.client.registry.setPlay(index, play)
-        void this.client.setTrack(index, play)
         // A new sample BPM moves the slice lines in the file, so the strip is redrawn at it.
         if (patch.bpm !== undefined) {
             this.followSample()
@@ -314,9 +321,10 @@ export class WebPresenter {
                 play ?? undefined,
             )
         }
-        if (this.selected >= this.model.tracks.length) {
-            this.selected = -1
-            this.selectionListener(-1)
+        const present = this.selected.filter((index) => index < this.model.tracks.length)
+        if (present.length !== this.selected.length) {
+            this.selected = present
+            this.selectionListener(present)
         }
     }
 
@@ -335,7 +343,7 @@ export class WebPresenter {
             const play = { ...current, ...edit }
             this.client.registry.setPlay(index, play)
             void this.client.setTrack(index, play)
-            if (index === this.selected) {
+            if (this.selected.includes(index)) {
                 this.syncPanel()
             }
         }
@@ -421,24 +429,38 @@ export class WebPresenter {
                 cell.className = 'cell'
                 row.append(cell)
             }
-            row.addEventListener('click', () => this.choose(index))
             // Dragging the row grabs the wave. Left brings later audio in, so start goes up.
+            // A selected row drags every selected row's wave by the same pixels.
             let downX = 0
-            let downStart = 0
+            let downStarts = new Map<number, number>()
             let dragging = false
+            // Shift toggles the row in and out of the selection. A drag does not select.
+            row.addEventListener('click', (event) => {
+                if (!dragging) {
+                    this.choose(index, event.shiftKey)
+                }
+            })
             row.addEventListener('pointerdown', (event) => {
-                const start = this.rowAt(index)?.presenter.read()?.start
-                if (start === undefined || event.button !== 0) {
+                if (event.button !== 0) {
+                    return
+                }
+                const moved = this.selected.includes(index) ? this.selected : [index]
+                downStarts = new Map()
+                for (const at of moved) {
+                    const start = this.rowAt(at)?.presenter.read()?.start
+                    if (start !== undefined) {
+                        downStarts.set(at, start)
+                    }
+                }
+                dragging = false
+                if (!downStarts.has(index)) {
                     return
                 }
                 row.setPointerCapture(event.pointerId)
                 downX = event.clientX
-                downStart = start
-                dragging = false
             })
             row.addEventListener('pointermove', (event) => {
-                const presenter = this.rowAt(index)?.presenter
-                if (!presenter || !row.hasPointerCapture(event.pointerId)) {
+                if (!row.hasPointerCapture(event.pointerId)) {
                     return
                 }
                 const dx = event.clientX - downX
@@ -446,7 +468,12 @@ export class WebPresenter {
                     return
                 }
                 dragging = true
-                presenter.editStart(downStart - dx * presenter.startPerPixel())
+                for (const [at, start] of downStarts) {
+                    const presenter = this.rowAt(at)?.presenter
+                    if (presenter) {
+                        presenter.editStart(start - dx * presenter.startPerPixel())
+                    }
+                }
             })
             const release = (event: PointerEvent) => {
                 if (row.hasPointerCapture(event.pointerId)) {
@@ -474,18 +501,37 @@ export class WebPresenter {
         }
     }
 
-    private choose(index: number) {
-        this.selected = index
+    private choose(index: number, toggle: boolean) {
+        if (!toggle) {
+            this.selected = [index]
+        } else if (this.selected.includes(index)) {
+            this.selected = this.selected.filter((at) => at !== index)
+        } else {
+            this.selected = [...this.selected, index]
+        }
         this.markCells(this.columns())
         this.syncPanel()
-        this.selectionListener(index)
+        this.selectionListener(this.selected)
+    }
+
+    // The value every selected row has, or undefined when they differ or none is selected.
+    private shared<T>(read: (index: number) => T | undefined): T | undefined {
+        let value: T | undefined
+        for (let at = 0; at < this.selected.length; at++) {
+            const next = read(this.selected[at])
+            if (next === undefined || (at > 0 && next !== value)) {
+                return undefined
+            }
+            value = next
+        }
+        return value
     }
 
     private markCells(cols: number) {
         const items = this.list.children
         for (let index = 0; index < items.length; index++) {
             const row = items[index]
-            row.setAttribute('aria-selected', index === this.selected ? 'true' : 'false')
+            row.setAttribute('aria-selected', this.selected.includes(index) ? 'true' : 'false')
             const playingCol = index === this.playTrack && this.playSlot >= 0 && this.playSlot < cols ? this.playSlot : -1
             const cells = row.querySelectorAll('.cell')
             for (let column = 0; column < cells.length; column++) {
@@ -495,56 +541,81 @@ export class WebPresenter {
     }
 
     private editSelected(patch: Partial<TrackEdit>) {
-        const row = this.rowAt(this.selected)
-        const current = row?.presenter.read()
-        if (!row || !current) {
-            return
+        for (const index of this.selected) {
+            const row = this.rowAt(index)
+            const current = row?.presenter.read()
+            if (!row || !current) {
+                continue
+            }
+            row.presenter.edit({ ...current, ...patch })
         }
-        row.presenter.edit({ ...current, ...patch })
     }
 
+    // The typed seconds go to every selected row, each held inside its own file.
     private commitStartTime() {
         const field = this.startTimeInput
-        const row = this.rowAt(this.selected)
-        if (!field || !row) {
+        if (!field) {
             return
         }
-        const duration = row.presenter.durationSec()
         const parsed = Number.parseFloat(field.value.trim().replace(',', '.'))
         const seconds = Number.isFinite(parsed) ? parsed : 0
-        const clamped = Math.min(duration, Math.max(0, seconds))
-        const fraction = duration > 0 ? clamped / duration : 0
-        field.value = clamped.toFixed(2)
-        this.editSelected({ start: fraction })
+        for (const index of this.selected) {
+            const row = this.rowAt(index)
+            const current = row?.presenter.read()
+            if (!row || !current) {
+                continue
+            }
+            const duration = row.presenter.durationSec()
+            const clamped = Math.min(duration, Math.max(0, seconds))
+            row.presenter.edit({ ...current, start: duration > 0 ? clamped / duration : 0 })
+        }
+        const shown = this.shared((index) => this.startSeconds(index))
+        field.value = shown ?? '--'
+    }
+
+    // Start of the row in seconds as the field shows it.
+    private startSeconds(index: number): string | undefined {
+        const row = this.rowAt(index)
+        const picture = row?.presenter.read()
+        if (!row || !picture) {
+            return undefined
+        }
+        return (picture.start * row.presenter.durationSec()).toFixed(2)
     }
 
     private syncWarp() {
-        const play = this.selected >= 0 ? this.client.registry.playAt(this.selected) : null
-        const warp = play?.warp ?? 'none'
+        const none = this.selected.length === 0
+        const play = (index: number) => this.client.registry.playAt(index) ?? undefined
+        const warp = none ? 'none' : this.shared((index) => play(index)?.warp)
         if (this.warpOutput) {
-            this.warpOutput.dataset.value = warp
-            this.warpOutput.textContent = warp.toUpperCase()
+            this.warpOutput.dataset.value = warp ?? 'none'
+            this.warpOutput.textContent = warp === undefined ? '---' : warp.toUpperCase()
         }
         const beat = this.beatInput
         if (beat) {
-            // BEAT changes the sound only in beat mode, so it is disabled in the others.
+            // BEAT changes the sound only in beat mode, so it is disabled unless every selected sample is in it.
             beat.disabled = warp !== 'beat'
-            const index = Math.round((play?.warpParam ?? 0) * (beatSteps.length - 1))
+            const index = none ? 0 : this.shared((at) => {
+                const param = play(at)?.warpParam
+                return param === undefined ? undefined : Math.round(param * (beatSteps.length - 1))
+            })
             this.writeRange(beat, index)
             if (this.beatCaption) {
-                this.beatCaption.textContent = beatSteps[Number(beat.value)] ?? ''
+                this.beatCaption.textContent = index === undefined ? '--' : (beatSteps[Number(beat.value)] ?? '')
             }
         }
         const bpm = this.bpmInput
         if (bpm && document.activeElement !== bpm) {
-            bpm.value = (play?.bpm ?? 120).toFixed(1)
+            const value = none ? 120 : this.shared((index) => play(index)?.bpm)
+            bpm.value = value === undefined ? '--' : value.toFixed(1)
         }
     }
 
     private syncPanel() {
         this.syncWarp()
-        const picture = this.selected >= 0 ? this.rowAt(this.selected)?.presenter.read() : null
-        const duration = picture ? (this.rowAt(this.selected)?.presenter.durationSec() ?? 0) : 0
+        const first = this.selected.length > 0 ? this.rowAt(this.selected[0]) : null
+        const duration = first?.presenter.durationSec() ?? 0
+        const picture = (index: number) => this.rowAt(index)?.presenter.read() ?? undefined
         const volume = this.volumeInput
         const pan = this.panInput
         const start = this.startInput
@@ -559,29 +630,38 @@ export class WebPresenter {
         if (!volume || !pan || !start || !length || !startTime || !loop) {
             return
         }
-        if (!picture) {
+        if (this.selected.length === 0) {
             this.writeRange(volume, 1)
             this.writeRange(pan, 0)
             this.writeRange(start, 0)
             this.writeRange(length, 1)
             this.writeStartTime(startTime, 0)
             if (document.activeElement !== loop) {
+                loop.indeterminate = false
                 loop.checked = false
             }
             return
         }
-        this.writeRange(volume, picture.volume)
-        this.writeRange(pan, picture.pan)
-        this.writeRange(start, picture.start)
-        this.writeRange(length, picture.length)
-        this.writeStartTime(startTime, picture.start * duration)
-        if (document.activeElement !== loop && loop.checked !== picture.loop) {
-            loop.checked = picture.loop
+        // A control whose value differs between the selected rows shows no value.
+        this.writeRange(volume, this.shared((index) => picture(index)?.volume))
+        this.writeRange(pan, this.shared((index) => picture(index)?.pan))
+        this.writeRange(start, this.shared((index) => picture(index)?.start))
+        this.writeRange(length, this.shared((index) => picture(index)?.length))
+        const seconds = this.shared((index) => this.startSeconds(index))
+        this.writeStartTime(startTime, seconds === undefined ? undefined : Number(seconds))
+        const looped = this.shared((index) => picture(index)?.loop)
+        if (document.activeElement !== loop) {
+            loop.indeterminate = looped === undefined
+            loop.checked = looped ?? false
         }
     }
 
-    private writeStartTime(input: HTMLInputElement, seconds: number) {
+    private writeStartTime(input: HTMLInputElement, seconds: number | undefined) {
         if (document.activeElement === input) {
+            return
+        }
+        if (seconds === undefined) {
+            input.value = '--'
             return
         }
         const limit = Number(input.dataset.max)
@@ -592,8 +672,10 @@ export class WebPresenter {
         }
     }
 
-    private writeRange(input: HTMLInputElement, value: number) {
-        if (document.activeElement === input) {
+    // Undefined hides the thumb: the selected rows differ.
+    private writeRange(input: HTMLInputElement, value: number | undefined) {
+        input.closest('.slider')?.classList.toggle('mixed', value === undefined)
+        if (document.activeElement === input || value === undefined) {
             return
         }
         if (Math.abs(Number(input.value) - value) > 0.0005) {
@@ -622,6 +704,9 @@ export class WebPresenter {
         if (!this.model.hasTracks) {
             return
         }
+        // Rows after the removed one move up. Several removals come highest first.
+        this.selected = this.selected.filter((at) => at !== index).map((at) => (at > index ? at - 1 : at))
+        this.selectionListener(this.selected)
         await this.client.removeAt(index)
     }
 
@@ -629,8 +714,8 @@ export class WebPresenter {
         if (!this.model.hasTracks) {
             return
         }
-        this.selected = -1
-        this.selectionListener(-1)
+        this.selected = []
+        this.selectionListener(this.selected)
         await this.client.clear()
     }
 

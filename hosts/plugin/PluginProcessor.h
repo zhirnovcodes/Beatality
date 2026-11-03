@@ -51,8 +51,10 @@ public:
     void setLoop(int beats);
     void setSlice(int exponent);
     void setAttack(int ms);
+    void setEffectsEnabled(bool on);
     void setGlobalPower(double power);
-    void setGlobalBeat(int exponent);
+    // 2^exponent beats, -4..1. min is not above max.
+    void setGlobalBeatRange(int min, int max);
     void setGlobalChance(double chance);
     void setReverbPower(double power);
     void setReverbChance(double chance);
@@ -77,7 +79,8 @@ public:
     // index is 0..7.
     void setRepeatPosition(int index, bool on);
     void setRepeatMix(double mix);
-    void setOutput(double volume, double pan);
+    // panMin and panMax are -1..1. Each slice's pan roll is scaled onto that range.
+    void setOutput(double volume, double panMin, double panMax);
     void setTrack(int index, double start, double length, bool loop, double volume, double pan);
     // mode is 0 none, 1 beat, 2 pitch. bpm is the sample's own tempo, 1..999.9. param is 0..1.
     void setWarp(int index, int mode, double bpm, double param);
@@ -97,8 +100,10 @@ public:
     int loopBeats() const { return savedLoop; }
     int sliceExponent() const { return savedSlice; }
     int attackMs() const { return savedAttack; }
+    bool effectsEnabled() const { return saved.enabled; }
     double globalPower() const { return saved.globalPower; }
-    int globalBeat() const { return saved.globalBeat; }
+    int globalBeatMin() const { return saved.beatMin; }
+    int globalBeatMax() const { return saved.beatMax; }
     double globalChance() const { return saved.globalChance; }
     double reverbPower() const { return saved.reverbPower; }
     double reverbChance() const { return saved.reverbChance; }
@@ -116,7 +121,8 @@ public:
     double shiftChance() const { return saved.shiftChance; }
     const bt::BeatRepeatSettings& beatRepeat() const { return savedRepeat; }
     double outputVolume() const { return savedVolume; }
-    double outputPan() const { return savedPan; }
+    double outputPanMin() const { return savedPanMin; }
+    double outputPanMax() const { return savedPanMax; }
     double trackStart(int index) const;
     double trackLength(int index) const;
     bool trackLoop(int index) const;
@@ -172,7 +178,8 @@ private:
     bt::Effects saved;
     bt::BeatRepeatSettings savedRepeat;
     double savedVolume = 1;
-    double savedPan = 0;
+    double savedPanMin = 0;
+    double savedPanMax = 0;
     std::atomic<std::uint32_t> view{0};
     std::atomic<int> slot{-1};
     std::atomic<double> head{0};

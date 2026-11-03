@@ -30,7 +30,9 @@ struct PackDocument {
     int slices = 0;
     int attack = 2;
     double volume = 1;
-    double pan = 0;
+    // Each slice's pan roll is scaled onto panMin..panMax. Older packs have one pan, read as both.
+    double panMin = 0;
+    double panMax = 0;
     int savedCount = 0;
     std::vector<std::uint16_t> slots;
     std::vector<PackTrack> tracks;

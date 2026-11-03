@@ -67,9 +67,15 @@ export interface GlobalPowerMessage {
     power: number
 }
 
-export interface GlobalBeatMessage {
-    type: 'globalBeat'
-    exponent: number
+export interface EffectsEnabledMessage {
+    type: 'effectsEnabled'
+    on: boolean
+}
+
+export interface GlobalBeatRangeMessage {
+    type: 'globalBeatRange'
+    min: number
+    max: number
 }
 
 export interface GlobalChanceMessage {
@@ -246,7 +252,8 @@ export type HostMessage =
     | SliceMessage
     | AttackMessage
     | GlobalPowerMessage
-    | GlobalBeatMessage
+    | EffectsEnabledMessage
+    | GlobalBeatRangeMessage
     | GlobalChanceMessage
     | ReverbPowerMessage
     | ReverbChanceMessage

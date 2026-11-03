@@ -119,8 +119,8 @@ void testSequenceAppendAndCrop() {
         CHECK(sequence.indexAt(i, 2) == prefix[i]);
     }
     CHECK(sequence.savedCount() == 2);
-    // Rolls, then pan rolls, follow the indices, so the next index draw is after those floats.
-    for (int i = 0; i < 16; ++i) {
+    // Rolls, then pan rolls, then beat rolls follow the indices, so the next index draw is after those floats.
+    for (int i = 0; i < 24; ++i) {
         shadow.nextFloat();
     }
 

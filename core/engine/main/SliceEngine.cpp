@@ -59,7 +59,7 @@ void SliceEngine::play() {
         if (!sequence_.empty() && bank_.count() > 0) {
             const int track = sequence_.indexAt(0, bank_.count());
             playingBuffer_ = bank_.at(track);
-            playing_.setSlice(bank_.play(track), bank_.warp(track), 0, sequence_.effectAt(0), sequence_.rollAt(0), sequence_.panRollAt(0));
+            playing_.setSlice(bank_.play(track), bank_.warp(track), 0, sequence_.effectAt(0), sequence_.rollAt(0), sequence_.panRollAt(0), sequence_.beatRollAt(0));
             playingSlot_ = 0;
         } else {
             playingSlot_ = -1;
@@ -95,7 +95,7 @@ void SliceEngine::randomize() {
     if (slot >= 0 && !sequence_.empty() && bank_.count() > 0) {
         const int track = sequence_.indexAt(slot, bank_.count());
         playingBuffer_ = bank_.at(track);
-            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot));
+            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot), sequence_.beatRollAt(slot));
         playingSlot_ = slot;
     } else {
         playingSlot_ = -1;
@@ -114,7 +114,7 @@ void SliceEngine::append(const SampleBuffer& buffer) {
     if (slot >= 0 && bank_.count() > 0) {
         const int track = sequence_.indexAt(slot, bank_.count());
         playingBuffer_ = bank_.at(track);
-            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot));
+            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot), sequence_.beatRollAt(slot));
         playingSlot_ = slot;
     } else {
         playingSlot_ = -1;
@@ -198,7 +198,7 @@ void SliceEngine::remove(int index) {
     if (slot >= 0 && !sequence_.empty()) {
         const int track = sequence_.indexAt(slot, bank_.count());
         playingBuffer_ = bank_.at(track);
-            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot));
+            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot), sequence_.beatRollAt(slot));
         playingSlot_ = slot;
     } else {
         playingSlot_ = -1;
@@ -265,7 +265,7 @@ void SliceEngine::setLoop(int beats) {
     if (slot >= 0 && !sequence_.empty() && bank_.count() > 0) {
         const int track = sequence_.indexAt(slot, bank_.count());
         playingBuffer_ = bank_.at(track);
-            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot));
+            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot), sequence_.beatRollAt(slot));
         playingSlot_ = slot;
     } else {
         playingSlot_ = -1;
@@ -286,7 +286,7 @@ void SliceEngine::setSlice(int exponent) {
     if (slot >= 0 && !sequence_.empty() && bank_.count() > 0) {
         const int track = sequence_.indexAt(slot, bank_.count());
         playingBuffer_ = bank_.at(track);
-            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot));
+            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot), sequence_.beatRollAt(slot));
         playingSlot_ = slot;
     } else {
         playingSlot_ = -1;
@@ -320,7 +320,7 @@ void SliceEngine::render(float* left, float* right, int frames) {
                 if (arriving >= 0) {
                     const int track = sequence_.indexAt(arriving, bank_.count());
                     playingBuffer_ = bank_.at(track);
-            playing_.setSlice(bank_.play(track), bank_.warp(track), arriving, sequence_.effectAt(arriving), sequence_.rollAt(arriving), sequence_.panRollAt(arriving));
+            playing_.setSlice(bank_.play(track), bank_.warp(track), arriving, sequence_.effectAt(arriving), sequence_.rollAt(arriving), sequence_.panRollAt(arriving), sequence_.beatRollAt(arriving));
                     playingSlot_ = arriving;
                 } else {
                     playingSlot_ = -1;

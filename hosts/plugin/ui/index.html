@@ -36,8 +36,12 @@
       <div class="mix-slider volume"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
         <input type="range" id="master-volume" min="0" max="1.2" step="0.01" value="1" data-snap="1" aria-label="Volume"></div>
       <span class="mix-caption pan">PAN</span>
-      <div class="mix-slider pan"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
-        <input type="range" id="master-pan" min="-1" max="1" step="0.01" value="0" data-snap="0" aria-label="Pan"></div>
+      <!-- Each slice's pan roll is scaled onto MIN..MAX. -->
+      <div class="mix-range pan" id="master-pan">
+        <div class="track lit"></div><div class="track dark"></div><div class="snap"></div><div class="pin min"></div><div class="pin max"></div>
+        <input type="range" class="min" id="master-pan-min" min="-1" max="1" step="0.01" value="0" aria-label="Pan minimum">
+        <input type="range" class="max" id="master-pan-max" min="-1" max="1" step="0.01" value="0" aria-label="Pan maximum">
+      </div>
 
       <div class="seek" role="meter" aria-label="Playhead position" aria-valuemin="0" aria-valuemax="1">
         <div class="band"></div><div class="head"></div>
@@ -70,6 +74,8 @@
   <section class="part effects" aria-label="Effects">
     <div class="window"></div>
     <div class="content">
+      <button type="button" class="fx-btn fx-enable" id="fx-enable" aria-pressed="true">EFFECTS ON</button>
+      <button type="button" class="fx-btn fx-shuffle" id="fx-shuffle">SHUFFLE</button>
       <div class="fx-caps" aria-hidden="true">
         <div class="fx-cap" style="left: 31px; width: 44px"><span class="name">GLOBAL</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
         <div class="fx-cap" style="left: 79px; width: 26px"><span class="clock"></span></div>
@@ -86,8 +92,9 @@
           <input type="range" id="fx-power" min="0" max="1" step="0.01" value="1" aria-label="Global power"></div>
         <div class="fx-slider" style="left: 50px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
           <input type="range" id="fx-chance" min="0" max="1" step="0.01" value="0" aria-label="Global chance (%)"></div>
-        <div class="fx-slider time" style="left: 80px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
-          <input type="range" id="fx-time" min="-4" max="1" step="1" value="0" aria-label="Effect time" aria-valuetext="1 beat"></div>
+        <div class="fx-slider time" style="left: 80px"><div class="track"></div><div class="fill"></div><div class="thumb max"></div><div class="thumb min"></div>
+          <input type="range" class="min" id="fx-time-min" min="-4" max="1" step="1" value="-3" aria-label="Effect time minimum" aria-valuetext="1/8 beat">
+          <input type="range" class="max" id="fx-time-max" min="-4" max="1" step="1" value="-1" aria-label="Effect time maximum" aria-valuetext="1/2 beat"></div>
         <div class="fx-slider" style="left: 133px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
           <input type="range" id="fx-delay-power" min="0" max="1" step="0.01" value="1" aria-label="Delay power"></div>
         <div class="fx-slider" style="left: 151px"><div class="track"></div><div class="fill"></div><div class="thumb"></div>
@@ -118,7 +125,6 @@
           <input type="range" id="fx-shift-chance" min="0" max="1" step="0.01" value="0" aria-label="Shift chance (%)"></div>
         <ol class="fx-scale" aria-hidden="true" style="left: 102px"><li>2</li><li>1</li><li>1/2</li><li>1/4</li><li>1/8</li><li>1/16</li></ol>
       </div>
-      <button type="button" class="fx-randomize" id="fx-randomize">RANDOMIZE</button>
     </div>
     <div class="case"></div>
   </section>

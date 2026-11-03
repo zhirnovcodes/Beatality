@@ -18,13 +18,14 @@ double unit(double value) {
 
 SlicePlayer::SlicePlayer(double sampleRate, std::uint64_t seed) : bank_(sampleRate, seed) { curve_.stop(0); }
 
-void SlicePlayer::setSlice(const SampleSettings& play, const WarpSettings& warp, int slot, EffectId effect, float roll, float panRoll) {
+void SlicePlayer::setSlice(const SampleSettings& play, const WarpSettings& warp, int slot, EffectId effect, float roll, float panRoll, float beatRoll) {
     play_ = play;
     warp_ = warp;
     slot_ = slot;
     effect_ = effect;
     roll_ = roll;
     panRoll_ = panRoll;
+    beatRoll_ = beatRoll;
     bank_.clean();
     curve_ = Curve();
     at_ = 0;
@@ -74,7 +75,7 @@ void SlicePlayer::render(const SampleBuffer& slice, const ClockSettings& setting
     ++at_;
     const SliceReader reader(slice, play_, warp_, settings, grid, slot_, clock.sliceFrames(settings, grid));
     Frame sample;
-    if (roll_ < effects_.globalChance && effect_ != EffectId::None) {
+    if (effects_.enabled && roll_ < effects_.globalChance && effect_ != EffectId::None) {
         bank_.bind(slot_);
         double localPower = effects_.reversePower;
         if (effect_ == EffectId::Reverb) {
@@ -92,7 +93,7 @@ void SlicePlayer::render(const SampleBuffer& slice, const ClockSettings& setting
         }
         EffectParams params;
         params.power = static_cast<float>(unit(localPower * effects_.globalPower));
-        params.beats = effects_.beatLength();
+        params.beats = effects_.beats(beatRoll_);
         params.slot = slot_;
         sample = bank_.apply(effect_, reader, settings, clock, grid, params);
     } else {

@@ -48,12 +48,15 @@ public:
     EffectId effectAt(int slot) const;
     // Drawn in [-1, 1) by generate and append. assign stores 0, the middle of the pan range.
     float panRollAt(int slot) const;
+    // Drawn in [0, 1) by generate and append. assign stores 0, the shortest effect length.
+    float beatRollAt(int slot) const;
 
 private:
     std::uint16_t slots_[kMaxSlots]{};
     float rolls_[kMaxSlots]{};
     EffectId effects_[kMaxSlots]{};
     float panRolls_[kMaxSlots]{};
+    float beatRolls_[kMaxSlots]{};
     int size_ = 0;
     int savedCount_ = 0;
 };

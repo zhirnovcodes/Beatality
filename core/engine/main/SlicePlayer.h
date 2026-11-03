@@ -16,8 +16,9 @@ public:
     SlicePlayer(double sampleRate, std::uint64_t seed);
 
     // slot is the slice index. roll is this slice's chance draw. panRoll is its pan draw, -1..1.
+    // beatRoll is its effect length draw, 0..1, scaled by the effect beat range.
     // Knob changes go through setEffects and setPanRange and do not restart the curve.
-    void setSlice(const SampleSettings& play, const WarpSettings& warp, int slot, EffectId effect, float roll, float panRoll);
+    void setSlice(const SampleSettings& play, const WarpSettings& warp, int slot, EffectId effect, float roll, float panRoll, float beatRoll);
     // Same slice, a new window or warp. Does not restart the curve.
     void setPlay(const SampleSettings& play, const WarpSettings& warp);
     void setEffects(const Effects& effects);
@@ -47,6 +48,7 @@ private:
     EffectId effect_ = EffectId::None;
     float roll_ = 1.0f;
     float panRoll_ = 0.0f;
+    float beatRoll_ = 0.0f;
     double panMin_ = 0;
     double panMax_ = 0;
     int at_ = 0;

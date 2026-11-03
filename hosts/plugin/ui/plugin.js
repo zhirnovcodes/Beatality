@@ -6,8 +6,10 @@ const state = {
     loopBeats: 8,
     sliceExp: 0,
     attackMs: 2,
+    effectsEnabled: true,
     globalPower: 1,
-    globalBeat: 0,
+    globalBeatMin: -3,
+    globalBeatMax: -1,
     globalChance: 0,
     reverbPower: 1,
     reverbChance: 0,
@@ -35,7 +37,8 @@ const state = {
     playSlot: -1,
     canAppend: true,
     outputVolume: 1,
-    outputPan: 0,
+    outputPanMin: 0,
+    outputPanMax: 0,
 }
 
 // Warp modes in the engine's order: the index is the mode number setWarp takes.
@@ -48,9 +51,11 @@ const bpmMax = 999
 
 const plays = []
 let pictures = { names: [], rates: [], frames: [], peaks: [] }
-let selected = -1
+// Rows whose sample controls are on the page. The first is the one WARP steps from.
+let selected = []
 let epoch = -1
-let pendingRemove = -1
+// Rows sent to the processor for removal, in the order sent: highest first.
+let pendingRemove = []
 let builtKey = ''
 let bankOpen = false
 let bankIndex = 0
@@ -141,13 +146,43 @@ function durationSec(index) {
     return rate > 0 && frames > 0 ? frames / rate : 0
 }
 
+// How much start moves when the wave moves one pixel, at the width drawWave paints the file. 0 when there is no sample.
+function startPerPixel(index) {
+    const play = plays[index]
+    if (!play) {
+        return 0
+    }
+    const bpm = play.bpm > 0 ? play.bpm : 120
+    const pxPerBeat = 424 / Math.max(1, state.loopBeats)
+    const imageWidth = durationSec(index) * (bpm / 60) * pxPerBeat
+    return imageWidth > 0 ? 1 / imageWidth : 0
+}
+
+// Undefined hides the thumb: the selected rows differ.
 function setRange(id, value) {
     const input = document.getElementById(id)
-    if (!(input instanceof HTMLInputElement) || document.activeElement === input) {
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    input.closest('.slider')?.classList.toggle('mixed', value === undefined)
+    if (document.activeElement === input || value === undefined) {
         return
     }
     input.value = String(value)
     placeThumb(input)
+}
+
+// The value every selected row has, or undefined when they differ or none is selected.
+function shared(read) {
+    let value
+    for (let at = 0; at < selected.length; at++) {
+        const next = read(selected[at])
+        if (next === undefined || (at > 0 && next !== value)) {
+            return undefined
+        }
+        value = next
+    }
+    return value
 }
 
 function syncCaptions() {
@@ -302,7 +337,7 @@ function markRows() {
     const rows = grid.children
     for (let index = 0; index < rows.length; index++) {
         const row = rows[index]
-        row.setAttribute('aria-selected', index === selected ? 'true' : 'false')
+        row.setAttribute('aria-selected', selected.includes(index) ? 'true' : 'false')
         const playingCol = index === state.playTrack && state.playSlot >= 0 && state.playSlot < cols ? state.playSlot : -1
         const cells = row.querySelectorAll('.cell')
         for (let column = 0; column < cells.length; column++) {
@@ -316,6 +351,10 @@ function writeStartTime(seconds) {
     if (!(input instanceof HTMLInputElement) || document.activeElement === input) {
         return
     }
+    if (seconds === undefined) {
+        input.value = '--'
+        return
+    }
     const limit = Number(input.dataset.max)
     const capped = Number.isFinite(limit) ? Math.min(limit, Math.max(0, seconds)) : Math.max(0, seconds)
     const shown = capped.toFixed(2)
@@ -327,66 +366,79 @@ function writeStartTime(seconds) {
 function syncPanel() {
     const panel = document.getElementById('selected-sample')
     if (panel instanceof HTMLFieldSetElement) {
-        panel.disabled = selected < 0
+        panel.disabled = selected.length === 0
     }
-    const play = plays[selected]
-    syncWarpPanel(play)
-    const duration = play ? durationSec(selected) : 0
+    syncWarpPanel()
+    const duration = selected.length > 0 ? durationSec(selected[0]) : 0
     const startTime = document.getElementById('start-time')
     if (startTime instanceof HTMLInputElement) {
         const limit = duration > 0 ? duration : 0
         startTime.dataset.max = String(limit)
         startTime.max = String(limit)
     }
-    if (!play) {
+    const loop = document.getElementById('track-loop')
+    if (selected.length === 0) {
         setRange('volume', 1)
         setRange('pan', 0)
         setRange('start', 0)
         setRange('length', 1)
         writeStartTime(0)
-        const loop = document.getElementById('track-loop')
         if (loop instanceof HTMLInputElement && document.activeElement !== loop) {
+            loop.indeterminate = false
             loop.checked = false
         }
         return
     }
-    setRange('volume', play.volume)
-    setRange('pan', play.pan)
-    setRange('start', play.start)
-    setRange('length', play.length)
-    writeStartTime(play.start * duration)
-    const loop = document.getElementById('track-loop')
+    // A control whose value differs between the selected rows shows no value.
+    setRange('volume', shared((index) => plays[index]?.volume))
+    setRange('pan', shared((index) => plays[index]?.pan))
+    setRange('start', shared((index) => plays[index]?.start))
+    setRange('length', shared((index) => plays[index]?.length))
+    const seconds = shared(startSeconds)
+    writeStartTime(seconds === undefined ? undefined : Number(seconds))
+    const looped = shared((index) => plays[index]?.loop)
     if (loop instanceof HTMLInputElement && document.activeElement !== loop) {
-        loop.checked = play.loop
+        loop.indeterminate = looped === undefined
+        loop.checked = looped ?? false
     }
 }
 
-// The file name, BPM, WARP, and BEAT of the selected sample. A field the user is typing in is left alone.
-function syncWarpPanel(play) {
+// Start of the row in seconds as the field shows it.
+function startSeconds(index) {
+    const play = plays[index]
+    return play ? (play.start * durationSec(index)).toFixed(2) : undefined
+}
+
+// The file name, BPM, WARP, and BEAT of the selected samples. A field the user is typing in is left alone.
+function syncWarpPanel() {
+    const none = selected.length === 0
     const name = document.getElementById('track-name')
     if (name) {
-        name.textContent = play ? play.name : ''
-        name.title = play ? play.name : ''
+        const text = none ? 'none selected' : selected.length > 1 ? 'multiple selected' : plays[selected[0]]?.name || ''
+        name.textContent = text
+        name.title = text
     }
-    const warp = play ? play.warp : 0
+    const warp = none ? 0 : shared((index) => plays[index]?.warp)
     const label = document.getElementById('track-warp')
     if (label) {
-        label.dataset.value = warpModes[warp] || 'none'
-        label.textContent = (warpModes[warp] || 'none').toUpperCase()
+        label.dataset.value = warp === undefined ? 'none' : warpModes[warp] || 'none'
+        label.textContent = warp === undefined ? '---' : (warpModes[warp] || 'none').toUpperCase()
     }
     const beat = document.getElementById('track-beat')
     if (beat instanceof HTMLInputElement) {
-        // BEAT changes the sound only in beat mode, so it is disabled in the others.
+        // BEAT changes the sound only in beat mode, so it is disabled unless every selected sample is in it.
         beat.disabled = warp !== 1
-        setRange('track-beat', Math.round((play ? play.warpParam : 0) * (beatSteps.length - 1)))
+        const step = none ? 0 : shared((index) => (plays[index] ? Math.round(plays[index].warpParam * (beatSteps.length - 1)) : undefined))
+        setRange('track-beat', step)
         const caption = document.querySelector('.sample-panel .name.beat .value')
         if (caption) {
-            caption.textContent = beatSteps[Number(beat.value)] || ''
+            caption.textContent = step === undefined ? '--' : beatSteps[Number(beat.value)] || ''
         }
     }
     const bpm = document.getElementById('track-bpm')
     if (bpm instanceof HTMLInputElement && document.activeElement !== bpm) {
-        bpm.value = (play ? play.bpm : 120).toFixed(1)
+        const value = none ? 120 : shared((index) => plays[index]?.bpm)
+        bpm.value = value === undefined ? '--' : value.toFixed(1)
     }
 }
 
@@ -423,11 +475,69 @@ function rebuildRows() {
             cell.className = 'cell'
             row.append(cell)
         }
-        row.addEventListener('click', () => {
-            selected = index
+        // Dragging the row grabs the wave. Left brings later audio in, so start goes up.
+        // A selected row drags every selected row's wave by the same pixels.
+        let downX = 0
+        let downStarts = new Map()
+        let dragging = false
+        // Shift toggles the row in and out of the selection. A drag does not select.
+        row.addEventListener('click', (event) => {
+            if (dragging) {
+                return
+            }
+            if (!event.shiftKey) {
+                selected = [index]
+            } else if (selected.includes(index)) {
+                selected = selected.filter((at) => at !== index)
+            } else {
+                selected = [...selected, index]
+            }
             markRows()
             syncPanel()
         })
+        row.addEventListener('pointerdown', (event) => {
+            if (!plays[index] || event.button !== 0) {
+                return
+            }
+            row.setPointerCapture(event.pointerId)
+            downX = event.clientX
+            const moved = selected.includes(index) ? selected : [index]
+            downStarts = new Map(moved.filter((at) => plays[at]).map((at) => [at, plays[at].start]))
+            dragging = false
+        })
+        row.addEventListener('pointermove', (event) => {
+            if (!row.hasPointerCapture(event.pointerId)) {
+                return
+            }
+            const dx = event.clientX - downX
+            if (!dragging && Math.abs(dx) < 3) {
+                return
+            }
+            dragging = true
+            const canvases = document.querySelectorAll('#sample-grid .row canvas')
+            for (const [at, start] of downStarts) {
+                const dragged = plays[at]
+                const perPixel = startPerPixel(at)
+                if (!dragged || !(perPixel > 0)) {
+                    continue
+                }
+                dragged.start = Math.min(1, Math.max(0, start - dx * perPixel))
+                if (canvases[at] instanceof HTMLCanvasElement) {
+                    drawWave(canvases[at], at)
+                }
+                void native('setTrack', at, dragged.start, dragged.length, dragged.loop, dragged.volume, dragged.pan)
+            }
+            if (selected.includes(index)) {
+                syncPanel()
+            }
+        })
+        const release = (event) => {
+            if (row.hasPointerCapture(event.pointerId)) {
+                row.releasePointerCapture(event.pointerId)
+            }
+        }
+        row.addEventListener('pointerup', release)
+        row.addEventListener('pointercancel', release)
         rows.push(row)
     }
     grid.replaceChildren(...rows)
@@ -475,33 +585,29 @@ function playFromBank(name, bank, index) {
 
 function replacePlays(names) {
     plays.splice(0, plays.length, ...names.map(freshPlay))
-    selected = -1
+    selected = []
 }
 
 function onBank(bank) {
     const names = bank.names || []
     if (bank.epoch !== epoch) {
         epoch = bank.epoch
-        pendingRemove = -1
+        pendingRemove = []
         plays.splice(0, plays.length, ...names.map((name, index) => playFromBank(name, bank, index)))
-        selected = -1
+        selected = []
         applyBankSettings(bank)
-    } else if (pendingRemove >= 0 && names.length === plays.length - 1) {
-        const index = pendingRemove
-        pendingRemove = -1
+    } else if (pendingRemove.length > 0 && names.length === plays.length - 1) {
+        // Rows after the removed one move up.
+        const index = pendingRemove.shift()
         plays.splice(index, 1)
-        if (selected === index) {
-            selected = -1
-        } else if (selected > index) {
-            selected -= 1
-        }
+        selected = selected.filter((at) => at !== index).map((at) => (at > index ? at - 1 : at))
     } else if (names.length >= plays.length && plays.every((play, index) => play.name === names[index])) {
-        pendingRemove = -1
+        pendingRemove = []
         for (let index = plays.length; index < names.length; index++) {
             plays.push(freshPlay(names[index]))
         }
     } else {
-        pendingRemove = -1
+        pendingRemove = []
         replacePlays(names)
     }
     pictures = {
@@ -555,14 +661,18 @@ function applyBankSettings(bank) {
         state.attackMs = attack
         setRange('attack', attack)
     }
+    if (bank.effectsEnabled != null) {
+        state.effectsEnabled = Boolean(bank.effectsEnabled)
+        paintEffectsEnabled()
+    }
     if (bank.globalPower != null && Number.isFinite(Number(bank.globalPower))) {
         state.globalPower = Number(bank.globalPower)
         setRange('fx-power', state.globalPower)
     }
-    if (bank.globalBeat != null && Number.isInteger(Number(bank.globalBeat))) {
-        state.globalBeat = Number(bank.globalBeat)
-        setRange('fx-time', state.globalBeat)
-        labelEffectTime(state.globalBeat)
+    if (Number.isInteger(Number(bank.globalBeatMin)) && Number.isInteger(Number(bank.globalBeatMax))) {
+        state.globalBeatMin = Number(bank.globalBeatMin)
+        state.globalBeatMax = Number(bank.globalBeatMax)
+        paintEffectTime()
     }
     if (bank.globalChance != null && Number.isFinite(Number(bank.globalChance))) {
         state.globalChance = Number(bank.globalChance)
@@ -645,14 +755,16 @@ function applyBankSettings(bank) {
     }
     paintBeatRepeat()
     const volume = Number(bank.volume)
-    const pan = Number(bank.pan)
+    const panMin = Number(bank.panMin)
+    const panMax = Number(bank.panMax)
     if (Number.isFinite(volume)) {
         state.outputVolume = volume
         setRange('master-volume', volume)
     }
-    if (Number.isFinite(pan)) {
-        state.outputPan = pan
-        setRange('master-pan', pan)
+    if (Number.isFinite(panMin) && Number.isFinite(panMax)) {
+        state.outputPanMin = panMin
+        state.outputPanMax = panMax
+        paintMasterPan()
     }
     syncCaptions()
 }
@@ -690,57 +802,69 @@ function setBankOpen(open) {
 }
 
 function commitTrack() {
-    const play = plays[selected]
-    if (!play || selected < 0) {
-        return
+    for (const index of selected) {
+        const play = plays[index]
+        if (play) {
+            void native('setTrack', index, play.start, play.length, play.loop, play.volume, play.pan)
+        }
     }
-    void native('setTrack', selected, play.start, play.length, play.loop, play.volume, play.pan)
 }
 
 function commitWarp() {
-    const play = plays[selected]
-    if (!play || selected < 0) {
-        return
+    for (const index of selected) {
+        const play = plays[index]
+        if (play) {
+            void native('setWarp', index, play.warp, play.bpm, play.warpParam)
+        }
     }
-    void native('setWarp', selected, play.warp, play.bpm, play.warpParam)
 }
 
-// BEAT and the sample BPM. The waveform is drawn at the sample BPM, so a new BPM redraws it.
+// BEAT and the sample BPM, for every selected sample. The waveform is drawn at the sample BPM, so a new BPM redraws it.
 function onWarp(event) {
-    const play = plays[selected]
     const input = event.currentTarget
-    if (!play || !(input instanceof HTMLInputElement)) {
+    if (selected.length === 0 || !(input instanceof HTMLInputElement)) {
         return
     }
     if (input.id === 'track-beat') {
         // The slider is an index into beatSteps. The engine param is that index over the last one.
         placeThumb(input)
-        play.warpParam = Number(input.value) / (beatSteps.length - 1)
-        const caption = document.querySelector('.sample-panel .name.beat .value')
-        if (caption) {
-            caption.textContent = beatSteps[Number(input.value)] || ''
+        for (const index of selected) {
+            if (plays[index]) {
+                plays[index].warpParam = Number(input.value) / (beatSteps.length - 1)
+            }
         }
+        syncWarpPanel()
     } else if (input.id === 'track-bpm') {
         const parsed = Number.parseFloat(input.value.trim().replace(',', '.'))
-        const bpm = Number.isFinite(parsed) ? Math.min(bpmMax, Math.max(bpmMin, Math.round(parsed * 10) / 10)) : play.bpm
-        play.bpm = bpm
-        input.value = bpm.toFixed(1)
-        const canvas = document.querySelectorAll('#sample-grid .row')[selected]?.querySelector('canvas')
-        if (canvas instanceof HTMLCanvasElement) {
-            drawWave(canvas, selected)
+        const bpm = Number.isFinite(parsed) ? Math.min(bpmMax, Math.max(bpmMin, Math.round(parsed * 10) / 10)) : shared((index) => plays[index]?.bpm)
+        input.value = bpm === undefined ? '--' : bpm.toFixed(1)
+        if (bpm === undefined) {
+            return
         }
+        for (const index of selected) {
+            if (plays[index]) {
+                plays[index].bpm = bpm
+            }
+        }
+        redrawWaves()
     }
     commitWarp()
 }
 
-// Steps WARP through none → beat → pitch, wrapping, for the selected sample.
+// Steps WARP through none → beat → pitch, wrapping, from the first selected sample's mode.
+// Every selected sample takes the new mode.
 function stepWarp(delta) {
-    const play = plays[selected]
-    if (!play || selected < 0) {
+    const first = plays[selected[0]]
+    if (!first) {
         return
     }
-    play.warp = (play.warp + delta + warpModes.length) % warpModes.length
-    syncWarpPanel(play)
+    const warp = (first.warp + delta + warpModes.length) % warpModes.length
+    for (const index of selected) {
+        if (plays[index]) {
+            plays[index].warp = warp
+        }
+    }
+    syncWarpPanel()
     commitWarp()
 }
 
@@ -831,10 +955,20 @@ function attachSampleScroll() {
     }
 }
 
-function labelEffectTime(exponent) {
-    const input = document.getElementById('fx-time')
-    if (input instanceof HTMLInputElement) {
-        input.setAttribute('aria-valuetext', sliceLabel(exponent) + ' beat')
+// Effect TIME. Both ends are exponents -4..1 (1/16 .. 2 beats). min is not above max.
+function paintEffectTime() {
+    const range = document.querySelector('.fx-slider.time')
+    if (range instanceof HTMLElement) {
+        range.style.setProperty('--lo', String((state.globalBeatMin + 4) / 5))
+        range.style.setProperty('--hi', String((state.globalBeatMax + 4) / 5))
+    }
+    const min = document.getElementById('fx-time-min')
+    const max = document.getElementById('fx-time-max')
+    if (min instanceof HTMLInputElement && max instanceof HTMLInputElement) {
+        min.value = String(state.globalBeatMin)
+        max.value = String(state.globalBeatMax)
+        min.setAttribute('aria-valuetext', sliceLabel(state.globalBeatMin) + ' beat')
+        max.setAttribute('aria-valuetext', sliceLabel(state.globalBeatMax) + ' beat')
     }
 }
 
@@ -845,7 +979,8 @@ function paintSliders() {
         }
     })
     setRange('playhead', 0)
-    labelEffectTime(state.globalBeat)
+    paintEffectTime()
+    paintEffectsEnabled()
     paintBeatRepeat()
     syncCaptions()
 }
@@ -854,11 +989,24 @@ function randomUnit() {
     return Math.round(Math.random() * 100) / 100
 }
 
+function paintEffectsEnabled() {
+    const enable = document.getElementById('fx-enable')
+    if (enable) {
+        enable.setAttribute('aria-pressed', state.effectsEnabled ? 'true' : 'false')
+        enable.textContent = state.effectsEnabled ? 'EFFECTS ON' : 'EFFECTS OFF'
+    }
+}
+
+function onEffectsEnabled() {
+    state.effectsEnabled = !state.effectsEnabled
+    paintEffectsEnabled()
+    void native('setEffectsEnabled', state.effectsEnabled)
+}
+
 function shuffleEffects() {
     const picks = [
         ['globalPower', 'fx-power', 'setGlobalPower', randomUnit()],
         ['globalChance', 'fx-chance', 'setGlobalChance', randomUnit()],
-        ['globalBeat', 'fx-time', 'setGlobalBeat', -4 + Math.floor(Math.random() * 6)],
         ['delayPower', 'fx-delay-power', 'setDelayPower', randomUnit()],
         ['delayChance', 'fx-delay-chance', 'setDelayChance', randomUnit()],
         ['reverbPower', 'fx-reverb-power', 'setReverbPower', randomUnit()],
@@ -883,7 +1031,12 @@ function shuffleEffects() {
         }
         void native(name, value)
     }
-    labelEffectTime(state.globalBeat)
+    const a = -4 + Math.floor(Math.random() * 6)
+    const b = -4 + Math.floor(Math.random() * 6)
+    state.globalBeatMin = Math.min(a, b)
+    state.globalBeatMax = Math.max(a, b)
+    paintEffectTime()
+    void native('setGlobalBeatRange', state.globalBeatMin, state.globalBeatMax)
 }
 
 function wire() {
@@ -922,12 +1075,10 @@ function wire() {
             return
         }
         placeThumb(input)
-        if (input.id === 'fx-time') {
-            labelEffectTime(input.valueAsNumber)
-        }
     })
     document.getElementById('fx-power')?.addEventListener('input', onGlobalPower)
-    document.getElementById('fx-time')?.addEventListener('input', onGlobalBeat)
+    document.getElementById('fx-time-min')?.addEventListener('input', onGlobalBeat)
+    document.getElementById('fx-time-max')?.addEventListener('input', onGlobalBeat)
     document.getElementById('fx-chance')?.addEventListener('input', onGlobalChance)
     document.getElementById('fx-reverb-power')?.addEventListener('input', onReverbPower)
     document.getElementById('fx-reverb-chance')?.addEventListener('input', onReverbChance)
@@ -943,7 +1094,8 @@ function wire() {
     document.getElementById('fx-trance-chance')?.addEventListener('input', onTranceChance)
     document.getElementById('fx-shift-power')?.addEventListener('input', onShiftPower)
     document.getElementById('fx-shift-chance')?.addEventListener('input', onShiftChance)
-    document.getElementById('fx-randomize')?.addEventListener('click', shuffleEffects)
+    document.getElementById('fx-enable')?.addEventListener('click', onEffectsEnabled)
+    document.getElementById('fx-shuffle')?.addEventListener('click', shuffleEffects)
 
     document.getElementById('br-power')?.addEventListener('click', onRepeatPower)
     document.querySelectorAll('.br-pos').forEach((box) => box.addEventListener('change', onRepeatPosition))
@@ -954,7 +1106,8 @@ function wire() {
     document.getElementById('br-mix')?.addEventListener('input', onRepeatMix)
 
     document.getElementById('master-volume')?.addEventListener('input', onMaster)
-    document.getElementById('master-pan')?.addEventListener('input', onMaster)
+    document.getElementById('master-pan-min')?.addEventListener('input', onMasterPan)
+    document.getElementById('master-pan-max')?.addEventListener('input', onMasterPan)
     document.getElementById('volume')?.addEventListener('input', onGain)
     document.getElementById('pan')?.addEventListener('input', onGain)
 
@@ -980,16 +1133,16 @@ function wire() {
         }
     })
     document.getElementById('track-loop')?.addEventListener('change', () => {
-        const play = plays[selected]
         const loop = document.getElementById('track-loop')
-        if (!play || !(loop instanceof HTMLInputElement)) {
+        if (!(loop instanceof HTMLInputElement)) {
             return
         }
-        play.loop = loop.checked
-        const canvas = document.querySelectorAll('#sample-grid .row')[selected]?.querySelector('canvas')
-        if (canvas instanceof HTMLCanvasElement) {
-            drawWave(canvas, selected)
+        for (const index of selected) {
+            if (plays[index]) {
+                plays[index].loop = loop.checked
+            }
         }
+        redrawWaves()
         commitTrack()
     })
 
@@ -1000,8 +1153,11 @@ function wire() {
         if (plays.length === 0) {
             return
         }
-        pendingRemove = selected < 0 ? 0 : selected
-        void native('remove', pendingRemove)
+        // Highest first, so each index still names its row when the processor reaches it.
+        pendingRemove = selected.length === 0 ? [0] : [...selected].sort((a, b) => b - a)
+        for (const index of pendingRemove) {
+            void native('remove', index)
+        }
     })
     document.getElementById('clear')?.addEventListener('click', () => {
         if (plays.length === 0) {
@@ -1183,18 +1339,28 @@ function onGlobalPower() {
     void native('setGlobalPower', power)
 }
 
-function onGlobalBeat() {
-    const input = document.getElementById('fx-time')
+function onGlobalBeat(event) {
+    const input = event.currentTarget
     if (!(input instanceof HTMLInputElement)) {
         return
     }
     const exponent = input.valueAsNumber
-    labelEffectTime(exponent)
-    if (exponent === state.globalBeat) {
-        return
+    let min = state.globalBeatMin
+    let max = state.globalBeatMax
+    if (input.id === 'fx-time-min') {
+        min = exponent
+        max = Math.max(max, exponent)
+    } else {
+        max = exponent
+        min = Math.min(min, exponent)
     }
-    state.globalBeat = exponent
-    void native('setGlobalBeat', exponent)
+    const changed = min !== state.globalBeatMin || max !== state.globalBeatMax
+    state.globalBeatMin = min
+    state.globalBeatMax = max
+    paintEffectTime()
+    if (changed) {
+        void native('setGlobalBeatRange', min, max)
+    }
 }
 
 function onGlobalChance() {
@@ -1527,73 +1693,120 @@ function onMaster(event) {
     if (!(input instanceof HTMLInputElement)) {
         return
     }
-    const value = holdSnap(input)
-    if (input.id === 'master-volume') {
-        state.outputVolume = value
-    } else {
-        state.outputPan = value
+    state.outputVolume = holdSnap(input)
+    void native('setOutput', state.outputVolume, state.outputPanMin, state.outputPanMax)
+}
+
+function paintMasterPan() {
+    const range = document.getElementById('master-pan')
+    if (range) {
+        range.style.setProperty('--lo', String((state.outputPanMin + 1) / 2))
+        range.style.setProperty('--hi', String((state.outputPanMax + 1) / 2))
     }
-    void native('setOutput', state.outputVolume, state.outputPan)
+    const min = document.getElementById('master-pan-min')
+    const max = document.getElementById('master-pan-max')
+    if (min instanceof HTMLInputElement && max instanceof HTMLInputElement) {
+        min.value = String(state.outputPanMin)
+        max.value = String(state.outputPanMax)
+    }
+}
+
+// Each PAN end is -1..1 and snaps to 0. Moving one pin past the other pushes the other along, so min never passes max.
+function onMasterPan(event) {
+    const input = event.currentTarget
+    if (!(input instanceof HTMLInputElement)) {
+        return
+    }
+    let value = input.valueAsNumber
+    if (Math.abs(value) <= 2 * 0.04) {
+        value = 0
+    }
+    let min = state.outputPanMin
+    let max = state.outputPanMax
+    if (input.id === 'master-pan-min') {
+        min = value
+        max = Math.max(max, value)
+    } else {
+        max = value
+        min = Math.min(min, value)
+    }
+    const changed = min !== state.outputPanMin || max !== state.outputPanMax
+    state.outputPanMin = min
+    state.outputPanMax = max
+    paintMasterPan()
+    if (changed) {
+        void native('setOutput', state.outputVolume, min, max)
+    }
 }
 
 function onGain(event) {
-    const play = plays[selected]
     const input = event.currentTarget
-    if (!play || !(input instanceof HTMLInputElement)) {
+    if (selected.length === 0 || !(input instanceof HTMLInputElement)) {
         return
     }
     const value = holdSnap(input)
-    if (input.id === 'volume') {
-        play.volume = value
-        const canvas = document.querySelectorAll('#sample-grid .row')[selected]?.querySelector('canvas')
-        if (canvas instanceof HTMLCanvasElement) {
-            drawWave(canvas, selected)
+    for (const index of selected) {
+        const play = plays[index]
+        if (!play) {
+            continue
+        }
+        if (input.id === 'volume') {
+            play.volume = value
+        }
+        if (input.id === 'pan') {
+            play.pan = value
         }
     }
-    if (input.id === 'pan') {
-        play.pan = value
+    if (input.id === 'volume') {
+        redrawWaves()
     }
+    syncPanel()
     commitTrack()
 }
 
+// The typed seconds go to every selected row, each held inside its own file.
 function commitStartTime() {
     const field = document.getElementById('start-time')
-    const play = plays[selected]
-    if (!(field instanceof HTMLInputElement) || !play || selected < 0) {
+    if (!(field instanceof HTMLInputElement) || selected.length === 0) {
         return
     }
-    const duration = durationSec(selected)
     const parsed = Number.parseFloat(field.value.trim().replace(',', '.'))
     const seconds = Number.isFinite(parsed) ? parsed : 0
-    const clamped = Math.min(duration, Math.max(0, seconds))
-    play.start = duration > 0 ? clamped / duration : 0
-    field.value = clamped.toFixed(2)
-    setRange('start', play.start)
-    const canvas = document.querySelectorAll('#sample-grid .row')[selected]?.querySelector('canvas')
-    if (canvas instanceof HTMLCanvasElement) {
-        drawWave(canvas, selected)
+    for (const index of selected) {
+        const play = plays[index]
+        if (!play) {
+            continue
+        }
+        const duration = durationSec(index)
+        const clamped = Math.min(duration, Math.max(0, seconds))
+        play.start = duration > 0 ? clamped / duration : 0
     }
+    field.value = shared(startSeconds) ?? '--'
+    setRange('start', shared((index) => plays[index]?.start))
+    redrawWaves()
     commitTrack()
 }
 
 function onRegion(event) {
-    const play = plays[selected]
     const input = event.currentTarget
-    if (!play || !(input instanceof HTMLInputElement)) {
+    if (selected.length === 0 || !(input instanceof HTMLInputElement)) {
         return
     }
-    if (input.id === 'start') {
-        play.start = Number(input.value)
-        writeStartTime(play.start * durationSec(selected))
-    }
-    if (input.id === 'length') {
-        play.length = Number(input.value)
+    for (const index of selected) {
+        const play = plays[index]
+        if (!play) {
+            continue
+        }
+        if (input.id === 'start') {
+            play.start = Number(input.value)
+        }
+        if (input.id === 'length') {
+            play.length = Number(input.value)
+        }
     }
     placeThumb(input)
-    const canvas = document.querySelectorAll('#sample-grid .row')[selected]?.querySelector('canvas')
-    if (canvas instanceof HTMLCanvasElement) {
-        drawWave(canvas, selected)
-    }
+    syncPanel()
+    redrawWaves()
     commitTrack()
 }
 
