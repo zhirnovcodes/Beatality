@@ -153,17 +153,17 @@ export class WebPresenter {
         if (this.panelBound) {
             return
         }
-        const volume = panel.querySelector('#volume')
-        const pan = panel.querySelector('#pan')
-        const start = panel.querySelector('#start')
-        const length = panel.querySelector('#length')
-        const startTime = panel.querySelector('#start-time')
-        const loop = panel.querySelector('#track-loop')
-        const bpm = panel.querySelector('#track-bpm')
-        const warpPrev = panel.querySelector('#warp-prev')
-        const warpNext = panel.querySelector('#warp-next')
-        const warp = panel.querySelector('#track-warp')
-        const beat = panel.querySelector('#track-beat')
+        const volume = panel.querySelector('.slider.vol input')
+        const pan = panel.querySelector('.slider.pan input')
+        const start = panel.querySelector('.slider.start input')
+        const length = panel.querySelector('.slider.length input')
+        const startTime = panel.querySelector('.field.time')
+        const loop = panel.querySelector('.toggle')
+        const bpm = panel.querySelector('.field.bpm')
+        const warpPrev = panel.querySelector('.warp-btn.prev')
+        const warpNext = panel.querySelector('.warp-btn.next')
+        const warp = panel.querySelector('.warp-value')
+        const beat = panel.querySelector('.slider.beat input')
         const beatCaption = panel.querySelector('.name.beat .value')
         if (
             !(volume instanceof HTMLInputElement) ||

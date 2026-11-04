@@ -679,7 +679,7 @@ void testFilterFollowsPowerAndBeat() {
         return samples;
     };
     const std::vector<float> held(kFrames, 1.0f);
-    const std::vector<float> mid = tone(1000.0);
+    const std::vector<float> high = tone(8000.0);
     const std::vector<float> low = tone(80.0);
 
     auto play = [&](const std::vector<float>& samples, double power, double chance, int beat) {
@@ -710,13 +710,14 @@ void testFilterFollowsPowerAndBeat() {
     const std::vector<float> open = play(held, 1, 1, 1);
     CHECK(std::fabs(open[2500] - 0.1008) < 0.002);
 
-    const std::vector<float> slowMid = play(mid, 1, 1, 1);
+    // Seed 1 starts the sine at 90 degrees, so two beats keep the band near 10000 here.
+    const std::vector<float> slowHigh = play(high, 1, 1, 1);
     const std::vector<float> slowLow = play(low, 1, 1, 1);
-    CHECK(rmsOf(slowMid, 1200, 2000) > rmsOf(slowLow, 1200, 2000) * 4.0);
+    CHECK(rmsOf(slowHigh, 1200, 2000) > rmsOf(slowLow, 1200, 2000) * 4.0);
 
-    // A sixteenth sits near 100 Hz here. Two beats are still near 1000.
-    const std::vector<float> fastMid = play(mid, 1, 1, -4);
-    CHECK(rmsOf(slowMid, 1000, 1400) > rmsOf(fastMid, 1000, 1400) * 2.0);
+    // A sixteenth has already swept the band down to the bottom of its range here.
+    const std::vector<float> fastHigh = play(high, 1, 1, -4);
+    CHECK(rmsOf(slowHigh, 400, 1000) > rmsOf(fastHigh, 400, 1000) * 4.0);
 }
 
 void testFlangerFollowsPowerAndBeat() {
@@ -838,8 +839,9 @@ double toneEnergy(const std::vector<float>& samples, int first, int count, doubl
 }
 
 void testShiftFollowsPowerAndBeat() {
-    // 120 BPM at 48 kHz. One beat is 24000 frames, so the sine is +1 at frame 6000 and -1 at frame 18000.
-    // A 2000 Hz tone then sits at 3000 Hz, then at 1000 Hz. Power 1 is that full ±1000 Hz shift.
+    // 120 BPM at 48 kHz. One beat is 24000 frames. Seed 1 starts the sine at 270 degrees,
+    // so it is -1 at frame 0 and +1 at frame 12000.
+    // A 2000 Hz tone then sits at 1000 Hz, then at 3000 Hz. Power 1 is that full ±1000 Hz shift.
     constexpr int kRate = 48000;
     constexpr int kFrames = 20000;
     constexpr double kPi = 3.14159265358979323846;
@@ -875,25 +877,25 @@ void testShiftFollowsPowerAndBeat() {
     CHECK(gated[6000] == tone[6000]);
 
     const std::vector<float> open = play(1, 1, 0);
-    const double up3k = toneEnergy(open, 5904, kWindow, 3000.0, kRate);
-    const double up2k = toneEnergy(open, 5904, kWindow, 2000.0, kRate);
-    const double up1k = toneEnergy(open, 5904, kWindow, 1000.0, kRate);
-    const double up4k = toneEnergy(open, 5904, kWindow, 4000.0, kRate);
+    const double up3k = toneEnergy(open, 11904, kWindow, 3000.0, kRate);
+    const double up2k = toneEnergy(open, 11904, kWindow, 2000.0, kRate);
+    const double up1k = toneEnergy(open, 11904, kWindow, 1000.0, kRate);
+    const double up4k = toneEnergy(open, 11904, kWindow, 4000.0, kRate);
     if (!(up3k > 1000.0 && up3k > up2k * 8.0 && up3k > up1k * 8.0 && up3k > up4k * 8.0)) {
         std::printf("FAIL shift up 3000=%f 2000=%f 1000=%f 4000=%f\n", up3k, up2k, up1k, up4k);
         ++g_failed;
     }
 
-    const double down1k = toneEnergy(open, 17904, kWindow, 1000.0, kRate);
-    const double down2k = toneEnergy(open, 17904, kWindow, 2000.0, kRate);
-    const double down3k = toneEnergy(open, 17904, kWindow, 3000.0, kRate);
-    const double down0 = toneEnergy(open, 17904, kWindow, 500.0, kRate);
+    const double down1k = toneEnergy(open, 200, kWindow, 1000.0, kRate);
+    const double down2k = toneEnergy(open, 200, kWindow, 2000.0, kRate);
+    const double down3k = toneEnergy(open, 200, kWindow, 3000.0, kRate);
+    const double down0 = toneEnergy(open, 200, kWindow, 500.0, kRate);
     if (!(down1k > 1000.0 && down1k > down2k * 8.0 && down1k > down3k * 8.0 && down1k > down0 * 8.0)) {
         std::printf("FAIL shift down 1000=%f 2000=%f 3000=%f 500=%f\n", down1k, down2k, down3k, down0);
         ++g_failed;
     }
 
-    // A sixteenth sweeps the shift many times across the same stretch. One beat has barely left zero here.
+    // A sixteenth sweeps the shift many times across the same stretch. One beat has barely left -1 here.
     const std::vector<float> fast = play(1, 1, -4);
     double diff = 0.0;
     for (int i = 2000; i < 4000; ++i) {

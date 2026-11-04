@@ -65,7 +65,7 @@ float tap(const float* line, int capacity, int write, double delay) {
 
 } // namespace
 
-Flanger::Flanger(double sampleRate) {
+Flanger::Flanger(double sampleRate, std::uint64_t seed) : rng_(seed) {
     const int frames = static_cast<int>(std::llround(sampleRate * kDelayMsMax * 0.001)) + 4;
     capacity_ = frames > 4 ? frames : 4;
     left_.reset(new (std::nothrow) float[static_cast<std::size_t>(capacity_)]());
@@ -85,6 +85,11 @@ Frame Flanger::apply(const SliceReader& slice, const ClockSettings& clockSetting
     const Frame dry = slice.read(clock.localIn(params.slot, clockSettings, grid));
     const float dryL = dry.l;
     const float dryR = dry.r;
+    if (armed_) {
+        // Each slice starts the LFO at 90, 180, or 270 degrees.
+        phase_ = 0.25 * static_cast<double>(1 + rng_.nextInt(3));
+        armed_ = false;
+    }
     // One beat is one cycle. The sine walks the delay from 0.5 ms to 8 ms.
     const double along = 0.5 * (std::sin(phase_ * 2.0 * kPi) + 1.0);
     double delay = (kDelayMsMin + along * (kDelayMsMax - kDelayMsMin)) * 0.001 * sampleRate;
@@ -113,6 +118,7 @@ Frame Flanger::apply(const SliceReader& slice, const ClockSettings& clockSetting
 }
 
 void Flanger::clean() {
+    armed_ = true;
     if (quiet_) {
         return;
     }

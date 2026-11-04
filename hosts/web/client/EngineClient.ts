@@ -19,7 +19,6 @@ function trackMessage(index: number, play: SampleSettings): TrackMessage {
 function isAbort(error: unknown): boolean {
     return typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
 }
-import { AudioUnlock } from './AudioUnlock'
 import { SampleDecoder, toPlanarStereo } from './SampleDecoder'
 import { TrackRegistry } from './TrackRegistry'
 
@@ -39,6 +38,8 @@ export interface EngineSnapshot {
 }
 
 export interface EngineClientOptions {
+    // The host's context. Several clients can share one.
+    context: AudioContext
     wasmUrl: string
     processorUrl: string
 }
@@ -47,11 +48,12 @@ export interface EngineClientOptions {
 // the first call resumes the AudioContext, so it has to happen inside a click.
 export class EngineClient {
     readonly registry = new TrackRegistry()
+    // The engine plays into this. The host connects it onward. It exists before the engine starts.
+    readonly output: GainNode
     latest: EngineSnapshot | null = null
     onSnapshot: ((snapshot: EngineSnapshot) => void) | null = null
     onError: ((message: string) => void) | null = null
 
-    private readonly unlock = new AudioUnlock()
     private decoder: SampleDecoder | null = null
     private node: AudioWorkletNode | null = null
     private started = false
@@ -61,6 +63,7 @@ export class EngineClient {
     private failReady!: (error: Error) => void
 
     constructor(private readonly options: EngineClientOptions) {
+        this.output = options.context.createGain()
         this.resetReady()
     }
 
@@ -403,7 +406,10 @@ export class EngineClient {
     }
 
     private async startInner(): Promise<void> {
-        const context = await this.unlock.resume()
+        const context = this.options.context
+        if (context.state !== 'running') {
+            await context.resume()
+        }
         const wasmResponse = await fetch(this.options.wasmUrl)
         if (!wasmResponse.ok) {
             throw new Error(`could not load ${this.options.wasmUrl}`)
@@ -423,7 +429,7 @@ export class EngineClient {
             channelCountMode: 'explicit',
             channelInterpretation: 'discrete',
         })
-        this.node.connect(context.destination)
+        this.node.connect(this.output)
         this.node.port.onmessage = (event: MessageEvent<WorkletMessage>) => {
             this.onWorklet(event.data)
         }

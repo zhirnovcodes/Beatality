@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Effect.h"
+#include "Rng.h"
 
 #include <memory>
 
@@ -10,7 +11,7 @@ namespace bt {
 // Power sets feedback and the dry/wet mix. Those settings are in Flanger.cpp.
 class Flanger {
 public:
-    explicit Flanger(double sampleRate);
+    Flanger(double sampleRate, std::uint64_t seed);
 
     Frame apply(const SliceReader& slice, const ClockSettings& settings, const Clock& clock, const SliceGrid& grid,
                 const EffectParams& params);
@@ -22,6 +23,8 @@ private:
     std::unique_ptr<float[]> right_;
     int capacity_ = 0;
     int write_ = 0;
+    Rng rng_;
+    bool armed_ = true;
     double phase_ = 0;
     bool quiet_ = true;
 };

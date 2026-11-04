@@ -3,7 +3,8 @@
 namespace bt {
 
 EffectsBank::EffectsBank(double sampleRate, std::uint64_t seed)
-    : reverb_(sampleRate), delay_(sampleRate), flanger_(sampleRate), trance_(seed), shift_(sampleRate) {}
+    : reverb_(sampleRate), delay_(sampleRate), filter_(seed + 11), flanger_(sampleRate, seed + 12), trance_(seed),
+      shift_(sampleRate, seed + 13) {}
 
 void EffectsBank::bind(int slot) {
     if (slot == slot_) {

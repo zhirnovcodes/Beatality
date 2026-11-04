@@ -46,7 +46,7 @@ void flush(float& value) {
 
 } // namespace
 
-Shift::Shift(double) {
+Shift::Shift(double, std::uint64_t seed) : rng_(seed) {
     // The kernel is in fractions of the sample rate, so the engine rate is not used.
     // Odd-length Hilbert FIR. The in-phase path is a delay of the same length, so the pair is analytic.
     for (int n = 0; n < kTaps; ++n) {
@@ -104,6 +104,11 @@ Frame Shift::apply(const SliceReader& slice, const ClockSettings& clockSettings,
     const Frame dry = slice.read(clock.localIn(params.slot, clockSettings, grid));
     const float dryL = dry.l;
     const float dryR = dry.r;
+    if (armed_) {
+        // Each slice starts the LFO at 90, 180, or 270 degrees.
+        phase_ = 0.25 * static_cast<double>(1 + rng_.nextInt(3));
+        armed_ = false;
+    }
     // One beat is one cycle. The sine is the shift, from -width to +width.
     const double lfo = std::sin(phase_ * 2.0 * kPi);
     phase_ += 1.0 / cycle;
@@ -126,6 +131,7 @@ Frame Shift::apply(const SliceReader& slice, const ClockSettings& clockSettings,
 }
 
 void Shift::clean() {
+    armed_ = true;
     if (quiet_) {
         return;
     }

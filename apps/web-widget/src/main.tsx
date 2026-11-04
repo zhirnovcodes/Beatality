@@ -8,14 +8,18 @@ import { Widget } from './Widget'
 import './widget.css'
 import wasmUrl from '../../../build-wasm/beatality.wasm?url'
 
+// The page is the host: it owns the context and routes the engine to the speakers.
+// The context starts suspended. The client resumes it on the first click that reaches the engine.
+const context = new AudioContext()
 const model = new WebViewModel()
 const client = new EngineClient({
+    context,
     wasmUrl,
     processorUrl: '/beatality-processor.js',
 })
+client.output.connect(context.destination)
 const grid = document.createElement('div')
 grid.className = 'sample-grid'
-grid.id = 'sample-grid'
 grid.setAttribute('role', 'listbox')
 grid.setAttribute('aria-label', 'Samples')
 const presenter = new WebPresenter(model, client, grid, loadFactory)
@@ -112,13 +116,4 @@ async function loadFactory(file: string): Promise<void> {
         }
         return new File([await sample.arrayBuffer()], id)
     })
-}
-
-// The same client the buttons use, so the page can be driven from the console.
-window.beatality = client
-
-declare global {
-    interface Window {
-        beatality: EngineClient
-    }
 }

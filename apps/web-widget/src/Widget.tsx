@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useId, useRef, useState } from 'preact/hooks'
 import type { WebViewModel } from '../../../viewmodels/web/WebViewModel'
 import './ui/skin/skin.css'
 import './widget.css'
@@ -22,6 +22,7 @@ export function Widget({
     const [bankIndex, setBankIndex] = useState(0)
     const [selection, setSelection] = useState<readonly number[]>([])
     const skin = useRef<HTMLDivElement>(null)
+    const viewportId = useId()
     const bpmRef = useRef<HTMLInputElement>(null)
     const files = useRef<HTMLInputElement>(null)
     const placeGrid = useRef((host: HTMLDivElement | null) => {
@@ -215,7 +216,6 @@ export function Widget({
                             <input
                                 ref={bpmRef}
                                 type="text"
-                                id="bpm"
                                 defaultValue={Math.round(model.bpm)}
                                 inputMode="numeric"
                                 maxLength={3}
@@ -248,7 +248,6 @@ export function Widget({
                         <button
                             type="button"
                             className="bpm-sync"
-                            id="bpm-sync"
                             aria-pressed={model.bpmSync}
                             aria-label="Sync"
                             onClick={() => model.setBpmSync(!model.bpmSync)}
@@ -263,7 +262,6 @@ export function Widget({
                             <div className="thumb" />
                             <input
                                 type="range"
-                                id="master-volume"
                                 min={0}
                                 max={1.2}
                                 step={0.01}
@@ -277,7 +275,6 @@ export function Widget({
                         {/* Each slice's pan roll is scaled onto MIN..MAX. */}
                         <div
                             className="mix-range pan"
-                            id="master-pan"
                             style={{ '--lo': String((model.outputPanMin + 1) / 2), '--hi': String((model.outputPanMax + 1) / 2) }}
                         >
                             <div className="track lit" />
@@ -288,7 +285,6 @@ export function Widget({
                             <input
                                 type="range"
                                 className="min"
-                                id="master-pan-min"
                                 min={-1}
                                 max={1}
                                 step={0.01}
@@ -299,7 +295,6 @@ export function Widget({
                             <input
                                 type="range"
                                 className="max"
-                                id="master-pan-max"
                                 min={-1}
                                 max={1}
                                 step={0.01}
@@ -314,7 +309,6 @@ export function Widget({
                             <div className="head" />
                             <input
                                 type="range"
-                                id="playhead"
                                 min={0}
                                 max={1}
                                 step={0.001}
@@ -343,7 +337,6 @@ export function Widget({
                             <div className="thumb" />
                             <input
                                 type="range"
-                                id="loop"
                                 min={1}
                                 max={32}
                                 step={1}
@@ -359,7 +352,6 @@ export function Widget({
                             <div className="thumb" />
                             <input
                                 type="range"
-                                id="slice"
                                 min={-4}
                                 max={4}
                                 step={1}
@@ -375,7 +367,6 @@ export function Widget({
                             <div className="thumb" />
                             <input
                                 type="range"
-                                id="attack"
                                 min={2}
                                 max={16}
                                 step={1}
@@ -390,7 +381,6 @@ export function Widget({
                         <button
                             type="button"
                             className="randomize"
-                            id="randomize"
                             disabled={!model.hasTracks}
                             onClick={() => model.randomize()}
                         >
@@ -404,13 +394,12 @@ export function Widget({
                         <button
                             type="button"
                             className="fx-btn fx-enable"
-                            id="fx-enable"
                             aria-pressed={model.effectsEnabled}
                             onClick={() => model.setEffectsEnabled(!model.effectsEnabled)}
                         >
                             {model.effectsEnabled ? 'EFFECTS ON' : 'EFFECTS OFF'}
                         </button>
-                        <button type="button" className="fx-btn fx-shuffle" id="fx-shuffle" onClick={shuffleEffects}>
+                        <button type="button" className="fx-btn fx-shuffle" onClick={shuffleEffects}>
                             SHUFFLE
                         </button>
                         <div className="fx-caps" aria-hidden="true">
@@ -428,7 +417,6 @@ export function Widget({
                         </div>
                         <div className="fx-sliders">
                             <FxSlider
-                                id="fx-power"
                                 label="Global power"
                                 left={32}
                                 min={0}
@@ -438,7 +426,6 @@ export function Widget({
                                 onInput={onFx((value) => model.setGlobalPower(value))}
                             />
                             <FxSlider
-                                id="fx-chance"
                                 label="Global chance (%)"
                                 left={50}
                                 min={0}
@@ -462,7 +449,6 @@ export function Widget({
                                 <input
                                     type="range"
                                     className="min"
-                                    id="fx-time-min"
                                     min={-4}
                                     max={1}
                                     step={1}
@@ -474,7 +460,6 @@ export function Widget({
                                 <input
                                     type="range"
                                     className="max"
-                                    id="fx-time-max"
                                     min={-4}
                                     max={1}
                                     step={1}
@@ -485,7 +470,6 @@ export function Widget({
                                 />
                             </div>
                             <FxSlider
-                                id="fx-delay-power"
                                 label="Delay power"
                                 left={133}
                                 min={0}
@@ -495,7 +479,6 @@ export function Widget({
                                 onInput={onFx((value) => model.setDelayPower(value))}
                             />
                             <FxSlider
-                                id="fx-delay-chance"
                                 label="Delay chance (%)"
                                 left={151}
                                 min={0}
@@ -505,7 +488,6 @@ export function Widget({
                                 onInput={onFx((value) => model.setDelayChance(value))}
                             />
                             <FxSlider
-                                id="fx-reverb-power"
                                 label="Reverb power"
                                 left={181}
                                 min={0}
@@ -515,7 +497,6 @@ export function Widget({
                                 onInput={onFx((value) => model.setReverbPower(value))}
                             />
                             <FxSlider
-                                id="fx-reverb-chance"
                                 label="Reverb chance (%)"
                                 left={199}
                                 min={0}
@@ -525,7 +506,6 @@ export function Widget({
                                 onInput={onFx((value) => model.setReverbChance(value))}
                             />
                             <FxSlider
-                                id="fx-reverse-power"
                                 label="Reverse power"
                                 left={229}
                                 min={0}
@@ -535,7 +515,6 @@ export function Widget({
                                 onInput={onFx((value) => model.setReversePower(value))}
                             />
                             <FxSlider
-                                id="fx-reverse-chance"
                                 label="Reverse chance (%)"
                                 left={247}
                                 min={0}
@@ -545,7 +524,6 @@ export function Widget({
                                 onInput={onFx((value) => model.setReverseChance(value))}
                             />
                             <FxSlider
-                                id="fx-filter-power"
                                 label="Filter power"
                                 left={277}
                                 min={0}
@@ -555,7 +533,6 @@ export function Widget({
                                 onInput={onFx((value) => model.setFilterPower(value))}
                             />
                             <FxSlider
-                                id="fx-filter-chance"
                                 label="Filter chance (%)"
                                 left={295}
                                 min={0}
@@ -565,7 +542,6 @@ export function Widget({
                                 onInput={onFx((value) => model.setFilterChance(value))}
                             />
                             <FxSlider
-                                id="fx-flanger-power"
                                 label="Flanger power"
                                 left={325}
                                 min={0}
@@ -575,7 +551,6 @@ export function Widget({
                                 onInput={onFx((value) => model.setFlangerPower(value))}
                             />
                             <FxSlider
-                                id="fx-flanger-chance"
                                 label="Flanger chance (%)"
                                 left={343}
                                 min={0}
@@ -585,7 +560,6 @@ export function Widget({
                                 onInput={onFx((value) => model.setFlangerChance(value))}
                             />
                             <FxSlider
-                                id="fx-trance-power"
                                 label="Trance power"
                                 left={373}
                                 min={0}
@@ -595,7 +569,6 @@ export function Widget({
                                 onInput={onFx((value) => model.setTrancePower(value))}
                             />
                             <FxSlider
-                                id="fx-trance-chance"
                                 label="Trance chance (%)"
                                 left={391}
                                 min={0}
@@ -605,7 +578,6 @@ export function Widget({
                                 onInput={onFx((value) => model.setTranceChance(value))}
                             />
                             <FxSlider
-                                id="fx-shift-power"
                                 label="Shift power"
                                 left={421}
                                 min={0}
@@ -615,7 +587,6 @@ export function Widget({
                                 onInput={onFx((value) => model.setShiftPower(value))}
                             />
                             <FxSlider
-                                id="fx-shift-chance"
                                 label="Shift chance (%)"
                                 left={439}
                                 min={0}
@@ -640,10 +611,10 @@ export function Widget({
                 <section className="part bottom" aria-label="Samples">
                     <div className="window" />
                     <div className="content">
-                        <div className="viewport" id="sample-viewport" tabIndex={0}>
+                        <div className="viewport" id={viewportId} tabIndex={0}>
                             <div className="scroll-content">
                                 <div ref={placeGrid} />
-                                <div className="bank-view" id="bank-view">
+                                <div className="bank-view">
                                     <div className="header">SELECT BANK</div>
                                     <ol className="bank-list" role="listbox" aria-label="Banks">
                                         {model.factoryBanks.map((bank, index) => (
@@ -665,9 +636,8 @@ export function Widget({
                     <div className="controls">
                         <div
                             className="scrollbar"
-                            data-scroll="sample-viewport"
                             role="scrollbar"
-                            aria-controls="sample-viewport"
+                            aria-controls={viewportId}
                             aria-orientation="vertical"
                         >
                             <div className="thumb" />
@@ -678,7 +648,6 @@ export function Widget({
                         <button
                             type="button"
                             className="round-btn append"
-                            id="append"
                             disabled={bankOpen}
                             onClick={() => files.current?.click()}
                         >
@@ -687,7 +656,6 @@ export function Widget({
                         <button
                             type="button"
                             className="round-btn remove"
-                            id="remove"
                             disabled={bankOpen || !model.hasTracks}
                             onClick={onRemove}
                         >
@@ -696,7 +664,6 @@ export function Widget({
                         <button
                             type="button"
                             className="round-btn clear"
-                            id="clear"
                             disabled={bankOpen || !model.hasTracks}
                             onClick={() => model.clear()}
                         >
@@ -705,7 +672,6 @@ export function Widget({
                         <button
                             type="button"
                             className="round-btn load"
-                            id="load-bank"
                             disabled={bankOpen}
                             onClick={() => {
                                 setBankIndex(0)
@@ -717,7 +683,6 @@ export function Widget({
                         <button
                             type="button"
                             className="round-btn save"
-                            id="save"
                             disabled={bankOpen || !model.canSave}
                             onClick={() => model.save()}
                         >
@@ -734,56 +699,55 @@ export function Widget({
                             onChange={onFiles}
                         />
 
-                        <div className="bank-panel" id="bank-panel">
-                            <button type="button" className="bank-btn" id="bank-select" disabled={loadingPack || model.factoryBanks.length === 0} onClick={onSelectBank}>
+                        <div className="bank-panel">
+                            <button type="button" className="bank-btn" disabled={loadingPack || model.factoryBanks.length === 0} onClick={onSelectBank}>
                                 SELECT
                             </button>
-                            <button type="button" className="bank-btn" id="bank-load-file" disabled={!model.canLoadFile} onClick={() => model.loadFile()}>
+                            <button type="button" className="bank-btn" disabled={!model.canLoadFile} onClick={() => model.loadFile()}>
                                 LOAD FILE
                             </button>
-                            <button type="button" className="bank-btn close" id="bank-close" aria-label="Close" onClick={() => setBankOpen(false)}>
+                            <button type="button" className="bank-btn close" aria-label="Close" onClick={() => setBankOpen(false)}>
                                 X
                             </button>
                         </div>
                         {/* Selected sample's file name, right of the buttons. The bank picker buttons take its place. */}
-                        <div className="track-name" id="track-name" title={chosenName}>
+                        <div className="track-name" title={chosenName}>
                             {chosenName}
                         </div>
                         {/* Selected sample's controls, on the dark screen under the buttons:
                             VOL / PAN | ST. (start) / LEN. (length) | start time / LOOP | BPM | WARP (none, beat, pitch) | BEAT (1/32 .. 2) */}
-                        <fieldset className="sample-panel" id="selected-sample" disabled={selection.length === 0} ref={onPanel}>
+                        <fieldset className="sample-panel" disabled={selection.length === 0} ref={onPanel}>
                             <span className="name vol">VOL</span>
                             <div className="slider vol">
                                 <div className="track" />
                                 <div className="snap" />
                                 <div className="thumb" />
-                                <input type="range" id="volume" min={0} max={1.2} step={0.01} defaultValue={1} aria-label="Volume" data-snap="1" />
+                                <input type="range" min={0} max={1.2} step={0.01} defaultValue={1} aria-label="Volume" data-snap="1" />
                             </div>
                             <span className="name pan">PAN</span>
                             <div className="slider pan">
                                 <div className="track" />
                                 <div className="snap" />
                                 <div className="thumb" />
-                                <input type="range" id="pan" min={-1} max={1} step={0.01} defaultValue={0} aria-label="Pan" data-snap="0" />
+                                <input type="range" min={-1} max={1} step={0.01} defaultValue={0} aria-label="Pan" data-snap="0" />
                             </div>
 
                             <span className="name start">ST.</span>
                             <div className="slider start">
                                 <div className="track" />
                                 <div className="thumb" />
-                                <input type="range" id="start" min={0} max={1} step={0.001} defaultValue={0} aria-label="Start" />
+                                <input type="range" min={0} max={1} step={0.001} defaultValue={0} aria-label="Start" />
                             </div>
                             <span className="name length">LEN.</span>
                             <div className="slider length">
                                 <div className="track" />
                                 <div className="thumb" />
-                                <input type="range" id="length" min={0} max={1} step={0.001} defaultValue={1} aria-label="Length" />
+                                <input type="range" min={0} max={1} step={0.001} defaultValue={1} aria-label="Length" />
                             </div>
 
                             <input
                                 type="text"
                                 className="field time"
-                                id="start-time"
                                 defaultValue="0.00"
                                 inputMode="decimal"
                                 spellcheck={false}
@@ -791,13 +755,12 @@ export function Widget({
                                 data-max="0"
                             />
                             <span className="name loop">LOOP</span>
-                            <input type="checkbox" className="toggle" id="track-loop" aria-label="Loop" />
+                            <input type="checkbox" className="toggle" aria-label="Loop" />
 
                             <span className="name bpm">BPM</span>
                             <input
                                 type="text"
                                 className="field bpm"
-                                id="track-bpm"
                                 defaultValue="120.0"
                                 inputMode="decimal"
                                 spellcheck={false}
@@ -805,11 +768,11 @@ export function Widget({
                             />
 
                             <span className="name warp">WARP</span>
-                            <button type="button" className="warp-btn prev" id="warp-prev" aria-label="Previous warp mode" />
-                            <output className="warp-value" id="track-warp" data-value="none" aria-label="Warp">
+                            <button type="button" className="warp-btn prev" aria-label="Previous warp mode" />
+                            <output className="warp-value" data-value="none" aria-label="Warp">
                                 NONE
                             </output>
-                            <button type="button" className="warp-btn next" id="warp-next" aria-label="Next warp mode" />
+                            <button type="button" className="warp-btn next" aria-label="Next warp mode" />
 
                             <span className="name beat">
                                 BEAT <b className="value" />
@@ -817,13 +780,13 @@ export function Widget({
                             <div className="slider beat">
                                 <div className="track" />
                                 <div className="thumb" />
-                                <input type="range" id="track-beat" min={0} max={6} step={1} defaultValue={3} aria-label="Beat" />
+                                <input type="range" min={0} max={6} step={1} defaultValue={3} aria-label="Beat" />
                             </div>
                         </fieldset>
                     </div>
                 </section>
             </div>
-            <p id="error">{model.error}</p>
+            <p className="widget-error">{model.error}</p>
         </>
     )
 }
@@ -836,6 +799,7 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
     const lo = model.repeatSizeMinExp - repeatSizeBase
     const hi = model.repeatSizeMaxExp - repeatSizeBase
     const length = model.repeatLengthExp - repeatLengthBase
+    const lengthId = useId()
     const value = (event: Event) => (event.currentTarget as HTMLInputElement).valueAsNumber
     const onSlider = (apply: (value: number) => void) => (event: Event) => {
         apply(value(event))
@@ -848,7 +812,6 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                 <button
                     type="button"
                     className="br-power"
-                    id="br-power"
                     aria-pressed={model.repeatEnabled}
                     onClick={() => model.setRepeatEnabled(!model.repeatEnabled)}
                 >
@@ -861,7 +824,6 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                             key={index}
                             type="checkbox"
                             className="br-pos"
-                            id={`br-pos-${index + 1}`}
                             style={{ left: `${84 + index * 14}px` }}
                             aria-label={`Position ${index + 1}`}
                             checked={on}
@@ -872,7 +834,7 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
 
                 <span className="br-name size">SIZE</span>
                 <div className="br-scale" aria-hidden="true" />
-                <div className="br-range" id="br-size" style={{ '--lo': String(lo / 6), '--hi': String(hi / 6) }}>
+                <div className="br-range" style={{ '--lo': String(lo / 6), '--hi': String(hi / 6) }}>
                     <div className="track lit" />
                     <div className="track dark" />
                     <div className="pin min" />
@@ -880,7 +842,6 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                     <input
                         type="range"
                         className="min"
-                        id="br-size-min"
                         min={0}
                         max={6}
                         step={1}
@@ -892,7 +853,6 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                     <input
                         type="range"
                         className="max"
-                        id="br-size-max"
                         min={0}
                         max={6}
                         step={1}
@@ -908,7 +868,6 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                     <div className="thumb" />
                     <input
                         type="range"
-                        id="br-mix"
                         min={0}
                         max={1}
                         step={0.01}
@@ -919,7 +878,7 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                 </div>
 
                 <span className="br-name length">LENGTH</span>
-                <output className="br-value length" id="br-length-value" htmlFor="br-length" aria-hidden="true" data-i={length}>
+                <output className="br-value length" htmlFor={lengthId} aria-hidden="true" data-i={length}>
                     {beatLabel(model.repeatLengthExp)}
                 </output>
                 <div className="br-slider short length">
@@ -927,7 +886,7 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                     <div className="thumb" />
                     <input
                         type="range"
-                        id="br-length"
+                        id={lengthId}
                         min={0}
                         max={5}
                         step={1}
@@ -943,7 +902,6 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                     <div className="thumb" />
                     <input
                         type="range"
-                        id="br-chance"
                         min={0}
                         max={1}
                         step={0.01}
@@ -973,7 +931,6 @@ function FxCap({ name, left }: { name: string; left: number }) {
 }
 
 function FxSlider({
-    id,
     label,
     left,
     min,
@@ -985,7 +942,6 @@ function FxSlider({
     valueText,
     onInput,
 }: {
-    id: string
     label: string
     left: number
     min: number
@@ -1005,7 +961,6 @@ function FxSlider({
             <div className="thumb" />
             <input
                 type="range"
-                id={id}
                 min={min}
                 max={max}
                 step={step}

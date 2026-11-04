@@ -84,6 +84,8 @@ float step(float& z1, float& z2, float x, const Coeff& coeff) {
 
 } // namespace
 
+Filter::Filter(std::uint64_t seed) : rng_(seed) {}
+
 Frame Filter::apply(const SliceReader& slice, const ClockSettings& clockSettings, const Clock& clock, const SliceGrid& grid,
                     const EffectParams& params) {
     const float power = params.power;
@@ -97,6 +99,11 @@ Frame Filter::apply(const SliceReader& slice, const ClockSettings& clockSettings
     const Frame dry = slice.read(clock.localIn(params.slot, clockSettings, grid));
     const float dryL = dry.l;
     const float dryR = dry.r;
+    if (armed_) {
+        // Each slice starts the LFO at 90, 180, or 270 degrees.
+        phase_ = 0.25 * static_cast<double>(1 + rng_.nextInt(3));
+        armed_ = false;
+    }
     // One beat is one cycle. The sine walks from 100 to 10000 in octaves.
     const double along = 0.5 * (std::sin(phase_ * 2.0 * kPi) + 1.0);
     float frequency = static_cast<float>(static_cast<double>(kFreqMin) * std::pow(static_cast<double>(kFreqMax / kFreqMin), along));
@@ -114,6 +121,7 @@ Frame Filter::apply(const SliceReader& slice, const ClockSettings& clockSettings
 }
 
 void Filter::clean() {
+    armed_ = true;
     if (quiet_) {
         return;
     }

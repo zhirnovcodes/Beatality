@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Effect.h"
+#include "Rng.h"
 
 namespace bt {
 
@@ -9,7 +10,7 @@ namespace bt {
 // Power 1 reaches -1000 Hz and +1000 Hz.
 class Shift {
 public:
-    explicit Shift(double sampleRate);
+    Shift(double sampleRate, std::uint64_t seed);
 
     Frame apply(const SliceReader& slice, const ClockSettings& settings, const Clock& clock, const SliceGrid& grid,
                 const EffectParams& params);
@@ -23,6 +24,8 @@ private:
     float right_[kTaps]{};
     double kernel_[kTaps]{};
     int write_ = 0;
+    Rng rng_;
+    bool armed_ = true;
     double phase_ = 0;
     double osc_ = 0;
     bool quiet_ = true;

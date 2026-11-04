@@ -1,6 +1,16 @@
+# Dependencies
 node_modules/
-dist/
-build/
-build-wasm/
-.emscripten
 third_party/
+
+# Build output (all CMake build trees: build/, build-check/, build-wasm/, ...)
+build*/
+dist/
+out/
+.emscripten
+
+# IDE / OS
+.vs/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
