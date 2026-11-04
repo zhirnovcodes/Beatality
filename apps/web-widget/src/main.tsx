@@ -1,119 +1,53 @@
-import { render } from 'preact'
-import { EngineClient } from '../../../hosts/web/client/EngineClient'
-import { MidiStatus } from '../../../hosts/web/messages'
-import { decodeBanks, decodePack } from '../../../hosts/web/pack'
-import { WebPresenter } from '../../../presenters/web/WebPresenter'
-import { WebViewModel } from '../../../viewmodels/web/WebViewModel'
-import { Widget } from './Widget'
-import './widget.css'
-import wasmUrl from '../../../build-wasm/beatality.wasm?url'
+import type { PluginEvent } from '../../../hosts/web/plugin'
+import { beatality } from './plugin'
+import './page.css'
 
-// The page is the host: it owns the context and routes the engine to the speakers.
-// The context starts suspended. The client resumes it on the first click that reaches the engine.
+// Stands in for the wrapper: one plugin, a Play button for a held note, and the project's tempo.
+// The page owns the context. It starts suspended, and the plugin resumes it on the first click that reaches the engine.
 const context = new AudioContext()
-const model = new WebViewModel()
-const client = new EngineClient({
-    context,
-    wasmUrl,
-    processorUrl: '/beatality-processor.js',
-})
-client.output.connect(context.destination)
-const grid = document.createElement('div')
-grid.className = 'sample-grid'
-grid.setAttribute('role', 'listbox')
-grid.setAttribute('aria-label', 'Samples')
-const presenter = new WebPresenter(model, client, grid, loadFactory)
-
-void fetch('/packs/banks.json')
-    .then(async (response) => {
-        if (!response.ok) {
-            return
-        }
-        model.setFactoryBanks(decodeBanks(await response.json()))
-    })
-    .catch(() => {})
 
 const app = document.querySelector('#app')
-if (!app) {
+if (!(app instanceof HTMLElement)) {
     throw new Error('missing #app')
 }
-render(
-    <Widget
-        model={model}
-        grid={grid}
-        bindPanel={(panel) => presenter.bindPanel(panel)}
-        listenSelection={(listener) => presenter.listenSelection(listener)}
-        chosen={() => presenter.chosen()}
-    />,
-    app,
-)
-
-const previewNote = 36
-const previewVelocity = 1
-
 const preview = document.querySelector('#preview')
 if (!(preview instanceof HTMLButtonElement)) {
     throw new Error('missing #preview')
 }
+const projectBpm = document.querySelector('#project-bpm')
+if (!(projectBpm instanceof HTMLInputElement)) {
+    throw new Error('missing #project-bpm')
+}
+
+const plugin = await beatality.create(context, app)
+plugin.audioOutput?.connect(context.destination)
+
+const tempo = (bpm: number): PluginEvent => ({ type: 'tempo', time: context.currentTime, bpm })
+
+const previewNote = 36
+const previewVelocity = 127
 
 let previewHeld = false
 const showPreview = () => {
     preview.textContent = previewHeld ? 'Stop' : 'Play'
-    preview.disabled = !previewHeld && !model.hasTracks
 }
-model.subscribe(showPreview)
+preview.disabled = false
 showPreview()
 
 preview.addEventListener('click', () => {
     previewHeld = !previewHeld
     showPreview()
-    void client.midi(previewHeld ? MidiStatus.On : MidiStatus.Off, previewNote, previewVelocity)
+    const bytes: [number, number, number] = previewHeld ? [0x90, previewNote, previewVelocity] : [0x80, previewNote, 0]
+    plugin.schedule([{ type: 'midi', time: context.currentTime, bytes }])
 })
 
-const projectBpm = document.querySelector('#project-bpm')
-if (!(projectBpm instanceof HTMLInputElement)) {
-    throw new Error('missing #project-bpm')
-}
-model.setProjectBpm(projectBpm.valueAsNumber)
+let bpm = Math.round(projectBpm.valueAsNumber)
+plugin.schedule([tempo(bpm)])
 projectBpm.addEventListener('change', () => {
-    const bpm = Math.round(projectBpm.valueAsNumber)
-    if (bpm >= 1 && bpm <= 999) {
-        model.setProjectBpm(bpm)
+    const next = Math.round(projectBpm.valueAsNumber)
+    if (next >= 1 && next <= 999) {
+        bpm = next
+        plugin.schedule([tempo(bpm)])
     }
-    projectBpm.value = String(model.projectBpm)
+    projectBpm.value = String(bpm)
 })
-
-async function loadFactory(file: string): Promise<void> {
-    if (previewHeld) {
-        previewHeld = false
-        showPreview()
-        await client.midi(MidiStatus.Off, previewNote, previewVelocity)
-    }
-    const response = await fetch('/packs/' + file)
-    if (!response.ok) {
-        model.fail('could not load pack')
-        return
-    }
-    const doc = decodePack(await response.text())
-    if (!doc) {
-        model.fail('could not load pack')
-        return
-    }
-    model.adopt({
-        bpm: doc.bpm,
-        loopBeats: doc.loop,
-        sliceExp: doc.slices,
-        attackMs: doc.attack,
-        outputVolume: doc.volume,
-        outputPanMin: doc.panMin,
-        outputPanMax: doc.panMax,
-    })
-    // The pack's tempo is the widget's own. While synced the engine keeps the project's.
-    await client.loadDocument({ ...doc, bpm: model.engineBpm }, async (id) => {
-        const sample = await fetch('/packs/demo/' + encodeURIComponent(id))
-        if (!sample.ok) {
-            return null
-        }
-        return new File([await sample.arrayBuffer()], id)
-    })
-}

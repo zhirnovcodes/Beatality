@@ -97,8 +97,9 @@ public:
 
     double bpm() const { return savedBpm; }
     bool bpmSync() const { return savedBpmSync; }
-    int loopBeats() const { return savedLoop; }
-    int sliceExponent() const { return savedSlice; }
+    // Loop, slices, and the output are host parameters. The host's value is the stored one.
+    int loopBeats() const { return loopParam->get(); }
+    int sliceExponent() const { return sliceParam->get(); }
     int attackMs() const { return savedAttack; }
     bool effectsEnabled() const { return saved.enabled; }
     double globalPower() const { return saved.globalPower; }
@@ -120,9 +121,9 @@ public:
     double shiftPower() const { return saved.shiftPower; }
     double shiftChance() const { return saved.shiftChance; }
     const bt::BeatRepeatSettings& beatRepeat() const { return savedRepeat; }
-    double outputVolume() const { return savedVolume; }
-    double outputPanMin() const { return savedPanMin; }
-    double outputPanMax() const { return savedPanMax; }
+    double outputVolume() const { return volumeParam->get(); }
+    double outputPanMin() const { return panMinParam->get(); }
+    double outputPanMax() const { return panMaxParam->get(); }
     double trackStart(int index) const;
     double trackLength(int index) const;
     bool trackLoop(int index) const;
@@ -165,6 +166,16 @@ private:
     };
 
     struct Impl;
+    // Ids match the web plugin's parameters: loop, slice, randomize, volume, panMin, panMax.
+    // The audio thread reads them each block and applies the ones that changed.
+    juce::AudioProcessorValueTreeState params;
+    juce::AudioParameterInt* loopParam = nullptr;
+    juce::AudioParameterInt* sliceParam = nullptr;
+    // Randomizes once each time it switches on.
+    juce::AudioParameterBool* randomizeParam = nullptr;
+    juce::AudioParameterFloat* volumeParam = nullptr;
+    juce::AudioParameterFloat* panMinParam = nullptr;
+    juce::AudioParameterFloat* panMaxParam = nullptr;
     std::unique_ptr<Impl> impl;
     juce::StringArray names;
     std::vector<TrackPicture> pictures;
@@ -172,14 +183,9 @@ private:
     juce::String savedName = "Pack";
     double savedBpm = 120;
     bool savedBpmSync = false;
-    int savedLoop = 8;
-    int savedSlice = 0;
     int savedAttack = 2;
     bt::Effects saved;
     bt::BeatRepeatSettings savedRepeat;
-    double savedVolume = 1;
-    double savedPanMin = 0;
-    double savedPanMax = 0;
     std::atomic<std::uint32_t> view{0};
     std::atomic<int> slot{-1};
     std::atomic<double> head{0};

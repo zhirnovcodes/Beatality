@@ -84,17 +84,11 @@ function unit(value: number): number {
     return value > 1 ? 1 : value
 }
 
-function snapTo(value: number, min: number, max: number, target: number): number {
-    let clamped = value
-    if (clamped < min) {
-        clamped = min
-    } else if (clamped > max) {
-        clamped = max
+function clamp(value: number, min: number, max: number): number {
+    if (value < min) {
+        return min
     }
-    if (Math.abs(clamped - target) <= (max - min) * 0.04) {
-        return target
-    }
-    return clamped
+    return value > max ? max : value
 }
 
 function sliceLabel(exponent: number): string {
@@ -632,15 +626,16 @@ export class WebViewModel {
         this.actions?.setRepeatSizeRange(min, max)
     }
 
-    // Master mix. Volume is 0..1.2 and snaps to 1. Each pan end is -1..1 and snaps to 0.
+    // Master mix. Volume is 0..1.2. Each pan end is -1..1.
     // Each slice's pan roll is scaled onto panMin..panMax.
+    // The mouse snaps to 1 and 0 before it calls here. Automation does not snap.
     setOutput(volume: number, panMin: number, panMax: number) {
         if (!Number.isFinite(volume) || !Number.isFinite(panMin) || !Number.isFinite(panMax)) {
             return
         }
-        const nextVolume = snapTo(volume, 0, 1.2, 1)
-        const nextPanMin = snapTo(panMin, -1, 1, 0)
-        const nextPanMax = Math.max(nextPanMin, snapTo(panMax, -1, 1, 0))
+        const nextVolume = clamp(volume, 0, 1.2)
+        const nextPanMin = clamp(panMin, -1, 1)
+        const nextPanMax = Math.max(nextPanMin, clamp(panMax, -1, 1))
         if (nextVolume === this.outputVolume && nextPanMin === this.outputPanMin && nextPanMax === this.outputPanMax) {
             return
         }
@@ -656,7 +651,7 @@ export class WebViewModel {
         if (!Number.isFinite(pan)) {
             return
         }
-        const next = snapTo(pan, -1, 1, 0)
+        const next = clamp(pan, -1, 1)
         this.setOutput(this.outputVolume, next, Math.max(next, this.outputPanMax))
     }
 
@@ -664,7 +659,7 @@ export class WebViewModel {
         if (!Number.isFinite(pan)) {
             return
         }
-        const next = snapTo(pan, -1, 1, 0)
+        const next = clamp(pan, -1, 1)
         this.setOutput(this.outputVolume, Math.min(next, this.outputPanMin), next)
     }
 

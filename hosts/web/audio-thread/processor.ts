@@ -88,6 +88,10 @@ interface RandomizeMessage {
     type: 'randomize'
 }
 
+interface DisposeMessage {
+    type: 'dispose'
+}
+
 interface MidiMessage {
     type: 'midi'
     frame: number
@@ -349,6 +353,7 @@ type HostMessage =
     | OutputMessage
     | FreeMessage
     | PackMessage
+    | DisposeMessage
 
 interface WorkletPort {
     onmessage: ((event: { data: HostMessage }) => void) | null
@@ -380,6 +385,7 @@ class BeatalityProcessor extends AudioWorkletProcessor {
     private blocksPerSnapshot = 1
     private waiting: HostMessage[] = []
     private midi: QueuedMidi[] = []
+    private disposed = false
 
     constructor() {
         super()
@@ -389,6 +395,9 @@ class BeatalityProcessor extends AudioWorkletProcessor {
     }
 
     process(_inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
+        if (this.disposed) {
+            return false
+        }
         const channels = outputs[0]
         if (!channels || channels.length === 0) {
             return true
@@ -462,6 +471,10 @@ class BeatalityProcessor extends AudioWorkletProcessor {
     }
 
     private async onMessage(message: HostMessage) {
+        if (message.type === 'dispose') {
+            this.disposed = true
+            return
+        }
         if (message.type === 'init') {
             try {
                 await this.init(message.wasm, message.seed)

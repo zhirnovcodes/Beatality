@@ -57,6 +57,7 @@ export class EngineClient {
     private decoder: SampleDecoder | null = null
     private node: AudioWorkletNode | null = null
     private started = false
+    private disposed = false
     private starting: Promise<void> | null = null
     private ready!: Promise<void>
     private markReady!: () => void
@@ -79,6 +80,20 @@ export class EngineClient {
             })
         }
         return this.starting
+    }
+
+    // The plugin was closed. Stops the audio thread and lets go of the output.
+    dispose() {
+        this.disposed = true
+        this.onSnapshot = null
+        this.onError = null
+        this.output.disconnect()
+        if (this.node) {
+            this.node.port.postMessage({ type: 'dispose' })
+            this.node.port.onmessage = null
+            this.node.disconnect()
+            this.node = null
+        }
     }
 
     async midi(status: number, note: number, velocity: number): Promise<void> {
@@ -418,6 +433,10 @@ export class EngineClient {
             wasmResponse.arrayBuffer(),
             context.audioWorklet.addModule(this.options.processorUrl),
         ])
+        // Closed while the engine was loading.
+        if (this.disposed) {
+            throw new DOMException('disposed', 'AbortError')
+        }
         this.decoder = new SampleDecoder(context)
         // No input: the node only plays what the engine renders. A live input
         // would be mixed back in by the browser and howl after a while.

@@ -129,20 +129,20 @@ export function Widget({
 
     const onMasterVolume = (event: Event) => {
         const input = event.currentTarget as HTMLInputElement
-        model.setOutput(input.valueAsNumber, model.outputPanMin, model.outputPanMax)
+        model.setOutput(snapTo(input.valueAsNumber, 0, 1.2, 1), model.outputPanMin, model.outputPanMax)
         input.value = String(model.outputVolume)
         placeThumb(input)
     }
 
     const onMasterPanMin = (event: Event) => {
         const input = event.currentTarget as HTMLInputElement
-        model.setOutputPanMin(input.valueAsNumber)
+        model.setOutputPanMin(snapTo(input.valueAsNumber, -1, 1, 0))
         input.value = String(model.outputPanMin)
     }
 
     const onMasterPanMax = (event: Event) => {
         const input = event.currentTarget as HTMLInputElement
-        model.setOutputPanMax(input.valueAsNumber)
+        model.setOutputPanMax(snapTo(input.valueAsNumber, -1, 1, 0))
         input.value = String(model.outputPanMax)
     }
 
@@ -268,6 +268,7 @@ export function Widget({
                                 value={model.outputVolume}
                                 data-snap="1"
                                 aria-label="Volume"
+                                data-param="volume"
                                 onInput={onMasterVolume}
                             />
                         </div>
@@ -290,6 +291,7 @@ export function Widget({
                                 step={0.01}
                                 value={model.outputPanMin}
                                 aria-label="Pan minimum"
+                                data-param="panMin"
                                 onInput={onMasterPanMin}
                             />
                             <input
@@ -300,6 +302,7 @@ export function Widget({
                                 step={0.01}
                                 value={model.outputPanMax}
                                 aria-label="Pan maximum"
+                                data-param="panMax"
                                 onInput={onMasterPanMax}
                             />
                         </div>
@@ -342,6 +345,7 @@ export function Widget({
                                 step={1}
                                 value={model.loopBeats}
                                 aria-label="Loop"
+                                data-param="loop"
                                 onInput={onLoop}
                             />
                         </div>
@@ -357,6 +361,7 @@ export function Widget({
                                 step={1}
                                 value={model.sliceExp}
                                 aria-label="Slices"
+                                data-param="slice"
                                 onInput={onSlice}
                             />
                         </div>
@@ -381,7 +386,7 @@ export function Widget({
                         <button
                             type="button"
                             className="randomize"
-                            disabled={!model.hasTracks}
+                            data-param="randomize"
                             onClick={() => model.randomize()}
                         >
                             Randomize
@@ -813,19 +818,19 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                     type="button"
                     className="br-power"
                     aria-pressed={model.repeatEnabled}
+                    aria-label="Beat repeat on"
                     onClick={() => model.setRepeatEnabled(!model.repeatEnabled)}
                 >
-                    {model.repeatEnabled ? 'ON' : 'OFF'}
+                    ON
                 </button>
-                <span className="br-name pos">POS.</span>
-                <div className="br-positions" role="group" aria-label="Positions">
+                {/* LOOP PARTS: 8 numbered buttons. Each one's place and images come from skin.css. */}
+                <div className="br-parts" role="group" aria-label="Loop parts">
                     {model.repeatPositions.map((on, index) => (
                         <input
                             key={index}
                             type="checkbox"
-                            className="br-pos"
-                            style={{ left: `${84 + index * 14}px` }}
-                            aria-label={`Position ${index + 1}`}
+                            className="br-part"
+                            aria-label={`Loop part ${index + 1}`}
                             checked={on}
                             onChange={(event) => model.setRepeatPosition(index, (event.currentTarget as HTMLInputElement).checked)}
                         />
@@ -990,6 +995,14 @@ function clampBpm(value: number): number | null {
         return null
     }
     return bpm
+}
+
+// The mouse lands on target when it is within 4% of the range. Automation does not snap.
+function snapTo(value: number, min: number, max: number, target: number): number {
+    if (Math.abs(value - target) <= (max - min) * 0.04) {
+        return target
+    }
+    return value
 }
 
 function randomUnit(): number {

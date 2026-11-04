@@ -205,7 +205,7 @@ AppendPayload* payloadFromReader(juce::AudioFormatReader& reader, double rate, s
 class CommandQueue {
 public:
     struct Slot {
-        enum class Kind { Randomize, Remove, Append, Clear, Bpm, BpmSync, Loop, Slice, Attack, EffectsEnabled, GlobalPower, GlobalBeatRange, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, ReversePower, ReverseChance, FilterPower, FilterChance, FlangerPower, FlangerChance, TrancePower, TranceChance, ShiftPower, ShiftChance, RepeatEnabled, RepeatSizeRange, RepeatLength, RepeatChance, RepeatPosition, RepeatMix, Track, Warp, Output, Pack };
+        enum class Kind { Randomize, Remove, Append, Clear, Bpm, BpmSync, Attack, EffectsEnabled, GlobalPower, GlobalBeatRange, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, ReversePower, ReverseChance, FilterPower, FilterChance, FlangerPower, FlangerChance, TrancePower, TranceChance, ShiftPower, ShiftChance, RepeatEnabled, RepeatSizeRange, RepeatLength, RepeatChance, RepeatPosition, RepeatMix, Track, Warp, Pack };
         Kind kind = Kind::Randomize;
         AppendPayload* append = nullptr;
         PackPayload* pack = nullptr;
@@ -283,6 +283,26 @@ struct DeviceAudio {
     std::unique_ptr<float[]> left;
     std::unique_ptr<float[]> right;
 };
+
+constexpr float kVolumeMax = 1.2f;
+
+juce::AudioProcessorValueTreeState::ParameterLayout parameterLayout() {
+    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"loop", 1}, "Loop", bt::SliceGrid::kMinLoop, bt::SliceGrid::kMaxLoop, 8));
+    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"slice", 1}, "Slices", bt::SliceGrid::kExpMin, bt::SliceGrid::kExpMax, 0));
+    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"randomize", 1}, "Randomize", false));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"volume", 1}, "Volume", juce::NormalisableRange<float>(0.0f, kVolumeMax), 1.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"panMin", 1}, "Pan minimum", juce::NormalisableRange<float>(-1.0f, 1.0f), 0.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"panMax", 1}, "Pan maximum", juce::NormalisableRange<float>(-1.0f, 1.0f), 0.0f));
+    return layout;
+}
+
+// A change from the plugin window. The gesture lets the host record it as automation.
+void setFromWindow(juce::RangedAudioParameter& parameter, float value) {
+    parameter.beginChangeGesture();
+    parameter.setValueNotifyingHost(parameter.convertTo0to1(value));
+    parameter.endChangeGesture();
+}
 
 } // namespace
 
@@ -650,6 +670,35 @@ struct Processor::Impl {
         engine->setOutput(volume, panMin, panMax);
     }
 
+    // The host parameters as this block reads them.
+    struct Controls {
+        int loop = 8;
+        int slice = 0;
+        bool randomize = false;
+        double volume = 1;
+        double panMin = 0;
+        double panMax = 0;
+    };
+
+    // Applies the parameters that moved since the last block. A host may send min above max; max is held at min.
+    void followControls(const Controls& controls) {
+        if (controls.loop != applied.loop) {
+            applyLoop(controls.loop);
+        }
+        if (controls.slice != applied.slice) {
+            applySlice(controls.slice);
+        }
+        if (controls.randomize && !applied.randomize) {
+            applyRandomize();
+        }
+        const double panMax = std::max(controls.panMin, controls.panMax);
+        if (controls.volume != applied.volume || controls.panMin != applied.panMin || panMax != applied.panMax) {
+            applyOutput(controls.volume, controls.panMin, panMax);
+        }
+        applied = controls;
+        applied.panMax = panMax;
+    }
+
     void applyTrack(int index, double start, double length, bool loop, double volume, double pan) {
         if (index >= 0 && index < static_cast<int>(sources.size())) {
             SourceTrack& source = sources[static_cast<std::size_t>(index)];
@@ -700,12 +749,6 @@ struct Processor::Impl {
             break;
         case CommandQueue::Slot::Kind::BpmSync:
             applyBpmSync(slot.flag);
-            break;
-        case CommandQueue::Slot::Kind::Loop:
-            applyLoop(slot.number);
-            break;
-        case CommandQueue::Slot::Kind::Slice:
-            applySlice(slot.number);
             break;
         case CommandQueue::Slot::Kind::Attack:
             applyAttack(slot.number);
@@ -787,9 +830,6 @@ struct Processor::Impl {
             break;
         case CommandQueue::Slot::Kind::Warp:
             applyWarp(slot.index, warpSettings(slot.number, slot.first, slot.second));
-            break;
-        case CommandQueue::Slot::Kind::Output:
-            applyOutput(slot.first, slot.second, slot.third);
             break;
         case CommandQueue::Slot::Kind::Pack:
             applyPack(slot.pack);
@@ -1045,10 +1085,19 @@ struct Processor::Impl {
     double outputVolume = 1;
     double outputPanMin = 0;
     double outputPanMax = 0;
+    // The parameter values last applied. They start at the parameters' defaults.
+    Controls applied;
 };
 
 Processor::Processor()
     : juce::AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+      params(*this, nullptr, "Parameters", parameterLayout()),
+      loopParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("loop"))),
+      sliceParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("slice"))),
+      randomizeParam(dynamic_cast<juce::AudioParameterBool*>(params.getParameter("randomize"))),
+      volumeParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("volume"))),
+      panMinParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("panMin"))),
+      panMaxParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("panMax"))),
       impl(std::make_unique<Impl>(view, slot, head)) {}
 
 Processor::~Processor() {
@@ -1082,6 +1131,7 @@ void Processor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&
     while (impl->queue.pop(slot)) {
         impl->applySlot(slot);
     }
+    impl->followControls({loopParam->get(), sliceParam->get(), randomizeParam->get(), volumeParam->get(), panMinParam->get(), panMaxParam->get()});
     double hostBpm = 0.0;
     if (juce::AudioPlayHead* playHead = getPlayHead()) {
         if (const auto info = playHead->getPosition()) {
@@ -1289,22 +1339,14 @@ void Processor::setLoop(int beats) {
     if (beats < bt::SliceGrid::kMinLoop || beats > bt::SliceGrid::kMaxLoop) {
         return;
     }
-    savedLoop = beats;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::Loop;
-    slot.number = beats;
-    impl->queue.push(slot);
+    setFromWindow(*loopParam, static_cast<float>(beats));
 }
 
 void Processor::setSlice(int exponent) {
     if (exponent < bt::SliceGrid::kExpMin || exponent > bt::SliceGrid::kExpMax) {
         return;
     }
-    savedSlice = exponent;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::Slice;
-    slot.number = exponent;
-    impl->queue.push(slot);
+    setFromWindow(*sliceParam, static_cast<float>(exponent));
 }
 
 void Processor::setAttack(int ms) {
@@ -1585,15 +1627,9 @@ void Processor::setOutput(double volume, double panMin, double panMax) {
     if (!std::isfinite(volume) || !std::isfinite(panMin) || !std::isfinite(panMax)) {
         return;
     }
-    savedVolume = volume;
-    savedPanMin = panMin;
-    savedPanMax = panMax;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::Output;
-    slot.first = volume;
-    slot.second = panMin;
-    slot.third = panMax;
-    impl->queue.push(slot);
+    setFromWindow(*volumeParam, static_cast<float>(volume));
+    setFromWindow(*panMinParam, static_cast<float>(panMin));
+    setFromWindow(*panMaxParam, static_cast<float>(panMax));
 }
 
 void Processor::setTrack(int index, double start, double length, bool loop, double volume, double pan) {
@@ -1752,12 +1788,14 @@ bool Processor::loadPackText(const juce::String& text) {
     pictures = std::move(loadedPictures);
     savedName = decoded->name;
     savedBpm = decoded->bpm;
-    savedLoop = decoded->loop;
-    savedSlice = decoded->slices;
     savedAttack = decoded->attack;
-    savedVolume = decoded->volume;
-    savedPanMin = decoded->panMin;
-    savedPanMax = decoded->panMax;
+    // The pack slot sets these on the engine first. The parameters follow; the next block applies the same values again,
+    // which leaves the engine and its sequence as they are.
+    setFromWindow(*loopParam, static_cast<float>(decoded->loop));
+    setFromWindow(*sliceParam, static_cast<float>(decoded->slices));
+    setFromWindow(*volumeParam, static_cast<float>(decoded->volume));
+    setFromWindow(*panMinParam, static_cast<float>(decoded->panMin));
+    setFromWindow(*panMaxParam, static_cast<float>(decoded->panMax));
     impl->storeSequence(decoded->slots, decoded->savedCount);
     error.clear();
     return true;
@@ -1767,12 +1805,12 @@ juce::String Processor::packText() {
     PackDocument pack;
     pack.name = savedName;
     pack.bpm = savedBpm;
-    pack.loop = savedLoop;
-    pack.slices = savedSlice;
+    pack.loop = loopBeats();
+    pack.slices = sliceExponent();
     pack.attack = savedAttack;
-    pack.volume = savedVolume;
-    pack.panMin = savedPanMin;
-    pack.panMax = savedPanMax;
+    pack.volume = outputVolume();
+    pack.panMin = outputPanMin();
+    pack.panMax = outputPanMax();
     impl->copySequence(pack.slots, pack.savedCount);
     const int count = std::min(names.size(), static_cast<int>(pictures.size()));
     pack.tracks.reserve(static_cast<std::size_t>(count));

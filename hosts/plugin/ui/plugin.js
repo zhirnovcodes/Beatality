@@ -207,7 +207,6 @@ function syncButtons() {
     const clear = document.getElementById('clear')
     const load = document.getElementById('load-bank')
     const save = document.getElementById('save')
-    const randomize = document.getElementById('randomize')
     if (append instanceof HTMLButtonElement) {
         append.disabled = bankOpen || !state.canAppend
     }
@@ -222,9 +221,6 @@ function syncButtons() {
     }
     if (save instanceof HTMLButtonElement) {
         save.disabled = bankOpen
-    }
-    if (randomize instanceof HTMLButtonElement) {
-        randomize.disabled = !has
     }
 }
 
@@ -630,8 +626,58 @@ function onLive(live) {
     if (error) {
         error.textContent = live.error || ''
     }
+    followHost(live)
     syncButtons()
     markRows()
+}
+
+// Loop, slices, volume, and pan are host parameters, so the host's automation can move them.
+// A control the mouse is holding keeps the mouse's value.
+function followHost(live) {
+    const free = (id) => {
+        const input = document.getElementById(id)
+        return input instanceof HTMLInputElement && !input.matches(':active') ? input : null
+    }
+    const show = (input, value) => {
+        input.value = String(value)
+        placeThumb(input)
+    }
+    let gridChanged = false
+    const loop = Number(live.loop)
+    const loopInput = free('loop')
+    if (loopInput && Number.isInteger(loop) && loop !== state.loopBeats) {
+        state.loopBeats = loop
+        show(loopInput, loop)
+        gridChanged = true
+    }
+    const slices = Number(live.slices)
+    const sliceInput = free('slice')
+    if (sliceInput && Number.isInteger(slices)) {
+        const fitted = fitSlice(slices, state.loopBeats)
+        if (fitted !== state.sliceExp) {
+            state.sliceExp = fitted
+            show(sliceInput, fitted)
+            gridChanged = true
+        }
+    }
+    if (gridChanged) {
+        syncCaptions()
+        paintGrid()
+    }
+    const volume = Number(live.volume)
+    const volumeInput = free('master-volume')
+    if (volumeInput && Number.isFinite(volume) && volume !== state.outputVolume) {
+        state.outputVolume = volume
+        show(volumeInput, volume)
+    }
+    const panMin = Number(live.panMin)
+    const panMax = Number(live.panMax)
+    if (free('master-pan-min') && free('master-pan-max') && Number.isFinite(panMin) && Number.isFinite(panMax) &&
+        (panMin !== state.outputPanMin || panMax !== state.outputPanMax)) {
+        state.outputPanMin = panMin
+        state.outputPanMax = Math.max(panMin, panMax)
+        paintMasterPan()
+    }
 }
 
 function applyBankSettings(bank) {
@@ -1098,7 +1144,7 @@ function wire() {
     document.getElementById('fx-shuffle')?.addEventListener('click', shuffleEffects)
 
     document.getElementById('br-power')?.addEventListener('click', onRepeatPower)
-    document.querySelectorAll('.br-pos').forEach((box) => box.addEventListener('change', onRepeatPosition))
+    document.querySelectorAll('.br-part').forEach((box) => box.addEventListener('change', onRepeatPosition))
     document.getElementById('br-size-min')?.addEventListener('input', onRepeatSize)
     document.getElementById('br-size-max')?.addEventListener('input', onRepeatSize)
     document.getElementById('br-length')?.addEventListener('input', onRepeatLength)
@@ -1200,10 +1246,8 @@ function wire() {
     document.getElementById('bank-close')?.addEventListener('click', () => {
         setBankOpen(false)
     })
+    // Always enabled. With no samples the processor does nothing.
     document.getElementById('randomize')?.addEventListener('click', () => {
-        if (plays.length === 0) {
-            return
-        }
         void native('randomize')
     })
 
@@ -1566,7 +1610,6 @@ function paintBeatRepeat() {
     const power = document.getElementById('br-power')
     if (power) {
         power.setAttribute('aria-pressed', state.repeatEnabled ? 'true' : 'false')
-        power.textContent = state.repeatEnabled ? 'ON' : 'OFF'
     }
     state.repeatPositions.forEach((on, index) => {
         const box = document.getElementById('br-pos-' + String(index + 1))

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Beatality rack</title>
+    </head>
+    <body>
+        <!-- Test wrapper: several plugins in movable windows, bound by dragging a source onto a control. -->
+        <div id="toolbar">
+            <button id="play" type="button">Play</button>
+            <label>
+                Project BPM
+                <input id="tempo" type="number" min="1" max="999" step="1" />
+            </label>
+        </div>
+        <div id="desk"></div>
+        <script type="module" src="/src/rack/main.ts"></script>
+    </body>
+</html>

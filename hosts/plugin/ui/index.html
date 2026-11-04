@@ -68,7 +68,7 @@
     </div>
     <div class="case"></div>
     <div class="controls">
-      <button type="button" class="randomize" id="randomize" disabled>Randomize</button>
+      <button type="button" class="randomize" id="randomize">Randomize</button>
     </div>
   </section>
   <section class="part effects" aria-label="Effects">
@@ -131,18 +131,17 @@
   <section class="part beatrepeat" aria-label="Beat repeat">
     <div class="window"></div>
     <div class="content">
-      <!-- ON / OFF | POS. 8 toggles | SIZE (min / max, 1/32 .. 2, index 0..6) over MIX (0..1) | LENGTH (1/16 .. 2, index 0..5) over CHANCE (0..1) -->
-      <button type="button" class="br-power" id="br-power" aria-pressed="false">OFF</button>
-      <span class="br-name pos">POS.</span>
-      <div class="br-positions" role="group" aria-label="Positions">
-        <input type="checkbox" class="br-pos" id="br-pos-1" style="left: 84px" aria-label="Position 1">
-        <input type="checkbox" class="br-pos" id="br-pos-2" style="left: 98px" aria-label="Position 2">
-        <input type="checkbox" class="br-pos" id="br-pos-3" style="left: 112px" aria-label="Position 3">
-        <input type="checkbox" class="br-pos" id="br-pos-4" style="left: 126px" aria-label="Position 4">
-        <input type="checkbox" class="br-pos" id="br-pos-5" style="left: 140px" aria-label="Position 5">
-        <input type="checkbox" class="br-pos" id="br-pos-6" style="left: 154px" aria-label="Position 6">
-        <input type="checkbox" class="br-pos" id="br-pos-7" style="left: 168px" aria-label="Position 7">
-        <input type="checkbox" class="br-pos" id="br-pos-8" style="left: 182px" aria-label="Position 8">
+      <!-- ON | LOOP PARTS 8 numbered buttons (place and images from skin.css) | SIZE (min / max, 1/32 .. 2, index 0..6) over MIX (0..1) | LENGTH (1/16 .. 2, index 0..5) over CHANCE (0..1) -->
+      <button type="button" class="br-power" id="br-power" aria-pressed="false" aria-label="Beat repeat on">ON</button>
+      <div class="br-parts" role="group" aria-label="Loop parts">
+        <input type="checkbox" class="br-part" id="br-pos-1" aria-label="Loop part 1">
+        <input type="checkbox" class="br-part" id="br-pos-2" aria-label="Loop part 2">
+        <input type="checkbox" class="br-part" id="br-pos-3" aria-label="Loop part 3">
+        <input type="checkbox" class="br-part" id="br-pos-4" aria-label="Loop part 4">
+        <input type="checkbox" class="br-part" id="br-pos-5" aria-label="Loop part 5">
+        <input type="checkbox" class="br-part" id="br-pos-6" aria-label="Loop part 6">
+        <input type="checkbox" class="br-part" id="br-pos-7" aria-label="Loop part 7">
+        <input type="checkbox" class="br-part" id="br-pos-8" aria-label="Loop part 8">
       </div>
 
       <span class="br-name size">SIZE</span>

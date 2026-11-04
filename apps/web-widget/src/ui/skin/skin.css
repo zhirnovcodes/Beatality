@@ -577,32 +577,60 @@
 
 /* ---------- Beat Repeat part (496 x 72, between EFFECTS and SAMPLES) ----------
    Case and screen from beatrepeat_shapes.svg (beatrepeat_case.png, beatrepeat_screen.png). BEAT REPEAT is engraved on the tongue.
-   Under the tongue: ON / OFF button and POS. with 8 toggles. Sliders in a 2 x 2 grid, captions on their left, no value text:
+   The case opening is split by a metal pillar (x 176..186): left, the ON button and 8 numbered LOOP PARTS buttons, tight
+   together, filling the opening (in .content, under the case, so its drop shadow falls on them); right, the green screen.
+   Sliders on the screen in a 2 x 2 grid, captions on their left, no value text:
    SIZE (min / max with a split pin, every value above it; the groove is dark only between MIN and MAX) over MIX,
    LENGTH over CHANCE. Pixel art: grooves and pins 1 art px = 2 CSS px; scale digits and toggles 1 = 1. */
+/* ON and the 8 LOOP PARTS buttons: SNES-style (flat face, sloped edges, like the console's EJECT key), tight together, filling
+   the case opening left of the metal pillar (x 14..176, y 26..62). ON is 30 x 36 with rounded corners; a thin metal pillar
+   (x 44..48) separates it from the numbers, each 16 x 36 from x 48. Off: raised. On / checked: pushed in (face darker, slopes reversed). Labels stay grey. */
 .beatality-skin .br-power {
-  position: absolute; left: 22px; top: 35px; width: 28px; height: 16px; margin: 0; padding: 0; cursor: pointer;
-  background: #03060a; border: 1px dotted #5a9a10; border-radius: 0;
-  font: 400 8px/14px "Silkscreen", monospace; color: #2c5a0a; text-align: center;
+  position: absolute; left: 14px; top: 26px; width: 30px; height: 36px; margin: 0; padding: 0; border: 0; cursor: pointer;
+  font-size: 0; background: url("../shapes/br_on.png") 0 0 / 100% 100% no-repeat;
 }
-.beatality-skin .br-power[aria-pressed="true"] { color: #d8ff20; text-shadow: 0 0 2px rgba(216, 255, 32, 0.6); border-color: #9ae020; }
-.beatality-skin .br-power:focus-visible { outline: 1px dotted #0b1d02; outline-offset: 1px; }
+.beatality-skin .br-power[aria-pressed="true"] { background-image: url("../shapes/br_on_on.png"); }
+.beatality-skin .br-power:active { background-image: url("../shapes/br_on_pressed.png"); }
+.beatality-skin .br-power:focus-visible { outline: 1px dotted #0b1d02; outline-offset: -3px; }
+
+/* Each number's images are set here by its place in .br-parts, so the bundler and the plugin both resolve the paths. */
+.beatality-skin .br-part {
+  position: absolute; top: 26px; width: 16px; height: 36px; margin: 0; appearance: none; cursor: pointer;
+  background: 0 0 / 100% 100% no-repeat;
+}
+.beatality-skin .br-part:nth-child(1) { left: 48px; background-image: url("../shapes/br_part_1.png"); }
+.beatality-skin .br-part:nth-child(2) { left: 64px; background-image: url("../shapes/br_part_2.png"); }
+.beatality-skin .br-part:nth-child(3) { left: 80px; background-image: url("../shapes/br_part_3.png"); }
+.beatality-skin .br-part:nth-child(4) { left: 96px; background-image: url("../shapes/br_part_4.png"); }
+.beatality-skin .br-part:nth-child(5) { left: 112px; background-image: url("../shapes/br_part_5.png"); }
+.beatality-skin .br-part:nth-child(6) { left: 128px; background-image: url("../shapes/br_part_6.png"); }
+.beatality-skin .br-part:nth-child(7) { left: 144px; background-image: url("../shapes/br_part_7.png"); }
+.beatality-skin .br-part:nth-child(8) { left: 160px; background-image: url("../shapes/br_part_8.png"); }
+.beatality-skin .br-part:nth-child(1):checked { background-image: url("../shapes/br_part_1_on.png"); }
+.beatality-skin .br-part:nth-child(2):checked { background-image: url("../shapes/br_part_2_on.png"); }
+.beatality-skin .br-part:nth-child(3):checked { background-image: url("../shapes/br_part_3_on.png"); }
+.beatality-skin .br-part:nth-child(4):checked { background-image: url("../shapes/br_part_4_on.png"); }
+.beatality-skin .br-part:nth-child(5):checked { background-image: url("../shapes/br_part_5_on.png"); }
+.beatality-skin .br-part:nth-child(6):checked { background-image: url("../shapes/br_part_6_on.png"); }
+.beatality-skin .br-part:nth-child(7):checked { background-image: url("../shapes/br_part_7_on.png"); }
+.beatality-skin .br-part:nth-child(8):checked { background-image: url("../shapes/br_part_8_on.png"); }
+.beatality-skin .br-part:nth-child(1):active { background-image: url("../shapes/br_part_1_pressed.png"); }
+.beatality-skin .br-part:nth-child(2):active { background-image: url("../shapes/br_part_2_pressed.png"); }
+.beatality-skin .br-part:nth-child(3):active { background-image: url("../shapes/br_part_3_pressed.png"); }
+.beatality-skin .br-part:nth-child(4):active { background-image: url("../shapes/br_part_4_pressed.png"); }
+.beatality-skin .br-part:nth-child(5):active { background-image: url("../shapes/br_part_5_pressed.png"); }
+.beatality-skin .br-part:nth-child(6):active { background-image: url("../shapes/br_part_6_pressed.png"); }
+.beatality-skin .br-part:nth-child(7):active { background-image: url("../shapes/br_part_7_pressed.png"); }
+.beatality-skin .br-part:nth-child(8):active { background-image: url("../shapes/br_part_8_pressed.png"); }
+.beatality-skin .br-part:focus-visible { outline: 1px dotted #0b1d02; outline-offset: -3px; }
 
 .beatality-skin .br-name {
   position: absolute; height: 10px; font: 700 7.5px/10px "Orbitron", sans-serif; letter-spacing: 0.9px; white-space: nowrap; color: #000;
 }
-.beatality-skin .br-name.pos    { left: 55px;  top: 38px; }
 .beatality-skin .br-name.size   { left: 202px; top: 21px; }
 .beatality-skin .br-name.mix    { left: 202px; top: 38px; }
 .beatality-skin .br-name.length { left: 374px; top: 21px; }
 .beatality-skin .br-name.chance { left: 374px; top: 38px; }
-
-.beatality-skin .br-pos {
-  position: absolute; top: 37px; width: 12px; height: 12px; margin: 0; appearance: none; cursor: pointer;
-  background: url("../shapes/br_pos.png") 0 0 / 100% 100% no-repeat; image-rendering: pixelated;
-}
-.beatality-skin .br-pos:checked { background-image: url("../shapes/br_pos_on.png"); }
-.beatality-skin .br-pos:focus-visible { outline: 1px dotted #0b1d02; outline-offset: 1px; }
 
 .beatality-skin .br-scale {
   position: absolute; left: 228px; top: 12px; width: 144px; height: 7px;

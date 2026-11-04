@@ -67,6 +67,7 @@ export default defineConfig({
             input: {
                 main: fileURLToPath(new URL('./index.html', import.meta.url)),
                 sampleBuffer: fileURLToPath(new URL('./sample-buffer.html', import.meta.url)),
+                rack: fileURLToPath(new URL('./rack.html', import.meta.url)),
             },
         },
     },

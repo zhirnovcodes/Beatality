@@ -25,6 +25,11 @@ export interface RandomizeMessage {
     type: 'randomize'
 }
 
+// The plugin was closed. The processor stops, so the browser can let it go.
+export interface DisposeMessage {
+    type: 'dispose'
+}
+
 export interface MidiMessage {
     type: 'midi'
     frame: number
@@ -279,6 +284,7 @@ export type HostMessage =
     | OutputMessage
     | FreeMessage
     | PackMessage
+    | DisposeMessage
 
 export interface ReadyMessage {
     type: 'ready'

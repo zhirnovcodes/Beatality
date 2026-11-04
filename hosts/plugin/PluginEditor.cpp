@@ -455,8 +455,15 @@ void Editor::pushLive() {
     const int playSlot = processor.playSlot();
     const bool canAppend = processor.canAppend();
     const juce::String error = processor.errorText();
+    // Host parameters. The host's automation moves them, so the page follows them here.
+    const int loop = processor.loopBeats();
+    const int slices = processor.sliceExponent();
+    const double volume = processor.outputVolume();
+    const double panMin = processor.outputPanMin();
+    const double panMax = processor.outputPanMax();
     juce::String key;
-    key << playhead << '|' << playTrack << '|' << playSlot << '|' << (canAppend ? 1 : 0) << '|' << error;
+    key << playhead << '|' << playTrack << '|' << playSlot << '|' << (canAppend ? 1 : 0) << '|' << error << '|' << loop << '|'
+        << slices << '|' << volume << '|' << panMin << '|' << panMax;
     if (key == lastLive) {
         return;
     }
@@ -468,6 +475,11 @@ void Editor::pushLive() {
     object->setProperty("playSlot", playSlot);
     object->setProperty("canAppend", canAppend);
     object->setProperty("error", error);
+    object->setProperty("loop", loop);
+    object->setProperty("slices", slices);
+    object->setProperty("volume", volume);
+    object->setProperty("panMin", panMin);
+    object->setProperty("panMax", panMax);
     deliver("onLive", juce::var(object));
 }
 
