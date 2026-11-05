@@ -44,6 +44,17 @@ interface Core {
     bt_set_repeat_chance: (engine: number, chance: number) => void
     bt_set_repeat_position: (engine: number, index: number, on: number) => void
     bt_set_repeat_mix: (engine: number, mix: number) => void
+    bt_set_chaos: (
+        engine: number,
+        trigger: number,
+        value: number,
+        beatSize: number,
+        loopSize: number,
+        sliceSize: number,
+        groups: number,
+    ) => void
+    bt_controls_changed: (engine: number) => number
+    bt_controls_write: (engine: number, out: number) => number
     bt_set_track: (
         engine: number,
         index: number,
@@ -259,6 +270,16 @@ interface RepeatMixMessage {
     mix: number
 }
 
+interface ChaosMessage {
+    type: 'chaos'
+    trigger: number
+    value: number
+    beatSize: number
+    loopSize: number
+    sliceSize: number
+    groups: boolean[]
+}
+
 interface TrackMessage {
     type: 'track'
     index: number
@@ -349,6 +370,7 @@ type HostMessage =
     | RepeatChanceMessage
     | RepeatPositionMessage
     | RepeatMixMessage
+    | ChaosMessage
     | TrackMessage
     | OutputMessage
     | FreeMessage
@@ -372,6 +394,9 @@ declare class AudioWorkletProcessor {
 
 declare function registerProcessor(name: string, processorCtor: new () => AudioWorkletProcessor): void
 
+// The number of doubles bt_controls_write fills.
+const controlsCount = 41
+
 class BeatalityProcessor extends AudioWorkletProcessor {
     private core: Core | null = null
     private engine = 0
@@ -386,6 +411,8 @@ class BeatalityProcessor extends AudioWorkletProcessor {
     private waiting: HostMessage[] = []
     private midi: QueuedMidi[] = []
     private disposed = false
+    // bt_controls_write fills this. Allocated once, at init.
+    private controlsPtr = 0
 
     constructor() {
         super()
@@ -467,6 +494,7 @@ class BeatalityProcessor extends AudioWorkletProcessor {
         } else if (midi) {
             this.postSnapshot(peak)
         }
+        this.postControls()
         return true
     }
 
@@ -510,6 +538,7 @@ class BeatalityProcessor extends AudioWorkletProcessor {
         }
         this.core = core
         this.engine = engine
+        this.controlsPtr = core.bt_alloc(controlsCount * 8)
         this.blocksPerSnapshot = Math.max(1, Math.round(sampleRate / 128 / 30))
         this.blocksLeft = this.blocksPerSnapshot
         this.port.postMessage({ type: 'ready' })
@@ -618,6 +647,22 @@ class BeatalityProcessor extends AudioWorkletProcessor {
         } else if (message.type === 'repeatMix') {
             this.core!.bt_set_repeat_mix(this.engine, message.mix)
             this.postSnapshot(0)
+        } else if (message.type === 'chaos') {
+            let groups = 0
+            message.groups.forEach((on, index) => {
+                if (on) {
+                    groups |= 1 << index
+                }
+            })
+            this.core!.bt_set_chaos(
+                this.engine,
+                message.trigger,
+                message.value,
+                message.beatSize,
+                message.loopSize,
+                message.sliceSize,
+                groups,
+            )
         } else if (message.type === 'track') {
             this.core!.bt_set_track(
                 this.engine,
@@ -745,6 +790,59 @@ class BeatalityProcessor extends AudioWorkletProcessor {
         this.leftPtr = core.bt_alloc(frames * 4)
         this.rightPtr = core.bt_alloc(frames * 4)
         this.capacity = frames
+    }
+
+    // Sends the knobs only after the engine changed them itself. The order matches bt_controls_write.
+    private postControls() {
+        const core = this.core
+        if (!core || this.engine === 0 || core.bt_controls_changed(this.engine) === 0) {
+            return
+        }
+        core.bt_controls_write(this.engine, this.controlsPtr)
+        const v = new Float64Array(core.memory.buffer, this.controlsPtr, controlsCount)
+        const positions: boolean[] = []
+        for (let i = 29; i <= 36; i++) {
+            positions.push(v[i] !== 0)
+        }
+        this.port.postMessage({
+            type: 'controls',
+            controls: {
+                panMin: v[0],
+                panMax: v[1],
+                sliceExp: v[2],
+                attackMs: v[3],
+                effectsEnabled: v[4] !== 0,
+                globalPower: v[5],
+                globalChance: v[6],
+                beatMin: v[7],
+                beatMax: v[8],
+                delayPower: v[9],
+                delayChance: v[10],
+                reverbPower: v[11],
+                reverbChance: v[12],
+                reversePower: v[13],
+                reverseChance: v[14],
+                filterPower: v[15],
+                filterChance: v[16],
+                flangerPower: v[17],
+                flangerChance: v[18],
+                trancePower: v[19],
+                tranceChance: v[20],
+                shiftPower: v[21],
+                shiftChance: v[22],
+                repeatEnabled: v[23] !== 0,
+                repeatSizeMin: v[24],
+                repeatSizeMax: v[25],
+                repeatLength: v[26],
+                repeatChance: v[27],
+                repeatMix: v[28],
+                repeatPositions: positions,
+                chaosValue: v[37],
+                chaosBeatSize: v[38],
+                chaosLoopSize: v[39],
+                chaosSliceSize: v[40],
+            },
+        })
     }
 
     private postSnapshot(peak: number) {

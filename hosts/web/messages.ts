@@ -190,6 +190,22 @@ export interface RepeatMixMessage {
     mix: number
 }
 
+// The chaos knobs. trigger is 0 Randomize button, 1 Note, 2 Loop, 3 Slices, 4 Beats.
+// beatSize is 2^n beats, -2..1. loopSize is loops, 1..8. sliceSize is 2^n slices, -1..2.
+// groups is 8 toggles in this order: pan, slices, attack, randomize, effects, beat repeat, chaos value, chaos time.
+export interface ChaosFields {
+    trigger: number
+    value: number
+    beatSize: number
+    loopSize: number
+    sliceSize: number
+    groups: boolean[]
+}
+
+export interface ChaosMessage extends ChaosFields {
+    type: 'chaos'
+}
+
 export interface TrackMessage {
     type: 'track'
     index: number
@@ -280,6 +296,7 @@ export type HostMessage =
     | RepeatChanceMessage
     | RepeatPositionMessage
     | RepeatMixMessage
+    | ChaosMessage
     | TrackMessage
     | OutputMessage
     | FreeMessage
@@ -310,4 +327,47 @@ export interface ErrorMessage {
     message: string
 }
 
-export type WorkletMessage = ReadyMessage | SnapshotMessage | ErrorMessage
+// The knobs the engine plays, after it changed them itself with a chaos roll.
+export interface EngineControls {
+    panMin: number
+    panMax: number
+    sliceExp: number
+    attackMs: number
+    effectsEnabled: boolean
+    globalPower: number
+    globalChance: number
+    beatMin: number
+    beatMax: number
+    delayPower: number
+    delayChance: number
+    reverbPower: number
+    reverbChance: number
+    reversePower: number
+    reverseChance: number
+    filterPower: number
+    filterChance: number
+    flangerPower: number
+    flangerChance: number
+    trancePower: number
+    tranceChance: number
+    shiftPower: number
+    shiftChance: number
+    repeatEnabled: boolean
+    repeatSizeMin: number
+    repeatSizeMax: number
+    repeatLength: number
+    repeatChance: number
+    repeatMix: number
+    repeatPositions: boolean[]
+    chaosValue: number
+    chaosBeatSize: number
+    chaosLoopSize: number
+    chaosSliceSize: number
+}
+
+export interface ControlsMessage {
+    type: 'controls'
+    controls: EngineControls
+}
+
+export type WorkletMessage = ReadyMessage | SnapshotMessage | ErrorMessage | ControlsMessage

@@ -20,6 +20,8 @@ struct Instance {
     bt::SliceSnapshot snapshot;
     bt::NoteGate gate;
     float velocity = 1.0f;
+    // The engine changed its own knobs (a chaos roll) since bt_controls_changed last answered.
+    bool controlsChanged = false;
 
     Instance(double sampleRate, std::uint64_t seed) : engine(sampleRate, seed) {}
 };
@@ -109,6 +111,9 @@ BT_EXPORT void bt_midi(Instance* instance, int status, int, double velocity) {
         }
         instance->velocity = static_cast<float>(velocity);
         applyGate(*instance, instance->gate.noteOn());
+        const bt::Controls before = instance->engine.controls();
+        instance->engine.noteOn();
+        instance->controlsChanged = instance->controlsChanged || instance->engine.controls() != before;
     } else if (status == kNoteOff) {
         applyGate(*instance, instance->gate.noteOff());
     } else if (status == kAllOff) {
@@ -116,11 +121,80 @@ BT_EXPORT void bt_midi(Instance* instance, int status, int, double velocity) {
     }
 }
 
+// Every chaos mode also rolls on Randomize.
 BT_EXPORT void bt_randomize(Instance* instance) {
     if (instance == nullptr) {
         return;
     }
-    instance->engine.randomize();
+    const bt::Controls before = instance->engine.controls();
+    if (instance->engine.count() > 0) {
+        instance->engine.randomize();
+    }
+    instance->engine.triggerChaos();
+    instance->controlsChanged = instance->controlsChanged || instance->engine.controls() != before;
+}
+
+// trigger is a bt::ChaosTrigger, 0..4. value is 0..1. beatSize is -2..1, loopSize 1..8, sliceSize -1..2.
+// groups is a bit mask in bt::ChaosGroup order: bit 0 is Pan.
+BT_EXPORT void bt_set_chaos(Instance* instance, int trigger, double value, int beatSize, int loopSize, int sliceSize, int groups) {
+    if (instance == nullptr || trigger < 0 || trigger > static_cast<int>(bt::ChaosTrigger::Beats)) {
+        return;
+    }
+    bt::Controls controls = instance->engine.controls();
+    bt::ChaosSettings& chaos = controls.chaos;
+    chaos.trigger = static_cast<bt::ChaosTrigger>(trigger);
+    chaos.value = value;
+    chaos.beatSize = beatSize;
+    chaos.loopSize = loopSize;
+    chaos.sliceSize = sliceSize;
+    for (int group = 0; group < bt::ChaosSettings::kGroups; ++group) {
+        chaos.groups[group] = (groups & (1 << group)) != 0;
+    }
+    instance->engine.apply(controls);
+}
+
+// 1 once after the engine changed its own knobs, then 0 until the next change.
+BT_EXPORT int bt_controls_changed(Instance* instance) {
+    if (instance == nullptr || !instance->controlsChanged) {
+        return 0;
+    }
+    instance->controlsChanged = false;
+    return 1;
+}
+
+// The knobs chaos can change, as doubles, in this order. The processor reads them in the same order.
+//  0 panMin, 1 panMax, 2 sliceExp, 3 attackMs,
+//  4 effects on, 5 global power, 6 global chance, 7 time min, 8 time max,
+//  9..22 power and chance for delay, reverb, reverse, filter, flanger, trance, shift,
+// 23 repeat on, 24 size min, 25 size max, 26 length, 27 chance, 28 mix, 29..36 loop parts,
+// 37 chaos value, 38 beat size, 39 loop size, 40 slice size.
+constexpr int kControlsCount = 41;
+
+BT_EXPORT int bt_controls_write(const Instance* instance, double* out) {
+    if (instance == nullptr || out == nullptr) {
+        return 0;
+    }
+    const bt::Controls& c = instance->engine.controls();
+    const bt::Effects& fx = c.effects;
+    const double values[] = {
+        c.play.panMin, c.play.panMax, static_cast<double>(c.play.sliceExp), static_cast<double>(c.play.attackMs),
+        fx.enabled ? 1.0 : 0.0, fx.globalPower, fx.globalChance, static_cast<double>(fx.beatMin), static_cast<double>(fx.beatMax),
+        fx.delayPower, fx.delayChance, fx.reverbPower, fx.reverbChance, fx.reversePower, fx.reverseChance,
+        fx.filterPower, fx.filterChance, fx.flangerPower, fx.flangerChance, fx.trancePower, fx.tranceChance,
+        fx.shiftPower, fx.shiftChance,
+        c.repeat.enabled ? 1.0 : 0.0, static_cast<double>(c.repeat.sizeMin), static_cast<double>(c.repeat.sizeMax),
+        static_cast<double>(c.repeat.length), c.repeat.chance, c.repeat.mix,
+        c.repeat.positions[0] ? 1.0 : 0.0, c.repeat.positions[1] ? 1.0 : 0.0, c.repeat.positions[2] ? 1.0 : 0.0,
+        c.repeat.positions[3] ? 1.0 : 0.0, c.repeat.positions[4] ? 1.0 : 0.0, c.repeat.positions[5] ? 1.0 : 0.0,
+        c.repeat.positions[6] ? 1.0 : 0.0, c.repeat.positions[7] ? 1.0 : 0.0,
+        c.chaos.value, static_cast<double>(c.chaos.beatSize), static_cast<double>(c.chaos.loopSize),
+        static_cast<double>(c.chaos.sliceSize),
+    };
+    static_assert(sizeof(values) / sizeof(values[0]) == kControlsCount);
+    for (int i = 0; i < kControlsCount; ++i) {
+        out[i] = values[i];
+    }
+    return kControlsCount;
 }
 
 BT_EXPORT void bt_remove(Instance* instance, int index) {
@@ -427,7 +501,9 @@ BT_EXPORT void bt_render(Instance* instance, float* left, float* right, int fram
     if (instance == nullptr || left == nullptr || right == nullptr || frames <= 0) {
         return;
     }
+    const bt::Controls before = instance->engine.controls();
     instance->engine.render(left, right, frames);
+    instance->controlsChanged = instance->controlsChanged || instance->engine.controls() != before;
     const float velocity = instance->velocity;
     if (velocity == 1.0f) {
         return;

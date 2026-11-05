@@ -8,6 +8,59 @@ export interface FactoryBank {
     file: string
 }
 
+// The chaos knobs. trigger is 0 Randomize button, 1 Note, 2 Loop, 3 Slices, 4 Beats.
+// beatSize is 2^n beats, -2..1. loopSize is loops, 1..8. sliceSize is 2^n slices, -1..2.
+// groups is 8 toggles: pan, slices, attack, randomize, effects, beat repeat, chaos value, chaos time.
+export interface ChaosState {
+    trigger: number
+    value: number
+    beatSize: number
+    loopSize: number
+    sliceSize: number
+    groups: boolean[]
+}
+
+// The knobs a chaos roll can change, as the engine plays them.
+export interface RolledControls {
+    panMin: number
+    panMax: number
+    sliceExp: number
+    attackMs: number
+    effectsEnabled: boolean
+    globalPower: number
+    globalChance: number
+    beatMin: number
+    beatMax: number
+    delayPower: number
+    delayChance: number
+    reverbPower: number
+    reverbChance: number
+    reversePower: number
+    reverseChance: number
+    filterPower: number
+    filterChance: number
+    flangerPower: number
+    flangerChance: number
+    trancePower: number
+    tranceChance: number
+    shiftPower: number
+    shiftChance: number
+    repeatEnabled: boolean
+    repeatSizeMin: number
+    repeatSizeMax: number
+    repeatLength: number
+    repeatChance: number
+    repeatMix: number
+    repeatPositions: boolean[]
+    chaosValue: number
+    chaosBeatSize: number
+    chaosLoopSize: number
+    chaosSliceSize: number
+}
+
+export const chaosTriggers = ['Randomize button', 'Note', 'Loop', 'Slices', 'Beats']
+export const chaosGroupNames = ['Pan', 'Slices', 'Attack', 'Randomize', 'Effects', 'Beat Repeat', 'Chaos value', 'Chaos time']
+
 export interface ViewActions {
     midi: (status: number, note: number, velocity: number) => void
     loadPack: (file: string) => Promise<void>
@@ -46,6 +99,7 @@ export interface ViewActions {
     setRepeatPosition: (index: number, on: boolean) => void
     setRepeatMix: (mix: number) => void
     setOutput: (volume: number, panMin: number, panMax: number) => void
+    setChaos: (chaos: ChaosState) => void
 }
 
 export interface ViewState {
@@ -153,6 +207,12 @@ export class WebViewModel {
     outputVolume = 1
     outputPanMin = 0
     outputPanMax = 0
+    chaosTrigger = 0
+    chaosValue = 0
+    chaosBeatSize = 0
+    chaosLoopSize = 1
+    chaosSliceSize = 0
+    chaosGroups: boolean[] = Array(chaosGroupNames.length).fill(false)
     factoryBanks: FactoryBank[] = []
 
     private actions: ViewActions | null = null
@@ -689,6 +749,108 @@ export class WebViewModel {
         }
         const next = clamp(pan, -1, 1)
         this.setOutput(this.outputVolume, Math.min(next, this.outputPanMin), next)
+    }
+
+    setChaosTrigger(trigger: number) {
+        if (!Number.isInteger(trigger) || trigger < 0 || trigger >= chaosTriggers.length || trigger === this.chaosTrigger) {
+            return
+        }
+        this.chaosTrigger = trigger
+        this.sendChaos()
+    }
+
+    setChaosValue(value: number) {
+        if (!Number.isFinite(value) || value < 0 || value > 1 || value === this.chaosValue) {
+            return
+        }
+        this.chaosValue = value
+        this.sendChaos()
+    }
+
+    setChaosGroup(group: number, on: boolean) {
+        if (!Number.isInteger(group) || group < 0 || group >= chaosGroupNames.length || on === this.chaosGroups[group]) {
+            return
+        }
+        this.chaosGroups = this.chaosGroups.map((value, i) => (i === group ? on : value))
+        this.sendChaos()
+    }
+
+    // 2^exponent beats, -2..1.
+    setChaosBeatSize(exponent: number) {
+        if (!Number.isInteger(exponent) || exponent < -2 || exponent > 1 || exponent === this.chaosBeatSize) {
+            return
+        }
+        this.chaosBeatSize = exponent
+        this.sendChaos()
+    }
+
+    // Loops, 1..8.
+    setChaosLoopSize(loops: number) {
+        if (!Number.isInteger(loops) || loops < 1 || loops > 8 || loops === this.chaosLoopSize) {
+            return
+        }
+        this.chaosLoopSize = loops
+        this.sendChaos()
+    }
+
+    // 2^exponent slices, -1..2.
+    setChaosSliceSize(exponent: number) {
+        if (!Number.isInteger(exponent) || exponent < -1 || exponent > 2 || exponent === this.chaosSliceSize) {
+            return
+        }
+        this.chaosSliceSize = exponent
+        this.sendChaos()
+    }
+
+    // What a chaos roll set on the engine. Shown, not sent back.
+    adoptControls(controls: RolledControls) {
+        this.outputPanMin = controls.panMin
+        this.outputPanMax = controls.panMax
+        this.sliceExp = fitSlice(controls.sliceExp, this.loopBeats)
+        this.attackMs = controls.attackMs
+        this.effectsEnabled = controls.effectsEnabled
+        this.globalPower = controls.globalPower
+        this.globalChance = controls.globalChance
+        this.globalBeatMinExp = controls.beatMin
+        this.globalBeatMaxExp = controls.beatMax
+        this.delayPower = controls.delayPower
+        this.delayChance = controls.delayChance
+        this.reverbPower = controls.reverbPower
+        this.reverbChance = controls.reverbChance
+        this.reversePower = controls.reversePower
+        this.reverseChance = controls.reverseChance
+        this.filterPower = controls.filterPower
+        this.filterChance = controls.filterChance
+        this.flangerPower = controls.flangerPower
+        this.flangerChance = controls.flangerChance
+        this.trancePower = controls.trancePower
+        this.tranceChance = controls.tranceChance
+        this.shiftPower = controls.shiftPower
+        this.shiftChance = controls.shiftChance
+        this.repeatEnabled = controls.repeatEnabled
+        this.repeatSizeMinExp = controls.repeatSizeMin
+        this.repeatSizeMaxExp = controls.repeatSizeMax
+        this.repeatLengthExp = controls.repeatLength
+        this.repeatChance = controls.repeatChance
+        this.repeatMix = controls.repeatMix
+        this.repeatPositions = [...controls.repeatPositions]
+        this.chaosValue = controls.chaosValue
+        this.chaosBeatSize = controls.chaosBeatSize
+        this.chaosLoopSize = controls.chaosLoopSize
+        this.chaosSliceSize = controls.chaosSliceSize
+        this.notify()
+    }
+
+    private sendChaos() {
+        this.notify()
+        this.actions?.setChaos({
+            trigger: this.chaosTrigger,
+            value: this.chaosValue,
+            beatSize: this.chaosBeatSize,
+            loopSize: this.chaosLoopSize,
+            sliceSize: this.chaosSliceSize,
+            groups: [...this.chaosGroups],
+        })
     }
 
     show(state: ViewState) {

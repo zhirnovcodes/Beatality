@@ -1,4 +1,4 @@
-import type { PackMessage, TrackMessage, WorkletMessage } from '../messages'
+import type { ChaosFields, EngineControls, PackMessage, TrackMessage, WorkletMessage } from '../messages'
 import { sampleBpm, warpIndex, type PackDocument, type SampleSettings } from '../pack'
 
 function trackMessage(index: number, play: SampleSettings): TrackMessage {
@@ -52,6 +52,8 @@ export class EngineClient {
     readonly output: GainNode
     latest: EngineSnapshot | null = null
     onSnapshot: ((snapshot: EngineSnapshot) => void) | null = null
+    // The knobs after a chaos roll changed them.
+    onControls: ((controls: EngineControls) => void) | null = null
     onError: ((message: string) => void) | null = null
 
     private decoder: SampleDecoder | null = null
@@ -86,6 +88,7 @@ export class EngineClient {
     dispose() {
         this.disposed = true
         this.onSnapshot = null
+        this.onControls = null
         this.onError = null
         this.output.disconnect()
         if (this.node) {
@@ -254,6 +257,11 @@ export class EngineClient {
     async setRepeatMix(mix: number): Promise<void> {
         await this.start()
         this.node?.port.postMessage({ type: 'repeatMix', mix })
+    }
+
+    async setChaos(chaos: ChaosFields): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'chaos', ...chaos, groups: [...chaos.groups] })
     }
 
     async setTrack(index: number, play: SampleSettings): Promise<void> {
@@ -470,6 +478,10 @@ export class EngineClient {
             if (this.started) {
                 this.onError?.(message.message)
             }
+            return
+        }
+        if (message.type === 'controls') {
+            this.onControls?.(message.controls)
             return
         }
         const snapshot: EngineSnapshot = {

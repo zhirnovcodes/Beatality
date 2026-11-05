@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'preact/hooks'
-import type { WebViewModel } from '../../../viewmodels/web/WebViewModel'
+import { chaosGroupNames, chaosTriggers, type WebViewModel } from '../../../viewmodels/web/WebViewModel'
 import './ui/skin/skin.css'
 import './widget.css'
 
@@ -822,7 +822,94 @@ export function Widget({
                 </section>
             </div>
             <p className="widget-error">{model.error}</p>
+            <ChaosPart model={model} />
         </>
+    )
+}
+
+// 2^exponent as a fraction or a whole number.
+function powerLabel(exponent: number): string {
+    return exponent >= 0 ? String(2 ** exponent) : `1/${2 ** -exponent}`
+}
+
+// Chaos. Plain controls under the skin; not styled to match it.
+function ChaosPart({ model }: { model: WebViewModel }) {
+    const number = (event: Event) => Number((event.currentTarget as HTMLInputElement | HTMLSelectElement).value)
+    return (
+        <section className="chaos" aria-label="Chaos">
+            <h2>Chaos</h2>
+            <label>
+                Trigger{' '}
+                <select value={String(model.chaosTrigger)} onChange={(event) => model.setChaosTrigger(number(event))}>
+                    {chaosTriggers.map((name, index) => (
+                        <option key={name} value={String(index)}>
+                            {name}
+                        </option>
+                    ))}
+                </select>
+            </label>
+            <label>
+                Value {model.chaosValue.toFixed(2)}
+                <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={model.chaosValue}
+                    data-param="chaosValue"
+                    onInput={(event) => model.setChaosValue(number(event))}
+                />
+            </label>
+            <label>
+                Beats size {powerLabel(model.chaosBeatSize)}
+                <input
+                    type="range"
+                    min="-2"
+                    max="1"
+                    step="1"
+                    value={model.chaosBeatSize}
+                    data-param="chaosBeatSize"
+                    onInput={(event) => model.setChaosBeatSize(number(event))}
+                />
+            </label>
+            <label>
+                Loop size {model.chaosLoopSize}
+                <input
+                    type="range"
+                    min="1"
+                    max="8"
+                    step="1"
+                    value={model.chaosLoopSize}
+                    data-param="chaosLoopSize"
+                    onInput={(event) => model.setChaosLoopSize(number(event))}
+                />
+            </label>
+            <label>
+                Slices size {powerLabel(model.chaosSliceSize)}
+                <input
+                    type="range"
+                    min="-1"
+                    max="2"
+                    step="1"
+                    value={model.chaosSliceSize}
+                    data-param="chaosSliceSize"
+                    onInput={(event) => model.setChaosSliceSize(number(event))}
+                />
+            </label>
+            <fieldset>
+                <legend>Chaos controls</legend>
+                {chaosGroupNames.map((name, group) => (
+                    <label key={name}>
+                        <input
+                            type="checkbox"
+                            checked={model.chaosGroups[group]}
+                            onChange={(event) => model.setChaosGroup(group, (event.currentTarget as HTMLInputElement).checked)}
+                        />{' '}
+                        {name}
+                    </label>
+                ))}
+            </fieldset>
+        </section>
     )
 }
 

@@ -1,5 +1,17 @@
 import type { ParameterInfo } from '../../hosts/web/plugin'
-import type { WebViewModel } from '../../viewmodels/web/WebViewModel'
+import { chaosGroupNames, type WebViewModel } from '../../viewmodels/web/WebViewModel'
+
+// The same ids as the plugin's host parameters, in chaos group order.
+const chaosGroupIds = [
+    'chaosPan',
+    'chaosSlices',
+    'chaosAttack',
+    'chaosRandomize',
+    'chaosEffects',
+    'chaosBeatRepeat',
+    'chaosValueOn',
+    'chaosTime',
+]
 
 interface Entry {
     info: ParameterInfo
@@ -200,6 +212,37 @@ export class BeatalityParameters {
                 read: () => model.repeatChance,
                 write: (value) => model.setRepeatChance(value),
             },
+            {
+                // 0 Randomize button, 1 Note, 2 Loop, 3 Slices, 4 Beats.
+                info: { id: 'chaosTrigger', label: 'Chaos trigger', kind: 'int', min: 0, max: 4 },
+                read: () => model.chaosTrigger,
+                write: (trigger) => model.setChaosTrigger(trigger),
+            },
+            {
+                info: { id: 'chaosValue', label: 'Chaos value', kind: 'float', min: 0, max: 1 },
+                read: () => model.chaosValue,
+                write: (value) => model.setChaosValue(value),
+            },
+            {
+                info: { id: 'chaosBeatSize', label: 'Chaos beat size', kind: 'int', min: -2, max: 1 },
+                read: () => model.chaosBeatSize,
+                write: (exponent) => model.setChaosBeatSize(exponent),
+            },
+            {
+                info: { id: 'chaosLoopSize', label: 'Chaos loop size', kind: 'int', min: 1, max: 8 },
+                read: () => model.chaosLoopSize,
+                write: (loops) => model.setChaosLoopSize(loops),
+            },
+            {
+                info: { id: 'chaosSliceSize', label: 'Chaos slice size', kind: 'int', min: -1, max: 2 },
+                read: () => model.chaosSliceSize,
+                write: (exponent) => model.setChaosSliceSize(exponent),
+            },
+            ...chaosGroupIds.map((id, group) => ({
+                info: { id, label: `Chaos ${chaosGroupNames[group].toLowerCase()}`, kind: 'boolean' as const, min: 0, max: 1 },
+                read: () => (model.chaosGroups[group] ? 1 : 0),
+                write: (on: number) => model.setChaosGroup(group, on > 0.5),
+            })),
         ]
     }
 

@@ -121,7 +121,9 @@ export class WebPresenter {
             setRepeatPosition: (index, on) => void this.perform(() => this.client.setRepeatPosition(index, on)),
             setRepeatMix: (mix) => void this.perform(() => this.client.setRepeatMix(mix)),
             setOutput: (volume, panMin, panMax) => void this.perform(() => this.client.setOutput(volume, panMin, panMax)),
+            setChaos: (chaos) => void this.perform(() => this.client.setChaos(chaos)),
         })
+        client.onControls = (controls) => model.adoptControls(controls)
         client.onSnapshot = (snapshot) => {
             this.playSlot = snapshot.playing ? snapshot.playSlot : -1
             this.playTrack = snapshot.playing ? snapshot.playTrack : -1

@@ -14,3 +14,32 @@
     font: 13px/1.3 system-ui, sans-serif;
     text-align: center;
 }
+
+/* Chaos: plain controls under the skin. */
+.chaos {
+    width: 496px;
+    box-sizing: border-box;
+    color: #ddd;
+    font: 13px system-ui, sans-serif;
+}
+.chaos h2 {
+    font-size: 15px;
+    margin: 8px 0;
+}
+.chaos label {
+    display: block;
+    margin: 6px 0;
+}
+.chaos input[type='range'],
+.chaos select {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+.chaos fieldset {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+.chaos fieldset label {
+    margin: 2px 0;
+}
