@@ -1,0 +1,36 @@
+#pragma once
+
+namespace bt {
+
+// What fires a chaos roll. The Randomize button fires one in every mode.
+// Note fires on each note-on. Loop, Slices, and Beats fire each time that many have played since the note started.
+enum class ChaosTrigger { Button, Note, Loop, Slices, Beats };
+
+// The knob groups a roll can change. Each one is on or off as a whole.
+enum class ChaosGroup { Pan, Slices, Attack, Randomize, Effects, BeatRepeat, Value, Time, Count };
+
+// The chaos knobs.
+// value is 0..1. It widens each knob's range from the range at 0 toward the range at 1.
+// beatSize is 2^beatSize beats, 1/4..2. loopSize is loops, 1..8. sliceSize is 2^sliceSize slices, 1/2..4.
+struct ChaosSettings {
+    static constexpr int kGroups = static_cast<int>(ChaosGroup::Count);
+    static constexpr int kBeatSizeMin = -2;
+    static constexpr int kBeatSizeMax = 1;
+    static constexpr int kLoopSizeMin = 1;
+    static constexpr int kLoopSizeMax = 8;
+    static constexpr int kSliceSizeMin = -1;
+    static constexpr int kSliceSizeMax = 2;
+
+    ChaosTrigger trigger = ChaosTrigger::Button;
+    double value = 0;
+    bool groups[kGroups]{};
+    int beatSize = 0;
+    int loopSize = 1;
+    int sliceSize = 0;
+
+    bool on(ChaosGroup group) const { return groups[static_cast<int>(group)]; }
+
+    bool operator==(const ChaosSettings&) const = default;
+};
+
+} // namespace bt

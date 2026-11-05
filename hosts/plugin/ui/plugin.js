@@ -39,6 +39,12 @@ const state = {
     outputVolume: 1,
     outputPanMin: 0,
     outputPanMax: 0,
+    chaosTrigger: 0,
+    chaosValue: 0,
+    chaosBeatSize: 0,
+    chaosLoopSize: 1,
+    chaosSliceSize: 0,
+    chaosGroups: [false, false, false, false, false, false, false, false],
 }
 
 // Warp modes in the engine's order: the index is the mode number setWarp takes.
@@ -724,9 +730,104 @@ function followHost(live) {
             repeatChanged = true
         }
     }
+    const positions = live.repeatPositions
+    if (Array.isArray(positions) && positions.some((on, index) => Boolean(on) !== state.repeatPositions[index])) {
+        state.repeatPositions = positions.map(Boolean)
+        repeatChanged = true
+    }
     if (repeatChanged) {
         paintBeatRepeat()
     }
+
+    // Attack and the loop parts are not host parameters, but chaos moves them.
+    const attack = Number(live.attack)
+    if (free('attack') && Number.isInteger(attack) && attack !== state.attackMs) {
+        state.attackMs = attack
+        setRange('attack', attack)
+        syncCaptions()
+    }
+    followChaos(live)
+}
+
+// The chaos column. Plain controls; the page only shows the values and sends edits.
+// Beats size is 2^n beats, slices size is 2^n slices.
+function paintChaos() {
+    const trigger = document.getElementById('chaos-trigger')
+    if (trigger instanceof HTMLSelectElement && document.activeElement !== trigger) {
+        trigger.value = String(state.chaosTrigger)
+    }
+    const ranges = [
+        ['chaos-value', state.chaosValue, state.chaosValue.toFixed(2)],
+        ['chaos-beat-size', state.chaosBeatSize, sliceLabel(state.chaosBeatSize)],
+        ['chaos-loop-size', state.chaosLoopSize, String(state.chaosLoopSize)],
+        ['chaos-slice-size', state.chaosSliceSize, sliceLabel(state.chaosSliceSize)],
+    ]
+    for (const [id, value, text] of ranges) {
+        const input = document.getElementById(id)
+        if (input instanceof HTMLInputElement && !input.matches(':active')) {
+            input.value = String(value)
+        }
+        const output = document.getElementById(id + '-text')
+        if (output) {
+            output.textContent = text
+        }
+    }
+    document.querySelectorAll('.chaos-group').forEach((box) => {
+        if (box instanceof HTMLInputElement) {
+            box.checked = state.chaosGroups[Number(box.dataset.group)]
+        }
+    })
+}
+
+function followChaos(live) {
+    let changed = false
+    for (const key of ['chaosTrigger', 'chaosValue', 'chaosBeatSize', 'chaosLoopSize', 'chaosSliceSize']) {
+        const value = Number(live[key])
+        if (Number.isFinite(value) && value !== state[key]) {
+            state[key] = value
+            changed = true
+        }
+    }
+    const groups = live.chaosGroups
+    if (Array.isArray(groups) && groups.some((on, index) => Boolean(on) !== state.chaosGroups[index])) {
+        state.chaosGroups = groups.map(Boolean)
+        changed = true
+    }
+    if (changed) {
+        paintChaos()
+    }
+}
+
+function wireChaos() {
+    document.getElementById('chaos-trigger')?.addEventListener('change', (event) => {
+        state.chaosTrigger = Number(event.currentTarget.value)
+        void native('setChaosTrigger', state.chaosTrigger)
+    })
+    const ranges = [
+        ['chaos-value', 'chaosValue', 'setChaosValue'],
+        ['chaos-beat-size', 'chaosBeatSize', 'setChaosBeatSize'],
+        ['chaos-loop-size', 'chaosLoopSize', 'setChaosLoopSize'],
+        ['chaos-slice-size', 'chaosSliceSize', 'setChaosSliceSize'],
+    ]
+    for (const [id, key, name] of ranges) {
+        document.getElementById(id)?.addEventListener('input', (event) => {
+            const value = Number(event.currentTarget.value)
+            if (value === state[key]) {
+                return
+            }
+            state[key] = value
+            paintChaos()
+            void native(name, value)
+        })
+    }
+    document.querySelectorAll('.chaos-group').forEach((box) => {
+        box.addEventListener('change', () => {
+            const group = Number(box.dataset.group)
+            state.chaosGroups[group] = box.checked
+            void native('setChaosGroup', group, box.checked)
+        })
+    })
+    paintChaos()
 }
 
 // The effect sliders that host parameters move: state key, input id.
@@ -1134,6 +1235,7 @@ function wire() {
     })
 
     window.beatality = { onBank, onLive }
+    wireChaos()
 
     document.querySelector('.bpm-btn.plus')?.addEventListener('click', () => bumpBpm(1))
     document.querySelector('.bpm-btn.minus')?.addEventListener('click', () => bumpBpm(-1))

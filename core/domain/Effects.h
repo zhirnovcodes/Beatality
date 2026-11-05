@@ -50,6 +50,8 @@ struct Effects {
         }
         return std::ldexp(1.0, beatMin + step);
     }
+
+    bool operator==(const Effects&) const = default;
 };
 
 } // namespace bt

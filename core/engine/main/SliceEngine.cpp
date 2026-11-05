@@ -1,5 +1,6 @@
 #include "SliceEngine.h"
 
+#include <cmath>
 #include <utility>
 
 namespace bt {
@@ -45,11 +46,11 @@ void movePlayingOut(SlicePlayer& playing, SlicePlayer& outgoing, Clock& playingC
 
 SliceEngine::SliceEngine(double sampleRate, std::uint64_t seed)
     : settings_{sampleRate, 120.0}, playing_(sampleRate, seed), outgoing_(sampleRate, seed + 1), rng_(seed),
-      repeatRng_(seed + 2), beatRepeat_(sampleRate) {}
+      repeatRng_(seed + 2), chaosRng_(seed + 3), beatRepeat_(sampleRate) {}
 
 void SliceEngine::play() {
     if (sequence_.empty()) {
-        sequence_.generate(grid_.slotCount(), bank_.count(), rng_, effects_);
+        sequence_.generate(grid_.slotCount(), bank_.count(), rng_, controls_.effects);
         repeatSequence_.generate(repeatRng_);
     }
     beatRepeat_.clean();
@@ -81,7 +82,7 @@ void SliceEngine::stop() {
 void SliceEngine::randomize() {
     const bool live = playing_.isPlaying();
     const bool restart = !playing_.running();
-    sequence_.generate(grid_.slotCount(), bank_.count(), rng_, effects_);
+    sequence_.generate(grid_.slotCount(), bank_.count(), rng_, controls_.effects);
     repeatSequence_.generate(repeatRng_);
     if (!live) {
         return;
@@ -246,9 +247,71 @@ void SliceEngine::clear() {
     }
 }
 
+void SliceEngine::apply(const Controls& next) {
+    if (next.play.bpm != controls_.play.bpm) {
+        setBpm(next.play.bpm);
+    }
+    if (next.play.loop != controls_.play.loop) {
+        setLoop(next.play.loop);
+    }
+    if (next.play.sliceExp != controls_.play.sliceExp) {
+        setSlice(next.play.sliceExp);
+    }
+    controls_.play.attackMs = next.play.attackMs;
+    if (next.effects != controls_.effects) {
+        setEffectsSettings(next.effects);
+    }
+    controls_.repeat = next.repeat;
+    controls_.chaos = next.chaos;
+    if (next.play.volume != controls_.play.volume || next.play.panMin != controls_.play.panMin || next.play.panMax != controls_.play.panMax) {
+        setOutput(next.play.volume, next.play.panMin, next.play.panMax);
+    }
+}
+
+void SliceEngine::triggerChaos() {
+    Controls next = controls_;
+    const ChaosRoll roll = rollChaos(next, chaosRng_);
+    apply(next);
+    if (roll.randomize && bank_.count() > 0) {
+        randomize();
+    }
+}
+
+bool SliceEngine::chaosTrigger() {
+    const ChaosTrigger trigger = controls_.chaos.trigger;
+    if (!playing_.running() || trigger == ChaosTrigger::Button || trigger == ChaosTrigger::Note) {
+        return false;
+    }
+    const std::int64_t unit = chaosFrames();
+    const std::int64_t index = playingClock_.frame() / unit;
+    // A new unit size, or a clock sent back to the start, counts again from here.
+    if (unit != chaosUnit_ || index < chaosIndex_) {
+        chaosUnit_ = unit;
+        chaosIndex_ = index;
+        return false;
+    }
+    if (index == chaosIndex_) {
+        return false;
+    }
+    chaosIndex_ = index;
+    return true;
+}
+
+std::int64_t SliceEngine::chaosFrames() const {
+    const ChaosSettings& chaos = controls_.chaos;
+    double beats = std::ldexp(1.0, chaos.beatSize);
+    if (chaos.trigger == ChaosTrigger::Slices) {
+        beats = grid_.sliceBeats() * std::ldexp(1.0, chaos.sliceSize);
+    } else if (chaos.trigger == ChaosTrigger::Loop) {
+        beats = static_cast<double>(grid_.loopBeats() * chaos.loopSize);
+    }
+    return std::llround(settings_.framesPerBeat() * beats);
+}
+
 void SliceEngine::setBpm(double bpm) {
     grid_.setBpm(bpm);
     settings_.bpm = bpm;
+    controls_.play.bpm = bpm;
 }
 
 void SliceEngine::setLoop(int beats) {
@@ -256,6 +319,8 @@ void SliceEngine::setLoop(int beats) {
     const int oldSlots = grid_.slotCount();
     const bool live = playing_.running() && !sequence_.empty();
     grid_.setLoop(beats);
+    controls_.play.loop = beats;
+    controls_.play.sliceExp = grid_.sliceExp();
     syncSequence(oldExp, oldSlots);
     if (!live) {
         return;
@@ -277,6 +342,10 @@ void SliceEngine::setSlice(int exponent) {
     const int oldSlots = grid_.slotCount();
     const bool live = playing_.running() && !sequence_.empty();
     grid_.setSlice(exponent);
+    controls_.play.sliceExp = grid_.sliceExp();
+    if (controls_.play.sliceExp == oldExp) {
+        return;
+    }
     syncSequence(oldExp, oldSlots);
     if (!live) {
         return;
@@ -293,28 +362,27 @@ void SliceEngine::setSlice(int exponent) {
     }
 }
 
-void SliceEngine::setAttack(int ms) { attackMs_ = ms; }
-
 void SliceEngine::setEffectsSettings(const Effects& settings) {
-    effects_ = settings;
+    controls_.effects = settings;
     playing_.setEffects(settings);
     outgoing_.setEffects(settings);
 }
 
-void SliceEngine::setBeatRepeat(const BeatRepeatSettings& settings) { beatRepeatSettings_ = settings; }
-
 void SliceEngine::setOutput(double volume, double panMin, double panMax) {
-    volume_ = clamp(volume, 0.0, 1.2);
-    panMin_ = clamp(panMin, -1.0, 1.0);
-    panMax_ = clamp(panMax, panMin_, 1.0);
-    playing_.setPanRange(panMin_, panMax_);
-    outgoing_.setPanRange(panMin_, panMax_);
+    controls_.play.volume = clamp(volume, 0.0, 1.2);
+    controls_.play.panMin = clamp(panMin, -1.0, 1.0);
+    controls_.play.panMax = clamp(panMax, controls_.play.panMin, 1.0);
+    playing_.setPanRange(controls_.play.panMin, controls_.play.panMax);
+    outgoing_.setPanRange(controls_.play.panMin, controls_.play.panMax);
 }
 
 void SliceEngine::render(float* left, float* right, int frames) {
     for (int i = 0; i < frames; ++i) {
+        if (chaosTrigger()) {
+            triggerChaos();
+        }
         if (playing_.running() && !sequence_.empty() && bank_.count() > 0) {
-            const int arriving = playingClock_.arrivingSlot(settings_, grid_, attackMs_);
+            const int arriving = playingClock_.arrivingSlot(settings_, grid_, controls_.play.attackMs);
             if (arriving != playingSlot_) {
                 movePlayingOut(playing_, outgoing_, playingClock_, outgoingClock_, playingSlot_, playingBuffer_, outgoingBuffer_);
                 if (arriving >= 0) {
@@ -335,11 +403,11 @@ void SliceEngine::render(float* left, float* right, int frames) {
         float playR = 0.0f;
         float outL = 0.0f;
         float outR = 0.0f;
-        playing_.render(playingBuffer_, settings_, playingClock_, grid_, attackMs_, playL, playR);
-        outgoing_.render(outgoingBuffer_, settings_, outgoingClock_, grid_, attackMs_, outL, outR);
+        playing_.render(playingBuffer_, settings_, playingClock_, grid_, controls_.play.attackMs, playL, playR);
+        outgoing_.render(outgoingBuffer_, settings_, outgoingClock_, grid_, controls_.play.attackMs, outL, outR);
         Frame mixed{playL + outL, playR + outR};
         if (playing_.isPlaying()) {
-            mixed = beatRepeat_.render(mixed, settings_, playingClock_, grid_, beatRepeatSettings_, repeatSequence_);
+            mixed = beatRepeat_.render(mixed, settings_, playingClock_, grid_, controls_.repeat, repeatSequence_);
         }
         left[i] = mixed.l;
         right[i] = mixed.r;
@@ -354,7 +422,7 @@ void SliceEngine::render(float* left, float* right, int frames) {
             pendingHeld_ = false;
         }
     }
-    const float volume = static_cast<float>(volume_);
+    const float volume = static_cast<float>(controls_.play.volume);
     if (volume == 1.0f) {
         return;
     }
@@ -396,10 +464,10 @@ void SliceEngine::syncSequence(int oldExp, int oldSlots) {
     const int exp = grid_.sliceExp();
     const int slots = grid_.slotCount();
     if (exp != oldExp) {
-        sequence_.generate(slots, bank_.count(), rng_, effects_);
+        sequence_.generate(slots, bank_.count(), rng_, controls_.effects);
         repeatSequence_.generate(repeatRng_);
     } else if (slots > oldSlots) {
-        sequence_.append(slots, rng_, effects_);
+        sequence_.append(slots, rng_, controls_.effects);
     } else if (slots < oldSlots) {
         sequence_.crop(slots);
     }

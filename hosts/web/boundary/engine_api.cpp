@@ -19,20 +19,10 @@ struct Instance {
     bt::SliceEngine engine;
     bt::SliceSnapshot snapshot;
     bt::NoteGate gate;
-    bt::Effects effects;
-    bt::BeatRepeatSettings repeat;
     float velocity = 1.0f;
 
     Instance(double sampleRate, std::uint64_t seed) : engine(sampleRate, seed) {}
 };
-
-void storeEffects(Instance& instance) {
-    instance.engine.setEffectsSettings(instance.effects);
-}
-
-void storeRepeat(Instance& instance) {
-    instance.engine.setBeatRepeat(instance.repeat);
-}
 
 void applyGate(Instance& instance, bt::Gate signal) {
     if (signal == bt::Gate::Start) {
@@ -151,36 +141,45 @@ BT_EXPORT void bt_set_bpm(Instance* instance, double bpm) {
     if (instance == nullptr || !(bpm > 0.0)) {
         return;
     }
-    instance->engine.setBpm(bpm);
+    bt::Controls controls = instance->engine.controls();
+    controls.play.bpm = bpm;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_loop(Instance* instance, int beats) {
     if (instance == nullptr || beats < bt::SliceGrid::kMinLoop || beats > bt::SliceGrid::kMaxLoop) {
         return;
     }
-    instance->engine.setLoop(beats);
+    bt::Controls controls = instance->engine.controls();
+    controls.play.loop = beats;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_slice(Instance* instance, int exponent) {
     if (instance == nullptr || exponent < bt::SliceGrid::kExpMin || exponent > bt::SliceGrid::kExpMax) {
         return;
     }
-    instance->engine.setSlice(exponent);
+    bt::Controls controls = instance->engine.controls();
+    controls.play.sliceExp = exponent;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_attack(Instance* instance, int ms) {
     if (instance == nullptr || ms < bt::SliceEngine::kAttackMinMs || ms > bt::SliceEngine::kAttackMaxMs) {
         return;
     }
-    instance->engine.setAttack(ms);
+    bt::Controls controls = instance->engine.controls();
+    controls.play.attackMs = ms;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_global_power(Instance* instance, double power) {
     if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->effects.globalPower = power;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.globalPower = power;
+    instance->engine.apply(controls);
 }
 
 // on is 0 or 1.
@@ -188,8 +187,9 @@ BT_EXPORT void bt_set_effects_enabled(Instance* instance, int on) {
     if (instance == nullptr) {
         return;
     }
-    instance->effects.enabled = on != 0;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.enabled = on != 0;
+    instance->engine.apply(controls);
 }
 
 // 2^exponent beats, -4..1. min is not above max.
@@ -197,129 +197,145 @@ BT_EXPORT void bt_set_global_beat_range(Instance* instance, int min, int max) {
     if (instance == nullptr || min < bt::Effects::kBeatMin || max > bt::Effects::kBeatMax || min > max) {
         return;
     }
-    instance->effects.beatMin = min;
-    instance->effects.beatMax = max;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.beatMin = min;
+    controls.effects.beatMax = max;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_global_chance(Instance* instance, double chance) {
     if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->effects.globalChance = chance;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.globalChance = chance;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_reverb_power(Instance* instance, double power) {
     if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->effects.reverbPower = power;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.reverbPower = power;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_reverb_chance(Instance* instance, double chance) {
     if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->effects.reverbChance = chance;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.reverbChance = chance;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_delay_power(Instance* instance, double power) {
     if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->effects.delayPower = power;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.delayPower = power;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_delay_chance(Instance* instance, double chance) {
     if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->effects.delayChance = chance;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.delayChance = chance;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_reverse_power(Instance* instance, double power) {
     if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->effects.reversePower = power;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.reversePower = power;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_reverse_chance(Instance* instance, double chance) {
     if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->effects.reverseChance = chance;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.reverseChance = chance;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_filter_power(Instance* instance, double power) {
     if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->effects.filterPower = power;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.filterPower = power;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_filter_chance(Instance* instance, double chance) {
     if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->effects.filterChance = chance;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.filterChance = chance;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_flanger_power(Instance* instance, double power) {
     if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->effects.flangerPower = power;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.flangerPower = power;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_flanger_chance(Instance* instance, double chance) {
     if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->effects.flangerChance = chance;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.flangerChance = chance;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_trance_power(Instance* instance, double power) {
     if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->effects.trancePower = power;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.trancePower = power;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_trance_chance(Instance* instance, double chance) {
     if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->effects.tranceChance = chance;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.tranceChance = chance;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_shift_power(Instance* instance, double power) {
     if (instance == nullptr || !(power >= bt::Effects::kPowerMin) || power > bt::Effects::kPowerMax) {
         return;
     }
-    instance->effects.shiftPower = power;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.shiftPower = power;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_shift_chance(Instance* instance, double chance) {
     if (instance == nullptr || !(chance >= bt::Effects::kChanceMin) || chance > bt::Effects::kChanceMax) {
         return;
     }
-    instance->effects.shiftChance = chance;
-    storeEffects(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.effects.shiftChance = chance;
+    instance->engine.apply(controls);
 }
 
 // on is 0 or 1.
@@ -327,8 +343,9 @@ BT_EXPORT void bt_set_repeat_enabled(Instance* instance, int on) {
     if (instance == nullptr) {
         return;
     }
-    instance->repeat.enabled = on != 0;
-    storeRepeat(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.repeat.enabled = on != 0;
+    instance->engine.apply(controls);
 }
 
 // 2^exponent beats, -5..1. min is not above max.
@@ -336,9 +353,10 @@ BT_EXPORT void bt_set_repeat_size_range(Instance* instance, int min, int max) {
     if (instance == nullptr || min < bt::BeatRepeatSettings::kSizeMin || max > bt::BeatRepeatSettings::kSizeMax || min > max) {
         return;
     }
-    instance->repeat.sizeMin = min;
-    instance->repeat.sizeMax = max;
-    storeRepeat(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.repeat.sizeMin = min;
+    controls.repeat.sizeMax = max;
+    instance->engine.apply(controls);
 }
 
 // 2^exponent beats of tail, -4..1.
@@ -346,16 +364,18 @@ BT_EXPORT void bt_set_repeat_length(Instance* instance, int exponent) {
     if (instance == nullptr || exponent < bt::BeatRepeatSettings::kLengthMin || exponent > bt::BeatRepeatSettings::kLengthMax) {
         return;
     }
-    instance->repeat.length = exponent;
-    storeRepeat(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.repeat.length = exponent;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_repeat_chance(Instance* instance, double chance) {
     if (instance == nullptr || !(chance >= bt::BeatRepeatSettings::kChanceMin) || chance > bt::BeatRepeatSettings::kChanceMax) {
         return;
     }
-    instance->repeat.chance = chance;
-    storeRepeat(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.repeat.chance = chance;
+    instance->engine.apply(controls);
 }
 
 // index is 0..7. on is 0 or 1.
@@ -363,16 +383,18 @@ BT_EXPORT void bt_set_repeat_position(Instance* instance, int index, int on) {
     if (instance == nullptr || index < 0 || index >= bt::RepeatSequence::kPositions) {
         return;
     }
-    instance->repeat.positions[index] = on != 0;
-    storeRepeat(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.repeat.positions[index] = on != 0;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_set_repeat_mix(Instance* instance, double mix) {
     if (instance == nullptr || !(mix >= bt::BeatRepeatSettings::kMixMin) || mix > bt::BeatRepeatSettings::kMixMax) {
         return;
     }
-    instance->repeat.mix = mix;
-    storeRepeat(*instance);
+    bt::Controls controls = instance->engine.controls();
+    controls.repeat.mix = mix;
+    instance->engine.apply(controls);
 }
 
 // start is a fraction of the file, 0..1. length is 0..1. loop is 0 or 1.
@@ -394,7 +416,11 @@ BT_EXPORT void bt_set_output(Instance* instance, double volume, double panMin, d
     if (instance == nullptr) {
         return;
     }
-    instance->engine.setOutput(volume, panMin, panMax);
+    bt::Controls controls = instance->engine.controls();
+    controls.play.volume = volume;
+    controls.play.panMin = panMin;
+    controls.play.panMax = panMax;
+    instance->engine.apply(controls);
 }
 
 BT_EXPORT void bt_render(Instance* instance, float* left, float* right, int frames) {

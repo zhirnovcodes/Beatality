@@ -394,6 +394,12 @@ struct DeviceAudio {
 
 constexpr float kVolumeMax = 1.2f;
 
+// In bt::ChaosGroup order.
+const char* const kChaosGroupIds[bt::ChaosSettings::kGroups] = {"chaosPan",     "chaosSlices",     "chaosAttack",  "chaosRandomize",
+                                                               "chaosEffects", "chaosBeatRepeat", "chaosValueOn", "chaosTime"};
+const char* const kChaosGroupNames[bt::ChaosSettings::kGroups] = {"Chaos pan",     "Chaos slices",      "Chaos attack",      "Chaos randomize",
+                                                                 "Chaos effects", "Chaos beat repeat", "Chaos chaos value", "Chaos time"};
+
 juce::AudioProcessorValueTreeState::ParameterLayout parameterLayout() {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
     layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"loop", 1}, "Loop", bt::SliceGrid::kMinLoop, bt::SliceGrid::kMaxLoop, 8));
@@ -441,6 +447,22 @@ juce::AudioProcessorValueTreeState::ParameterLayout parameterLayout() {
     layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"repeatLength", 1}, "Length", bt::BeatRepeatSettings::kLengthMin,
                                                          bt::BeatRepeatSettings::kLengthMax, repeat.length));
     unit("repeatChance", "Chance", repeat.chance);
+
+    const bt::ChaosSettings chaos;
+    layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{"chaosTrigger", 1}, "Chaos trigger",
+                                                            juce::StringArray{"Randomize button", "Note", "Loop", "Slices", "Beats"},
+                                                            static_cast<int>(chaos.trigger)));
+    unit("chaosValue", "Chaos value", chaos.value);
+    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"chaosBeatSize", 1}, "Chaos beat size", bt::ChaosSettings::kBeatSizeMin,
+                                                         bt::ChaosSettings::kBeatSizeMax, chaos.beatSize));
+    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"chaosLoopSize", 1}, "Chaos loop size", bt::ChaosSettings::kLoopSizeMin,
+                                                         bt::ChaosSettings::kLoopSizeMax, chaos.loopSize));
+    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"chaosSliceSize", 1}, "Chaos slice size",
+                                                         bt::ChaosSettings::kSliceSizeMin, bt::ChaosSettings::kSliceSizeMax, chaos.sliceSize));
+    for (int group = 0; group < bt::ChaosSettings::kGroups; ++group) {
+        layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{kChaosGroupIds[group], 1}, kChaosGroupNames[group],
+                                                              chaos.groups[group]));
+    }
     return layout;
 }
 
@@ -485,9 +507,7 @@ struct Processor::Impl {
         playSlot = snapshot.playSlot;
         playing = snapshot.playing;
         playhead = snapshot.playhead;
-        bpm = snapshot.bpm;
-        loopBeats = snapshot.loopBeats;
-        sliceExp = snapshot.sliceExp;
+        knobs = engine->controls();
         for (int i = 0; i < snapshot.releasedCount; ++i) {
             const std::uint32_t id = snapshot.released[i];
             std::erase_if(devices, [id](const DeviceAudio& device) { return device.id == id; });
@@ -530,15 +550,7 @@ struct Processor::Impl {
         slots.assign(sequenceMirror.slots, sequenceMirror.slots + sequenceMirror.size);
     }
 
-    void restoreGrid() {
-        engine->setBpm(bpm);
-        engine->setLoop(loopBeats);
-        engine->setSlice(sliceExp);
-        engine->setAttack(attackMs);
-        engine->setEffectsSettings(effects);
-        engine->setBeatRepeat(repeat);
-        engine->setOutput(outputVolume, outputPanMin, outputPanMax);
-    }
+    void restoreGrid() { engine->apply(knobs); }
 
     void applyAppend(AppendPayload* payload) {
         if (payload == nullptr) {
@@ -605,10 +617,18 @@ struct Processor::Impl {
         if (captureRandomize) {
             randomizeRequested = true;
         }
-        if (engine == nullptr || engine->count() == 0) {
+        if (engine == nullptr) {
             return;
         }
-        engine->randomize();
+        // Every trigger mode also rolls chaos on Randomize.
+        const bt::Controls before = engine->controls();
+        if (engine->count() > 0) {
+            engine->randomize();
+        }
+        engine->triggerChaos();
+        if (engine->controls() != before) {
+            sendControls();
+        }
         remember();
     }
 
@@ -637,134 +657,97 @@ struct Processor::Impl {
     double playedBpm() const { return bpmSync && hostBpm > 0.0 ? hostBpm : ownBpm; }
 
     void playBpm() {
-        const double value = playedBpm();
+        knobs.play.bpm = playedBpm();
         if (engine == nullptr) {
-            bpm = value;
             return;
         }
-        engine->setBpm(value);
-        remember();
-    }
-
-    void applyLoop(int beats) {
-        if (engine == nullptr) {
-            loopBeats = beats;
-            return;
-        }
-        engine->setLoop(beats);
-        remember();
-    }
-
-    void applySlice(int exponent) {
-        if (engine == nullptr) {
-            sliceExp = exponent;
-            return;
-        }
-        engine->setSlice(exponent);
+        engine->apply(knobs);
         remember();
     }
 
     void applyAttack(int ms) {
-        attackMs = ms;
+        knobs.play.attackMs = ms;
         if (engine == nullptr) {
             return;
         }
-        engine->setAttack(ms);
+        engine->apply(knobs);
         remember();
     }
 
-    void applyEffects() {
-        if (engine != nullptr) {
-            engine->setEffectsSettings(effects);
-        }
-    }
-
-    void applyRepeat() {
-        if (engine != nullptr) {
-            engine->setBeatRepeat(repeat);
-        }
-    }
-
     void applyRepeatPosition(int index, bool on) {
-        repeat.positions[index] = on;
-        applyRepeat();
+        knobs.repeat.positions[index] = on;
+        if (engine != nullptr) {
+            engine->apply(knobs);
+        }
     }
 
-    void applyOutput(double volume, double panMin, double panMax) {
-        outputVolume = volume;
-        outputPanMin = panMin;
-        outputPanMax = panMax;
-        if (engine == nullptr) {
-            return;
+    // The knobs that moved since the last block are taken into knobs; the others keep what the engine plays.
+    // A host may send min above max; max is held at min.
+    void readParams(const bt::Controls& params) {
+        const auto take = [](auto& knob, const auto& param, auto& last) {
+            if (param != last) {
+                knob = param;
+                last = param;
+            }
+        };
+        bt::Controls& last = lastParams;
+        take(knobs.play.loop, params.play.loop, last.play.loop);
+        take(knobs.play.sliceExp, params.play.sliceExp, last.play.sliceExp);
+        take(knobs.play.volume, params.play.volume, last.play.volume);
+        take(knobs.play.panMin, params.play.panMin, last.play.panMin);
+        take(knobs.play.panMax, params.play.panMax, last.play.panMax);
+        const bt::Effects& fx = params.effects;
+        bt::Effects& fxLast = last.effects;
+        bt::Effects& fxKnobs = knobs.effects;
+        take(fxKnobs.enabled, fx.enabled, fxLast.enabled);
+        take(fxKnobs.globalPower, fx.globalPower, fxLast.globalPower);
+        take(fxKnobs.globalChance, fx.globalChance, fxLast.globalChance);
+        take(fxKnobs.beatMin, fx.beatMin, fxLast.beatMin);
+        take(fxKnobs.beatMax, fx.beatMax, fxLast.beatMax);
+        take(fxKnobs.delayPower, fx.delayPower, fxLast.delayPower);
+        take(fxKnobs.delayChance, fx.delayChance, fxLast.delayChance);
+        take(fxKnobs.reverbPower, fx.reverbPower, fxLast.reverbPower);
+        take(fxKnobs.reverbChance, fx.reverbChance, fxLast.reverbChance);
+        take(fxKnobs.reversePower, fx.reversePower, fxLast.reversePower);
+        take(fxKnobs.reverseChance, fx.reverseChance, fxLast.reverseChance);
+        take(fxKnobs.filterPower, fx.filterPower, fxLast.filterPower);
+        take(fxKnobs.filterChance, fx.filterChance, fxLast.filterChance);
+        take(fxKnobs.flangerPower, fx.flangerPower, fxLast.flangerPower);
+        take(fxKnobs.flangerChance, fx.flangerChance, fxLast.flangerChance);
+        take(fxKnobs.trancePower, fx.trancePower, fxLast.trancePower);
+        take(fxKnobs.tranceChance, fx.tranceChance, fxLast.tranceChance);
+        take(fxKnobs.shiftPower, fx.shiftPower, fxLast.shiftPower);
+        take(fxKnobs.shiftChance, fx.shiftChance, fxLast.shiftChance);
+        const bt::BeatRepeatSettings& repeat = params.repeat;
+        bt::BeatRepeatSettings& repeatLast = last.repeat;
+        take(knobs.repeat.enabled, repeat.enabled, repeatLast.enabled);
+        take(knobs.repeat.sizeMin, repeat.sizeMin, repeatLast.sizeMin);
+        take(knobs.repeat.sizeMax, repeat.sizeMax, repeatLast.sizeMax);
+        take(knobs.repeat.length, repeat.length, repeatLast.length);
+        take(knobs.repeat.chance, repeat.chance, repeatLast.chance);
+        take(knobs.repeat.mix, repeat.mix, repeatLast.mix);
+        const bt::ChaosSettings& chaos = params.chaos;
+        bt::ChaosSettings& chaosLast = last.chaos;
+        take(knobs.chaos.trigger, chaos.trigger, chaosLast.trigger);
+        take(knobs.chaos.value, chaos.value, chaosLast.value);
+        take(knobs.chaos.beatSize, chaos.beatSize, chaosLast.beatSize);
+        take(knobs.chaos.loopSize, chaos.loopSize, chaosLast.loopSize);
+        take(knobs.chaos.sliceSize, chaos.sliceSize, chaosLast.sliceSize);
+        for (int group = 0; group < bt::ChaosSettings::kGroups; ++group) {
+            take(knobs.chaos.groups[group], chaos.groups[group], chaosLast.groups[group]);
         }
-        engine->setOutput(volume, panMin, panMax);
+        knobs.play.panMax = std::max(knobs.play.panMin, knobs.play.panMax);
+        fxKnobs.beatMax = std::max(fxKnobs.beatMin, fxKnobs.beatMax);
+        knobs.repeat.sizeMax = std::max(knobs.repeat.sizeMin, knobs.repeat.sizeMax);
+        engine->apply(knobs);
+        knobs = engine->controls();
     }
 
-    // The host parameters as this block reads them.
-    struct Controls {
-        int loop = 8;
-        int slice = 0;
-        bool randomize = false;
-        double volume = 1;
-        double panMin = 0;
-        double panMax = 0;
-        // Every field is a host parameter.
-        bt::Effects effects;
-        bool repeatOn = false;
-        int repeatSizeMin = 0;
-        int repeatSizeMax = 0;
-        int repeatLength = 0;
-        double repeatChance = 0;
-        double repeatMix = 1;
-        bool shuffle = false;
-    };
-
-    // Applies the parameters that moved since the last block. A host may send min above max; max is held at min.
-    void followControls(const Controls& controls) {
-        if (controls.loop != applied.loop) {
-            applyLoop(controls.loop);
-        }
-        if (controls.slice != applied.slice) {
-            applySlice(controls.slice);
-        }
-        if (controls.randomize && !applied.randomize) {
-            applyRandomize();
-        }
-        const double panMax = std::max(controls.panMin, controls.panMax);
-        if (controls.volume != applied.volume || controls.panMin != applied.panMin || panMax != applied.panMax) {
-            applyOutput(controls.volume, controls.panMin, panMax);
-        }
-        bt::Effects fx = controls.effects;
-        fx.beatMax = std::max(fx.beatMin, fx.beatMax);
-        const bt::Effects& was = applied.effects;
-        if (fx.enabled != was.enabled || fx.globalPower != was.globalPower || fx.beatMin != was.beatMin || fx.beatMax != was.beatMax ||
-            fx.globalChance != was.globalChance || fx.reverbPower != was.reverbPower || fx.reverbChance != was.reverbChance ||
-            fx.delayPower != was.delayPower || fx.delayChance != was.delayChance || fx.reversePower != was.reversePower ||
-            fx.reverseChance != was.reverseChance || fx.filterPower != was.filterPower || fx.filterChance != was.filterChance ||
-            fx.flangerPower != was.flangerPower || fx.flangerChance != was.flangerChance || fx.trancePower != was.trancePower ||
-            fx.tranceChance != was.tranceChance || fx.shiftPower != was.shiftPower || fx.shiftChance != was.shiftChance) {
-            effects = fx;
-            applyEffects();
-        }
-        const int sizeMax = std::max(controls.repeatSizeMin, controls.repeatSizeMax);
-        if (controls.repeatOn != applied.repeatOn || controls.repeatSizeMin != applied.repeatSizeMin || sizeMax != applied.repeatSizeMax ||
-            controls.repeatLength != applied.repeatLength || controls.repeatChance != applied.repeatChance ||
-            controls.repeatMix != applied.repeatMix) {
-            repeat.enabled = controls.repeatOn;
-            repeat.sizeMin = controls.repeatSizeMin;
-            repeat.sizeMax = sizeMax;
-            repeat.length = controls.repeatLength;
-            repeat.chance = controls.repeatChance;
-            repeat.mix = controls.repeatMix;
-            applyRepeat();
-        }
-        if (controls.shuffle && !applied.shuffle) {
-            shuffles.fetch_add(1, std::memory_order_relaxed);
-        }
-        applied = controls;
-        applied.panMax = panMax;
-        applied.effects = fx;
-        applied.repeatSizeMax = sizeMax;
+    // The engine changed its own knobs while it rendered. The newest copy waits here for the message thread.
+    void sendControls() {
+        std::lock_guard<std::mutex> lock(outbox.mutex);
+        outbox.controls = engine->controls();
+        outbox.full = true;
     }
 
     void applyTrack(int index, double start, double length, bool loop, double volume, double pan) {
@@ -847,19 +830,15 @@ struct Processor::Impl {
         }
         sources.clear();
         ownBpm = pack->bpm;
-        bpm = playedBpm();
-        loopBeats = pack->loop;
-        sliceExp = pack->slices;
-        attackMs = pack->attack;
-        outputVolume = pack->volume;
-        outputPanMin = pack->panMin;
-        outputPanMax = pack->panMax;
+        knobs.play.bpm = playedBpm();
+        knobs.play.loop = pack->loop;
+        knobs.play.sliceExp = pack->slices;
+        knobs.play.attackMs = pack->attack;
+        knobs.play.volume = pack->volume;
+        knobs.play.panMin = pack->panMin;
+        knobs.play.panMax = pack->panMax;
         if (engine != nullptr) {
-            engine->setBpm(bpm);
-            engine->setLoop(loopBeats);
-            engine->setSlice(sliceExp);
-            engine->setAttack(attackMs);
-            engine->setOutput(outputVolume, outputPanMin, outputPanMax);
+            engine->apply(knobs);
         }
         int index = 0;
         for (PackTrackPayload& track : pack->tracks) {
@@ -955,6 +934,9 @@ struct Processor::Impl {
         }
         if (message.isNoteOn()) {
             applyGate(gate.noteOn());
+            if (engine->controls().chaos.trigger == bt::ChaosTrigger::Note) {
+                engine->triggerChaos();
+            }
             return;
         }
         if (message.isNoteOff()) {
@@ -1071,22 +1053,21 @@ struct Processor::Impl {
         int savedCount = 0;
         std::uint16_t slots[bt::Sequence::kMaxSlots]{};
     } sequenceMirror;
-    // The tempo the engine plays. ownBpm is the plugin's own; hostBpm is the host's, 0 when it has none.
-    double bpm = 120;
+    // The knobs the engine plays, kept here for an engine that is created later. knobs.play.bpm is the tempo played.
+    // ownBpm is the plugin's own; hostBpm is the host's, 0 when it has none.
+    bt::Controls knobs;
     double ownBpm = 120;
     double hostBpm = 0;
     bool bpmSync = false;
-    int loopBeats = 8;
-    int sliceExp = 0;
-    int attackMs = bt::SliceEngine::kAttackMinMs;
-    bt::Effects effects;
-    bt::BeatRepeatSettings repeat;
-    double outputVolume = 1;
-    double outputPanMin = 0;
-    double outputPanMax = 0;
-    // The parameter values last applied. They start at the parameters' defaults.
-    Controls applied;
-    // Rising edges of the shuffle parameter. The processor's timer reads it on the message thread.
+    // The host parameter values read on the last block. They start at the parameters' defaults.
+    bt::Controls lastParams;
+    // Knobs the engine changed by itself, for the message thread to write into the host parameters.
+    struct ControlsOutbox {
+        std::mutex mutex;
+        bt::Controls controls;
+        bool full = false;
+    } outbox;
+    // Presses of the shuffle parameter. The processor's timer reads it on the message thread.
     std::atomic<int> shuffles{0};
 };
 
@@ -1095,12 +1076,10 @@ Processor::Processor()
       params(*this, nullptr, "Parameters", parameterLayout()),
       loopParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("loop"))),
       sliceParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("slice"))),
-      randomizeParam(dynamic_cast<juce::AudioParameterBool*>(params.getParameter("randomize"))),
       volumeParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("volume"))),
       panMinParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("panMin"))),
       panMaxParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("panMax"))),
       effectsOnParam(dynamic_cast<juce::AudioParameterBool*>(params.getParameter("effectsOn"))),
-      shuffleParam(dynamic_cast<juce::AudioParameterBool*>(params.getParameter("shuffle"))),
       globalPowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("globalPower"))),
       globalChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("globalChance"))),
       fxTimeMinParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("fxTimeMin"))),
@@ -1125,6 +1104,11 @@ Processor::Processor()
       repeatMixParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("repeatMix"))),
       repeatLengthParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("repeatLength"))),
       repeatChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("repeatChance"))),
+      chaosTriggerParam(dynamic_cast<juce::AudioParameterChoice*>(params.getParameter("chaosTrigger"))),
+      chaosValueParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("chaosValue"))),
+      chaosBeatSizeParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("chaosBeatSize"))),
+      chaosLoopSizeParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("chaosLoopSize"))),
+      chaosSliceSizeParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("chaosSliceSize"))),
       impl(std::make_unique<Impl>(view, slot, head)) {
     seenPanMin = panMinParam->get();
     seenPanMax = panMaxParam->get();
@@ -1132,10 +1116,17 @@ Processor::Processor()
     seenFxTimeMax = fxTimeMaxParam->get();
     seenSizeMin = repeatSizeMinParam->get();
     seenSizeMax = repeatSizeMaxParam->get();
+    for (int group = 0; group < bt::ChaosSettings::kGroups; ++group) {
+        chaosGroupParams[group] = dynamic_cast<juce::AudioParameterBool*>(params.getParameter(kChaosGroupIds[group]));
+    }
+    params.addParameterListener("randomize", this);
+    params.addParameterListener("shuffle", this);
     startTimerHz(30);
 }
 
 Processor::~Processor() {
+    params.removeParameterListener("randomize", this);
+    params.removeParameterListener("shuffle", this);
     stopTimer();
     impl->engine.reset();
     impl->queue.discard();
@@ -1167,13 +1158,12 @@ void Processor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&
     while (impl->queue.pop(slot)) {
         impl->applySlot(slot);
     }
-    Impl::Controls controls;
-    controls.loop = loopParam->get();
-    controls.slice = sliceParam->get();
-    controls.randomize = randomizeParam->get();
-    controls.volume = volumeParam->get();
-    controls.panMin = panMinParam->get();
-    controls.panMax = panMaxParam->get();
+    bt::Controls controls;
+    controls.play.loop = loopParam->get();
+    controls.play.sliceExp = sliceParam->get();
+    controls.play.volume = volumeParam->get();
+    controls.play.panMin = panMinParam->get();
+    controls.play.panMax = panMaxParam->get();
     controls.effects.enabled = effectsOnParam->get();
     controls.effects.globalPower = globalPowerParam->get();
     controls.effects.beatMin = fxTimeMinParam->get();
@@ -1193,14 +1183,14 @@ void Processor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&
     controls.effects.tranceChance = tranceChanceParam->get();
     controls.effects.shiftPower = shiftPowerParam->get();
     controls.effects.shiftChance = shiftChanceParam->get();
-    controls.repeatOn = repeatOnParam->get();
-    controls.repeatSizeMin = repeatSizeMinParam->get();
-    controls.repeatSizeMax = repeatSizeMaxParam->get();
-    controls.repeatLength = repeatLengthParam->get();
-    controls.repeatChance = repeatChanceParam->get();
-    controls.repeatMix = repeatMixParam->get();
-    controls.shuffle = shuffleParam->get();
-    impl->followControls(controls);
+    controls.repeat.enabled = repeatOnParam->get();
+    controls.repeat.sizeMin = repeatSizeMinParam->get();
+    controls.repeat.sizeMax = repeatSizeMaxParam->get();
+    controls.repeat.length = repeatLengthParam->get();
+    controls.repeat.chance = repeatChanceParam->get();
+    controls.repeat.mix = repeatMixParam->get();
+    controls.chaos = chaos();
+    impl->readParams(controls);
     double hostBpm = 0.0;
     if (juce::AudioPlayHead* playHead = getPlayHead()) {
         if (const auto info = playHead->getPosition()) {
@@ -1211,6 +1201,7 @@ void Processor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&
     }
     impl->followHost(hostBpm > 0.0 && std::isfinite(hostBpm) ? hostBpm : 0.0);
 
+    const bt::Controls rendered = impl->engine->controls();
     int position = 0;
     for (const auto metadata : midi) {
         const int at = std::clamp(metadata.samplePosition, 0, buffer.getNumSamples());
@@ -1222,6 +1213,9 @@ void Processor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&
     }
     if (position < buffer.getNumSamples()) {
         impl->render(buffer, position, buffer.getNumSamples() - position);
+    }
+    if (impl->engine->controls() != rendered) {
+        impl->sendControls();
     }
     impl->remember();
 }
@@ -1683,7 +1677,77 @@ void Processor::shuffleEffects() {
     setEffectsSettings(settings);
 }
 
+void Processor::parameterChanged(const juce::String& id, float value) {
+    if (value < 0.5f) {
+        return;
+    }
+    if (id == "randomize") {
+        CommandQueue::Slot slot;
+        slot.kind = CommandQueue::Slot::Kind::Randomize;
+        impl->queue.push(slot);
+        return;
+    }
+    if (id == "shuffle") {
+        impl->shuffles.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
+void Processor::receiveControls() {
+    bt::Controls controls;
+    {
+        std::lock_guard<std::mutex> lock(impl->outbox.mutex);
+        if (!impl->outbox.full) {
+            return;
+        }
+        controls = impl->outbox.controls;
+        impl->outbox.full = false;
+    }
+    const auto write = [](auto& param, auto value) {
+        if (param.get() != value) {
+            setFromWindow(param, static_cast<float>(value));
+        }
+    };
+    write(*loopParam, controls.play.loop);
+    write(*sliceParam, controls.play.sliceExp);
+    write(*volumeParam, static_cast<float>(controls.play.volume));
+    write(*panMinParam, static_cast<float>(controls.play.panMin));
+    write(*panMaxParam, static_cast<float>(controls.play.panMax));
+    const bt::Effects& fx = controls.effects;
+    write(*effectsOnParam, fx.enabled);
+    write(*globalPowerParam, static_cast<float>(fx.globalPower));
+    write(*globalChanceParam, static_cast<float>(fx.globalChance));
+    write(*fxTimeMinParam, fx.beatMin);
+    write(*fxTimeMaxParam, fx.beatMax);
+    write(*delayPowerParam, static_cast<float>(fx.delayPower));
+    write(*delayChanceParam, static_cast<float>(fx.delayChance));
+    write(*reverbPowerParam, static_cast<float>(fx.reverbPower));
+    write(*reverbChanceParam, static_cast<float>(fx.reverbChance));
+    write(*reversePowerParam, static_cast<float>(fx.reversePower));
+    write(*reverseChanceParam, static_cast<float>(fx.reverseChance));
+    write(*filterPowerParam, static_cast<float>(fx.filterPower));
+    write(*filterChanceParam, static_cast<float>(fx.filterChance));
+    write(*flangerPowerParam, static_cast<float>(fx.flangerPower));
+    write(*flangerChanceParam, static_cast<float>(fx.flangerChance));
+    write(*trancePowerParam, static_cast<float>(fx.trancePower));
+    write(*tranceChanceParam, static_cast<float>(fx.tranceChance));
+    write(*shiftPowerParam, static_cast<float>(fx.shiftPower));
+    write(*shiftChanceParam, static_cast<float>(fx.shiftChance));
+    write(*repeatOnParam, controls.repeat.enabled);
+    write(*repeatSizeMinParam, controls.repeat.sizeMin);
+    write(*repeatSizeMaxParam, controls.repeat.sizeMax);
+    write(*repeatLengthParam, controls.repeat.length);
+    write(*repeatChanceParam, static_cast<float>(controls.repeat.chance));
+    write(*repeatMixParam, static_cast<float>(controls.repeat.mix));
+    write(*chaosValueParam, static_cast<float>(controls.chaos.value));
+    write(*chaosBeatSizeParam, controls.chaos.beatSize);
+    write(*chaosLoopSizeParam, controls.chaos.loopSize);
+    write(*chaosSliceSizeParam, controls.chaos.sliceSize);
+    savedAttack = controls.play.attackMs;
+    std::copy(std::begin(controls.repeat.positions), std::end(controls.repeat.positions), std::begin(savedPositions));
+}
+
 void Processor::timerCallback() {
+    receiveControls();
     const int shuffles = shuffleCount();
     if (shuffles != shufflesDone) {
         shufflesDone = shuffles;
@@ -1971,6 +2035,61 @@ bool Processor::trackMissing(int index) const {
 
 juce::String Processor::errorText() const {
     return error;
+}
+
+void Processor::setChaosTrigger(int trigger) {
+    if (trigger < 0 || trigger > static_cast<int>(bt::ChaosTrigger::Beats)) {
+        return;
+    }
+    setFromWindow(*chaosTriggerParam, static_cast<float>(trigger));
+}
+
+void Processor::setChaosValue(double value) {
+    if (!std::isfinite(value) || value < 0.0 || value > 1.0) {
+        return;
+    }
+    setFromWindow(*chaosValueParam, static_cast<float>(value));
+}
+
+void Processor::setChaosGroup(int group, bool on) {
+    if (group < 0 || group >= bt::ChaosSettings::kGroups) {
+        return;
+    }
+    setFromWindow(*chaosGroupParams[group], on ? 1.0f : 0.0f);
+}
+
+void Processor::setChaosBeatSize(int exponent) {
+    if (exponent < bt::ChaosSettings::kBeatSizeMin || exponent > bt::ChaosSettings::kBeatSizeMax) {
+        return;
+    }
+    setFromWindow(*chaosBeatSizeParam, static_cast<float>(exponent));
+}
+
+void Processor::setChaosLoopSize(int loops) {
+    if (loops < bt::ChaosSettings::kLoopSizeMin || loops > bt::ChaosSettings::kLoopSizeMax) {
+        return;
+    }
+    setFromWindow(*chaosLoopSizeParam, static_cast<float>(loops));
+}
+
+void Processor::setChaosSliceSize(int exponent) {
+    if (exponent < bt::ChaosSettings::kSliceSizeMin || exponent > bt::ChaosSettings::kSliceSizeMax) {
+        return;
+    }
+    setFromWindow(*chaosSliceSizeParam, static_cast<float>(exponent));
+}
+
+bt::ChaosSettings Processor::chaos() const {
+    bt::ChaosSettings chaos;
+    chaos.trigger = static_cast<bt::ChaosTrigger>(chaosTriggerParam->getIndex());
+    chaos.value = chaosValueParam->get();
+    chaos.beatSize = chaosBeatSizeParam->get();
+    chaos.loopSize = chaosLoopSizeParam->get();
+    chaos.sliceSize = chaosSliceSizeParam->get();
+    for (int group = 0; group < bt::ChaosSettings::kGroups; ++group) {
+        chaos.groups[group] = chaosGroupParams[group]->get();
+    }
+    return chaos;
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {

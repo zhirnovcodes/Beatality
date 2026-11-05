@@ -2,7 +2,9 @@
 
 #include "BeatRepeat.h"
 #include "BeatRepeatSettings.h"
+#include "Chaos.h"
 #include "Clock.h"
+#include "Controls.h"
 #include "Effects.h"
 #include "RepeatSequence.h"
 #include "Rng.h"
@@ -49,17 +51,14 @@ public:
     void remove(int index);
     void clear(); // bank empty; a live fade keeps its buffer until silence
 
-    void setBpm(double bpm);
-    void setLoop(int beats);
-    void setSlice(int exponent);
-    void setAttack(int ms);
-    // Replaces every effect knob.
-    void setEffectsSettings(const Effects& settings);
-    // Replaces every beat repeat knob. The rolls are drawn with the sequence.
-    void setBeatRepeat(const BeatRepeatSettings& settings);
-    // volume is 0..1.2 and scales the mix. The host multiplies that by note velocity.
-    // panMin and panMax are -1..1, panMin never above panMax. Each slice's pan roll is scaled onto that range.
-    void setOutput(double volume, double panMin, double panMax);
+    // Every knob at once. Only the fields that differ from controls() do any work, in this order:
+    // bpm, loop, slice, attack, effects, beat repeat, output. The host multiplies the volume by note velocity.
+    void apply(const Controls& next);
+    // The knobs as the engine plays them. sliceExp is the one the grid fitted to the loop.
+    const Controls& controls() const { return controls_; }
+    // One chaos roll now, onto the knobs, as if someone moved the sliders. Playing or stopped.
+    // While playing, the Loop, Slices, and Beats triggers also roll from inside render.
+    void triggerChaos();
     // Keeps the volume and pan already on that slot.
     void setTrack(int index, double start, double length, bool loop);
     // Web track. start is a fraction of the file, 0..1.
@@ -79,21 +78,30 @@ public:
 
 private:
     void syncSequence(int oldExp, int oldSlots);
+    // True on the first frame of each new chaos unit since the note started.
+    bool chaosTrigger();
+    // The chaos unit for the Loop, Slices, and Beats triggers, in frames.
+    std::int64_t chaosFrames() const;
+    void setBpm(double bpm);
+    void setLoop(int beats);
+    void setSlice(int exponent);
+    void setEffectsSettings(const Effects& settings);
+    void setOutput(double volume, double panMin, double panMax);
 
     ClockSettings settings_;
     SlicePlayer playing_;
     SlicePlayer outgoing_;
     Rng rng_;
-    int attackMs_ = kAttackMinMs;
-    Effects effects_{};
+    Controls controls_;
     // Its own generator, so the slice picks for a seed stay the same.
     Rng repeatRng_;
-    BeatRepeatSettings beatRepeatSettings_{};
+    // Its own generator too, so chaos does not move the slice picks.
+    Rng chaosRng_;
+    // The unit the count was made in, and how many whole units the clock has passed.
+    std::int64_t chaosUnit_ = 0;
+    std::int64_t chaosIndex_ = 0;
     RepeatSequence repeatSequence_;
     BeatRepeat beatRepeat_;
-    double volume_ = 1;
-    double panMin_ = 0;
-    double panMax_ = 0;
     SliceGrid grid_;
     Sequence sequence_;
     SampleBank bank_;

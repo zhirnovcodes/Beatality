@@ -80,7 +80,9 @@ void testLinearJoinIsTransparent() {
 
     bt::SliceEngine engine(kRate, 1);
     engine.append(bufferOf(1, samples));
-    engine.setLoop(4);
+    bt::Controls controls = engine.controls();
+    controls.play.loop = 4;
+    engine.apply(controls);
     engine.play();
 
     std::vector<float> left(kFrames);
@@ -117,7 +119,9 @@ void testSliceCutIsLinear() {
     bt::SliceEngine engine(kRate, seed);
     engine.append(bufferOf(1, trackA));
     engine.append(bufferOf(2, trackB));
-    engine.setLoop(2);
+    bt::Controls controls = engine.controls();
+    controls.play.loop = 2;
+    engine.apply(controls);
     engine.play();
 
     constexpr int kFrames = 5200;
@@ -171,7 +175,9 @@ void testRandomizeReachesPastTheFirstThreeTracks() {
         engine.append(bufferOf(static_cast<std::uint32_t>(track + 1), tracks[track]));
         engine.setTrack(track, 0.0, 1.0, true);
     }
-    engine.setLoop(kSlots);
+    bt::Controls controls = engine.controls();
+    controls.play.loop = kSlots;
+    engine.apply(controls);
     engine.randomize();
     engine.play();
 
@@ -206,8 +212,10 @@ void testAttackLengthensTheSliceFade() {
     bt::SliceEngine engine(kRate, seed);
     engine.append(bufferOf(1, trackA));
     engine.append(bufferOf(2, trackB));
-    engine.setLoop(2);
-    engine.setAttack(16);
+    bt::Controls controls = engine.controls();
+    controls.play.loop = 2;
+    controls.play.attackMs = 16;
+    engine.apply(controls);
     engine.play();
 
     constexpr int kFrames = 5200;
@@ -305,7 +313,9 @@ void testTrackWindowIsWhatPlays() {
     auto probe = [&](double start, double length, bool loop, int at) {
         bt::SliceEngine engine(kRate, 1);
         engine.append(bufferOf(1, samples));
-        engine.setLoop(4);
+        bt::Controls controls = engine.controls();
+        controls.play.loop = 4;
+        engine.apply(controls);
         engine.setTrack(0, start, length, loop);
         engine.play();
         std::vector<float> left(at + 1);
@@ -332,7 +342,9 @@ void testTrackWindowIsWhatPlays() {
 
     bt::SliceEngine engine(kRate, 1);
     engine.append(bufferOf(1, samples));
-    engine.setLoop(4);
+    bt::Controls controls = engine.controls();
+    controls.play.loop = 4;
+    engine.apply(controls);
     engine.setTrack(0, 1.0 / 3.0, 0.0, true);
     engine.play();
     std::vector<float> lead(10200);
@@ -401,7 +413,11 @@ void testOutputVolumeAndPan() {
         bt::SliceEngine engine(kRate, 1);
         engine.append({1, left.data(), right.data(), static_cast<int>(left.size())});
         engine.setIndexedTrack(0, 0.0, 1.0, false, 0.5, 0.0);
-        engine.setOutput(volume, pan, pan);
+        bt::Controls controls = engine.controls();
+        controls.play.volume = volume;
+        controls.play.panMin = pan;
+        controls.play.panMax = pan;
+        engine.apply(controls);
         engine.play();
         std::vector<float> outL(201);
         std::vector<float> outR(201);
@@ -431,7 +447,11 @@ void testOutputVolumeAndPan() {
     std::vector<float> open(201);
     std::vector<float> openR(201);
     engine.render(open.data(), openR.data(), 201);
-    engine.setOutput(0.0, 0.0, 0.0);
+    bt::Controls controls = engine.controls();
+    controls.play.volume = 0.0;
+    controls.play.panMin = 0.0;
+    controls.play.panMax = 0.0;
+    engine.apply(controls);
     std::vector<float> closed(40);
     std::vector<float> closedR(40);
     engine.render(closed.data(), closedR.data(), 40);
@@ -448,7 +468,11 @@ void testSlicePanFollowsTheRange() {
 
     bt::SliceEngine engine(kRate, 3);
     engine.append({1, left.data(), right.data(), static_cast<int>(left.size())});
-    engine.setOutput(1.0, -0.5, 0.25);
+    bt::Controls controls = engine.controls();
+    controls.play.volume = 1.0;
+    controls.play.panMin = -0.5;
+    controls.play.panMax = 0.25;
+    engine.apply(controls);
     engine.randomize();
     engine.play();
     std::vector<float> outL(201);
@@ -623,7 +647,9 @@ void testReverseSplitsTheSlice() {
         effects.reversePower = power;
         effects.beatMin = beat;
         effects.beatMax = beat;
-        engine.setEffectsSettings(effects);
+        bt::Controls controls = engine.controls();
+        controls.effects = effects;
+        engine.apply(controls);
         engine.append(bufferOf(1, samples));
         engine.play();
         std::vector<float> left(kSlice);
@@ -690,7 +716,9 @@ void testFilterFollowsPowerAndBeat() {
         effects.filterPower = power;
         effects.beatMin = beat;
         effects.beatMax = beat;
-        engine.setEffectsSettings(effects);
+        bt::Controls controls = engine.controls();
+        controls.effects = effects;
+        engine.apply(controls);
         engine.append(bufferOf(1, samples));
         engine.play();
         std::vector<float> left(kFrames);
@@ -740,7 +768,9 @@ void testFlangerFollowsPowerAndBeat() {
         effects.flangerPower = power;
         effects.beatMin = beat;
         effects.beatMax = beat;
-        engine.setEffectsSettings(effects);
+        bt::Controls controls = engine.controls();
+        controls.effects = effects;
+        engine.apply(controls);
         engine.append(bufferOf(1, samples));
         engine.play();
         std::vector<float> left(kFrames);
@@ -788,7 +818,9 @@ void testTranceFollowsPowerAndBeat() {
         effects.trancePower = power;
         effects.beatMin = beat;
         effects.beatMax = beat;
-        engine.setEffectsSettings(effects);
+        bt::Controls controls = engine.controls();
+        controls.effects = effects;
+        engine.apply(controls);
         engine.append(bufferOf(1, held));
         engine.play();
         std::vector<float> left(kFrames);
@@ -860,7 +892,9 @@ void testShiftFollowsPowerAndBeat() {
         effects.shiftPower = power;
         effects.beatMin = beat;
         effects.beatMax = beat;
-        engine.setEffectsSettings(effects);
+        bt::Controls controls = engine.controls();
+        controls.effects = effects;
+        engine.apply(controls);
         engine.append(bufferOf(1, tone));
         engine.play();
         std::vector<float> left(kFrames);
@@ -1040,6 +1074,54 @@ void testBeatRepeatEndsAtTheLoopAndOnANewFiring() {
     CHECK(wrapped[40000 + halfFade] == 40000.0f + halfFade);
 }
 
+void testChaosRollsOnEachBeatWhilePlaying() {
+    constexpr int kRate = 1000;
+    constexpr int kBeat = 500; // 120 BPM
+    std::vector<float> samples(20000, 0.5f);
+    std::vector<float> left(kBeat * 3);
+    std::vector<float> right(kBeat * 3);
+
+    bt::SliceEngine engine(kRate, 1);
+    engine.append(bufferOf(1, samples));
+    bt::Controls controls = engine.controls();
+    controls.chaos.trigger = bt::ChaosTrigger::Beats;
+    controls.chaos.beatSize = 0;
+    controls.chaos.value = 1;
+    controls.chaos.groups[static_cast<int>(bt::ChaosGroup::Pan)] = true;
+    engine.apply(controls);
+
+    // Stopped: the clock does not move, so nothing rolls.
+    engine.render(left.data(), right.data(), kBeat * 3);
+    CHECK(engine.controls() == controls);
+
+    // The note start is not a roll. The first one lands on the first frame of the next beat.
+    engine.play();
+    engine.render(left.data(), right.data(), kBeat - 1);
+    CHECK(engine.controls() == controls);
+    engine.render(left.data(), right.data(), 2);
+    const bt::Controls first = engine.controls();
+    CHECK(first.play.panMin != 0.0 || first.play.panMax != 0.0);
+    CHECK(first.effects == controls.effects && first.play.sliceExp == controls.play.sliceExp);
+
+    // One roll per beat: nothing more until the next beat starts.
+    engine.render(left.data(), right.data(), kBeat - 1);
+    CHECK(engine.controls() == first);
+    engine.render(left.data(), right.data(), 1);
+    CHECK(!(engine.controls() == first));
+}
+
+void testTriggerChaosRollsWhileStopped() {
+    bt::SliceEngine engine(1000, 1);
+    bt::Controls controls = engine.controls();
+    controls.chaos.value = 1;
+    controls.chaos.groups[static_cast<int>(bt::ChaosGroup::Attack)] = true;
+    controls.chaos.groups[static_cast<int>(bt::ChaosGroup::Pan)] = true;
+    engine.apply(controls);
+    engine.triggerChaos();
+    CHECK(!(engine.controls() == controls));
+    CHECK(engine.controls().play.attackMs >= 2 && engine.controls().play.attackMs <= 16);
+}
+
 } // namespace
 
 int main() {
@@ -1070,6 +1152,8 @@ int main() {
     testBeatRepeatRecordsThenRepeats();
     testBeatRepeatSizeIsPickedFromTheRange();
     testBeatRepeatEndsAtTheLoopAndOnANewFiring();
+    testChaosRollsOnEachBeatWhilePlaying();
+    testTriggerChaosRollsWhileStopped();
 
     if (g_failed != 0) {
         std::printf("%d check(s) failed\n", g_failed);

@@ -43,6 +43,8 @@ struct BeatRepeatSettings {
         return std::ldexp(1.0, sizeMin + step);
     }
     double lengthBeats() const { return std::ldexp(1.0, length); }
+
+    bool operator==(const BeatRepeatSettings&) const = default;
 };
 
 } // namespace bt

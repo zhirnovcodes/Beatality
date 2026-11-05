@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BeatRepeatSettings.h"
+#include "ChaosSettings.h"
 #include "Effects.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -12,7 +13,7 @@
 
 // VST3 and standalone host. The message thread only queues commands.
 // The audio thread owns the engine.
-class Processor : public juce::AudioProcessor, private juce::Timer {
+class Processor : public juce::AudioProcessor, private juce::Timer, private juce::AudioProcessorValueTreeState::Listener {
 public:
     Processor();
     ~Processor() override;
@@ -84,6 +85,14 @@ public:
     // index is 0..7.
     void setRepeatPosition(int index, bool on);
     void setRepeatMix(double mix);
+    // trigger is a bt::ChaosTrigger. value is 0..1. group is a bt::ChaosGroup.
+    // beatSize is -2..1, loopSize is 1..8, sliceSize is -1..2. See bt::ChaosSettings.
+    void setChaosTrigger(int trigger);
+    void setChaosValue(double value);
+    void setChaosGroup(int group, bool on);
+    void setChaosBeatSize(int exponent);
+    void setChaosLoopSize(int loops);
+    void setChaosSliceSize(int exponent);
     // panMin and panMax are -1..1. Each slice's pan roll is scaled onto that range.
     void setOutput(double volume, double panMin, double panMax);
     void setTrack(int index, double start, double length, bool loop, double volume, double pan);
@@ -127,6 +136,8 @@ public:
     double shiftPower() const { return shiftPowerParam->get(); }
     double shiftChance() const { return shiftChanceParam->get(); }
     bt::BeatRepeatSettings beatRepeat() const;
+    // The chaos knobs are host parameters.
+    bt::ChaosSettings chaos() const;
     // Counts the times the shuffle parameter switched on.
     int shuffleCount() const;
     double outputVolume() const { return volumeParam->get(); }
@@ -175,6 +186,10 @@ private:
 
     // Message thread. Shuffles for the shuffle parameter, and keeps each min..max range in order.
     void timerCallback() override;
+    // Any thread. Randomize or shuffle switching on is one press.
+    void parameterChanged(const juce::String& id, float value) override;
+    // Message thread. Writes the knobs the engine changed by itself into the host parameters.
+    void receiveControls();
 
     struct Impl;
     // Ids match the web plugin's parameters.
@@ -182,14 +197,10 @@ private:
     juce::AudioProcessorValueTreeState params;
     juce::AudioParameterInt* loopParam = nullptr;
     juce::AudioParameterInt* sliceParam = nullptr;
-    // Randomizes once each time it switches on.
-    juce::AudioParameterBool* randomizeParam = nullptr;
     juce::AudioParameterFloat* volumeParam = nullptr;
     juce::AudioParameterFloat* panMinParam = nullptr;
     juce::AudioParameterFloat* panMaxParam = nullptr;
     juce::AudioParameterBool* effectsOnParam = nullptr;
-    // Shuffles the effects each time it switches on.
-    juce::AudioParameterBool* shuffleParam = nullptr;
     juce::AudioParameterFloat* globalPowerParam = nullptr;
     juce::AudioParameterFloat* globalChanceParam = nullptr;
     // Exponents. A host may send min above max; max is held at min.
@@ -215,6 +226,13 @@ private:
     juce::AudioParameterFloat* repeatMixParam = nullptr;
     juce::AudioParameterInt* repeatLengthParam = nullptr;
     juce::AudioParameterFloat* repeatChanceParam = nullptr;
+    juce::AudioParameterChoice* chaosTriggerParam = nullptr;
+    juce::AudioParameterFloat* chaosValueParam = nullptr;
+    juce::AudioParameterInt* chaosBeatSizeParam = nullptr;
+    juce::AudioParameterInt* chaosLoopSizeParam = nullptr;
+    juce::AudioParameterInt* chaosSliceSizeParam = nullptr;
+    // In bt::ChaosGroup order.
+    juce::AudioParameterBool* chaosGroupParams[bt::ChaosSettings::kGroups]{};
     std::unique_ptr<Impl> impl;
     juce::StringArray names;
     std::vector<TrackPicture> pictures;

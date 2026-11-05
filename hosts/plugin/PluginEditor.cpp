@@ -87,8 +87,8 @@ Editor::Editor(Processor& processorIn) : juce::AudioProcessorEditor(processorIn)
         missing.setColour(juce::Label::textColourId, juce::Colours::white);
         addAndMakeVisible(missing);
     }
-    // The skin is 779 tall. The error line under it adds 21.
-    setSize(496, 800);
+    // The skin is 779 tall. The error line under it adds 21. The chaos column is 220 wide, right of the skin.
+    setSize(716, 800);
 }
 
 Editor::~Editor() {
@@ -398,6 +398,42 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
             }
             completion(true);
         })
+        .withNativeFunction("setChaosTrigger", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setChaosTrigger(static_cast<int>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setChaosValue", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setChaosValue(static_cast<double>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setChaosGroup", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (args.size() >= 2) {
+                processor.setChaosGroup(static_cast<int>(args[0]), static_cast<bool>(args[1]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setChaosBeatSize", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setChaosBeatSize(static_cast<int>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setChaosLoopSize", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setChaosLoopSize(static_cast<int>(args[0]));
+            }
+            completion(true);
+        })
+        .withNativeFunction("setChaosSliceSize", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setChaosSliceSize(static_cast<int>(args[0]));
+            }
+            completion(true);
+        })
         .withNativeFunction("setOutput", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
             if (args.size() >= 3) {
                 processor.setOutput(static_cast<double>(args[0]), static_cast<double>(args[1]), static_cast<double>(args[2]));
@@ -474,7 +510,16 @@ void Editor::pushLive() {
     key << playhead << '|' << playTrack << '|' << playSlot << '|' << (canAppend ? 1 : 0) << '|' << error << '|' << loop << '|'
         << slices << '|' << volume << '|' << panMin << '|' << panMax << '|' << (processor.effectsEnabled() ? 1 : 0) << '|'
         << processor.globalBeatMin() << '|' << processor.globalBeatMax() << '|' << (repeat.enabled ? 1 : 0) << '|' << repeat.sizeMin << '|'
-        << repeat.sizeMax << '|' << repeat.length << '|' << repeat.chance << '|' << repeat.mix;
+        << repeat.sizeMax << '|' << repeat.length << '|' << repeat.chance << '|' << repeat.mix << '|' << processor.attackMs();
+    for (const bool on : repeat.positions) {
+        key << (on ? '1' : '0');
+    }
+    const bt::ChaosSettings chaos = processor.chaos();
+    key << '|' << static_cast<int>(chaos.trigger) << '|' << chaos.value << '|' << chaos.beatSize << '|' << chaos.loopSize << '|'
+        << chaos.sliceSize << '|';
+    for (const bool on : chaos.groups) {
+        key << (on ? '1' : '0');
+    }
     for (const double value : fx) {
         key << '|' << value;
     }
@@ -519,6 +564,22 @@ void Editor::pushLive() {
     object->setProperty("repeatLength", repeat.length);
     object->setProperty("repeatChance", repeat.chance);
     object->setProperty("repeatMix", repeat.mix);
+    object->setProperty("attack", processor.attackMs());
+    juce::Array<juce::var> positions;
+    for (const bool on : repeat.positions) {
+        positions.add(on);
+    }
+    object->setProperty("repeatPositions", positions);
+    object->setProperty("chaosTrigger", static_cast<int>(chaos.trigger));
+    object->setProperty("chaosValue", chaos.value);
+    object->setProperty("chaosBeatSize", chaos.beatSize);
+    object->setProperty("chaosLoopSize", chaos.loopSize);
+    object->setProperty("chaosSliceSize", chaos.sliceSize);
+    juce::Array<juce::var> groups;
+    for (const bool on : chaos.groups) {
+        groups.add(on);
+    }
+    object->setProperty("chaosGroups", groups);
     deliver("onLive", juce::var(object));
 }
 
