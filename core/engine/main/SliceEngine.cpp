@@ -1,6 +1,5 @@
 #include "SliceEngine.h"
 
-#include <cmath>
 #include <utility>
 
 namespace bt {
@@ -46,7 +45,7 @@ void movePlayingOut(SlicePlayer& playing, SlicePlayer& outgoing, Clock& playingC
 
 SliceEngine::SliceEngine(double sampleRate, std::uint64_t seed)
     : settings_{sampleRate, 120.0}, playing_(sampleRate, seed), outgoing_(sampleRate, seed + 1), rng_(seed),
-      repeatRng_(seed + 2), chaosRng_(seed + 3), beatRepeat_(sampleRate) {}
+      repeatRng_(seed + 2), chaos_(seed + 3), beatRepeat_(sampleRate) {}
 
 void SliceEngine::play() {
     if (sequence_.empty()) {
@@ -268,44 +267,21 @@ void SliceEngine::apply(const Controls& next) {
     }
 }
 
-void SliceEngine::triggerChaos() {
+void SliceEngine::triggerChaos() { rollChaos(); }
+
+void SliceEngine::noteOn() {
+    if (chaos_.noteOn(controls_.chaos)) {
+        rollChaos();
+    }
+}
+
+void SliceEngine::rollChaos() {
     Controls next = controls_;
-    const ChaosRoll roll = rollChaos(next, chaosRng_);
+    const ChaosRoll roll = chaos_.roll(next);
     apply(next);
     if (roll.randomize && bank_.count() > 0) {
         randomize();
     }
-}
-
-bool SliceEngine::chaosTrigger() {
-    const ChaosTrigger trigger = controls_.chaos.trigger;
-    if (!playing_.running() || trigger == ChaosTrigger::Button || trigger == ChaosTrigger::Note) {
-        return false;
-    }
-    const std::int64_t unit = chaosFrames();
-    const std::int64_t index = playingClock_.frame() / unit;
-    // A new unit size, or a clock sent back to the start, counts again from here.
-    if (unit != chaosUnit_ || index < chaosIndex_) {
-        chaosUnit_ = unit;
-        chaosIndex_ = index;
-        return false;
-    }
-    if (index == chaosIndex_) {
-        return false;
-    }
-    chaosIndex_ = index;
-    return true;
-}
-
-std::int64_t SliceEngine::chaosFrames() const {
-    const ChaosSettings& chaos = controls_.chaos;
-    double beats = std::ldexp(1.0, chaos.beatSize);
-    if (chaos.trigger == ChaosTrigger::Slices) {
-        beats = grid_.sliceBeats() * std::ldexp(1.0, chaos.sliceSize);
-    } else if (chaos.trigger == ChaosTrigger::Loop) {
-        beats = static_cast<double>(grid_.loopBeats() * chaos.loopSize);
-    }
-    return std::llround(settings_.framesPerBeat() * beats);
 }
 
 void SliceEngine::setBpm(double bpm) {
@@ -378,8 +354,8 @@ void SliceEngine::setOutput(double volume, double panMin, double panMax) {
 
 void SliceEngine::render(float* left, float* right, int frames) {
     for (int i = 0; i < frames; ++i) {
-        if (chaosTrigger()) {
-            triggerChaos();
+        if (chaos_.tick(controls_.chaos, grid_, settings_.sampleRate, playing_.running(), playingClock_.frame())) {
+            rollChaos();
         }
         if (playing_.running() && !sequence_.empty() && bank_.count() > 0) {
             const int arriving = playingClock_.arrivingSlot(settings_, grid_, controls_.play.attackMs);

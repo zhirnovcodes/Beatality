@@ -56,9 +56,10 @@ public:
     void apply(const Controls& next);
     // The knobs as the engine plays them. sliceExp is the one the grid fitted to the loop.
     const Controls& controls() const { return controls_; }
-    // One chaos roll now, onto the knobs, as if someone moved the sliders. Playing or stopped.
-    // While playing, the Loop, Slices, and Beats triggers also roll from inside render.
+    // The Randomize button's chaos roll, in every mode, playing or stopped.
     void triggerChaos();
+    // A note-on. Chaos decides whether it rolls.
+    void noteOn();
     // Keeps the volume and pan already on that slot.
     void setTrack(int index, double start, double length, bool loop);
     // Web track. start is a fraction of the file, 0..1.
@@ -78,10 +79,8 @@ public:
 
 private:
     void syncSequence(int oldExp, int oldSlots);
-    // True on the first frame of each new chaos unit since the note started.
-    bool chaosTrigger();
-    // The chaos unit for the Loop, Slices, and Beats triggers, in frames.
-    std::int64_t chaosFrames() const;
+    // One chaos roll onto the knobs, as if someone moved the sliders.
+    void rollChaos();
     void setBpm(double bpm);
     void setLoop(int beats);
     void setSlice(int exponent);
@@ -95,11 +94,7 @@ private:
     Controls controls_;
     // Its own generator, so the slice picks for a seed stay the same.
     Rng repeatRng_;
-    // Its own generator too, so chaos does not move the slice picks.
-    Rng chaosRng_;
-    // The unit the count was made in, and how many whole units the clock has passed.
-    std::int64_t chaosUnit_ = 0;
-    std::int64_t chaosIndex_ = 0;
+    Chaos chaos_;
     RepeatSequence repeatSequence_;
     BeatRepeat beatRepeat_;
     SliceGrid grid_;

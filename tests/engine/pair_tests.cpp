@@ -1122,6 +1122,22 @@ void testTriggerChaosRollsWhileStopped() {
     CHECK(engine.controls().play.attackMs >= 2 && engine.controls().play.attackMs <= 16);
 }
 
+void testNoteOnRollsInNoteMode() {
+    bt::SliceEngine engine(1000, 1);
+    bt::Controls controls = engine.controls();
+    controls.chaos.value = 1;
+    controls.chaos.groups[static_cast<int>(bt::ChaosGroup::Pan)] = true;
+    controls.chaos.trigger = bt::ChaosTrigger::Beats;
+    engine.apply(controls);
+    engine.noteOn();
+    CHECK(engine.controls() == controls);
+
+    controls.chaos.trigger = bt::ChaosTrigger::Note;
+    engine.apply(controls);
+    engine.noteOn();
+    CHECK(!(engine.controls() == controls));
+}
+
 } // namespace
 
 int main() {
@@ -1154,6 +1170,7 @@ int main() {
     testBeatRepeatEndsAtTheLoopAndOnANewFiring();
     testChaosRollsOnEachBeatWhilePlaying();
     testTriggerChaosRollsWhileStopped();
+    testNoteOnRollsInNoteMode();
 
     if (g_failed != 0) {
         std::printf("%d check(s) failed\n", g_failed);

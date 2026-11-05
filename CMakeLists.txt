@@ -15,7 +15,6 @@ function(beatality_core_flags target)
 endfunction()
 
 add_library(beatality_domain
-    core/domain/Chaos.cpp
     core/domain/Rng.cpp
     core/domain/Session.cpp
 )
@@ -23,6 +22,7 @@ target_include_directories(beatality_domain PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/c
 beatality_core_flags(beatality_domain)
 
 add_library(beatality_slices
+    core/domain/Chaos.cpp
     core/domain/RepeatSequence.cpp
     core/domain/Sequence.cpp
     core/domain/SliceGrid.cpp
@@ -41,7 +41,7 @@ target_link_libraries(domain_tests PRIVATE beatality_domain)
 beatality_core_flags(domain_tests)
 
 add_executable(chaos_tests tests/domain/chaos_tests.cpp)
-target_link_libraries(chaos_tests PRIVATE beatality_domain)
+target_link_libraries(chaos_tests PRIVATE beatality_slices)
 beatality_core_flags(chaos_tests)
 
 add_executable(slice_tests tests/domain/slice_tests.cpp)

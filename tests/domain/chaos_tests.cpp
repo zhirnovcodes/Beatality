@@ -1,6 +1,7 @@
 #include "Chaos.h"
 
 #include <cstdio>
+#include <initializer_list>
 
 namespace {
 
@@ -137,6 +138,95 @@ void testRollUsesTheValueFromBeforeIt() {
     }
 }
 
+// 120 BPM at 1000 frames a second: a beat is 500 frames.
+void testTickRollsOnEachNewUnit() {
+    bt::SliceGrid grid;
+    bt::ChaosSettings settings;
+    settings.trigger = bt::ChaosTrigger::Beats;
+    settings.beatSize = 0;
+    bt::Chaos chaos(1);
+    int rolls = 0;
+    int firstAt = -1;
+    for (int frame = 0; frame < 2000; ++frame) {
+        if (chaos.tick(settings, grid, 1000, true, frame)) {
+            ++rolls;
+            if (firstAt < 0) {
+                firstAt = frame;
+            }
+        }
+    }
+    CHECK(firstAt == 500);
+    CHECK(rolls == 3);
+}
+
+void testTickCountsLoopsAndSlices() {
+    bt::SliceGrid grid; // 8 beats, slices of 1 beat
+    bt::ChaosSettings settings;
+    settings.trigger = bt::ChaosTrigger::Loop;
+    settings.loopSize = 2;
+    bt::Chaos loops(1);
+    int loopRolls = 0;
+    for (int frame = 0; frame < 16000; ++frame) {
+        loopRolls += loops.tick(settings, grid, 1000, true, frame) ? 1 : 0;
+    }
+    CHECK(loopRolls == 1); // at frame 8000, two loops of 4000
+
+    settings.trigger = bt::ChaosTrigger::Slices;
+    settings.sliceSize = -1; // half a slice
+    bt::Chaos slices(1);
+    int sliceRolls = 0;
+    for (int frame = 0; frame < 1000; ++frame) {
+        sliceRolls += slices.tick(settings, grid, 1000, true, frame) ? 1 : 0;
+    }
+    CHECK(sliceRolls == 3); // at 250, 500, 750
+}
+
+void testTickIsQuietWhenStoppedOrNotCounting() {
+    bt::SliceGrid grid;
+    bt::ChaosSettings settings;
+    settings.trigger = bt::ChaosTrigger::Beats;
+    bt::Chaos stopped(1);
+    bool rolled = false;
+    for (int frame = 0; frame < 2000; ++frame) {
+        rolled = rolled || stopped.tick(settings, grid, 1000, false, frame);
+    }
+    CHECK(!rolled);
+    for (const bt::ChaosTrigger trigger : {bt::ChaosTrigger::Button, bt::ChaosTrigger::Note}) {
+        settings.trigger = trigger;
+        bt::Chaos chaos(1);
+        for (int frame = 0; frame < 2000; ++frame) {
+            rolled = rolled || chaos.tick(settings, grid, 1000, true, frame);
+        }
+    }
+    CHECK(!rolled);
+}
+
+void testTickStartsAgainWhenTheClockGoesBack() {
+    bt::SliceGrid grid;
+    bt::ChaosSettings settings;
+    settings.trigger = bt::ChaosTrigger::Beats;
+    bt::Chaos chaos(1);
+    for (int frame = 0; frame < 700; ++frame) {
+        chaos.tick(settings, grid, 1000, true, frame);
+    }
+    // A new note: the clock is back at 0. That is not a roll, and the next beat is.
+    CHECK(!chaos.tick(settings, grid, 1000, true, 0));
+    CHECK(!chaos.tick(settings, grid, 1000, true, 499));
+    CHECK(chaos.tick(settings, grid, 1000, true, 500));
+}
+
+void testNoteRollsOnlyInNoteMode() {
+    const bt::Chaos chaos(1);
+    bt::ChaosSettings settings;
+    settings.trigger = bt::ChaosTrigger::Note;
+    CHECK(chaos.noteOn(settings));
+    for (const bt::ChaosTrigger trigger : {bt::ChaosTrigger::Button, bt::ChaosTrigger::Loop, bt::ChaosTrigger::Slices,
+                                           bt::ChaosTrigger::Beats}) {
+        settings.trigger = trigger;
+        CHECK(!chaos.noteOn(settings));
+    }
+}
+
 } // namespace
 
 int main() {
@@ -148,6 +238,11 @@ int main() {
     testRandomizeAndTogglesAreAnEvenChance();
     testSameSeedSameRoll();
     testRollUsesTheValueFromBeforeIt();
+    testTickRollsOnEachNewUnit();
+    testTickCountsLoopsAndSlices();
+    testTickIsQuietWhenStoppedOrNotCounting();
+    testTickStartsAgainWhenTheClockGoesBack();
+    testNoteRollsOnlyInNoteMode();
 
     if (g_failed != 0) {
         std::printf("%d check(s) failed\n", g_failed);

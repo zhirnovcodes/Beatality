@@ -1,7 +1,5 @@
 #include "Chaos.h"
 
-#include "SliceGrid.h"
-
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -110,5 +108,37 @@ ChaosRoll rollChaos(Controls& controls, Rng& rng) {
     }
     return roll;
 }
+
+Chaos::Chaos(std::uint64_t seed) : rng_(seed) {}
+
+bool Chaos::tick(const ChaosSettings& settings, const SliceGrid& grid, double sampleRate, bool playing, std::int64_t frame) {
+    const ChaosTrigger trigger = settings.trigger;
+    if (!playing || trigger == ChaosTrigger::Button || trigger == ChaosTrigger::Note) {
+        return false;
+    }
+    double beats = std::ldexp(1.0, settings.beatSize);
+    if (trigger == ChaosTrigger::Slices) {
+        beats = grid.sliceBeats() * std::ldexp(1.0, settings.sliceSize);
+    } else if (trigger == ChaosTrigger::Loop) {
+        beats = static_cast<double>(grid.loopBeats() * settings.loopSize);
+    }
+    const std::int64_t unit = std::llround(sampleRate * 60.0 / grid.bpm() * beats);
+    const std::int64_t index = frame / unit;
+    // A new unit size, or a clock sent back to the start, counts again from here.
+    if (unit != unit_ || index < index_) {
+        unit_ = unit;
+        index_ = index;
+        return false;
+    }
+    if (index == index_) {
+        return false;
+    }
+    index_ = index;
+    return true;
+}
+
+bool Chaos::noteOn(const ChaosSettings& settings) const { return settings.trigger == ChaosTrigger::Note; }
+
+ChaosRoll Chaos::roll(Controls& controls) { return rollChaos(controls, rng_); }
 
 } // namespace bt

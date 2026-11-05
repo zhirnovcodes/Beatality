@@ -934,9 +934,7 @@ struct Processor::Impl {
         }
         if (message.isNoteOn()) {
             applyGate(gate.noteOn());
-            if (engine->controls().chaos.trigger == bt::ChaosTrigger::Note) {
-                engine->triggerChaos();
-            }
+            engine->noteOn();
             return;
         }
         if (message.isNoteOff()) {
