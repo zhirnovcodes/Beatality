@@ -631,7 +631,7 @@ function onLive(live) {
     markRows()
 }
 
-// Loop, slices, volume, and pan are host parameters, so the host's automation can move them.
+// Loop, slices, volume, pan, the effects, and the beat repeat knobs are host parameters, so the host's automation can move them.
 // A control the mouse is holding keeps the mouse's value.
 function followHost(live) {
     const free = (id) => {
@@ -678,7 +678,76 @@ function followHost(live) {
         state.outputPanMax = Math.max(panMin, panMax)
         paintMasterPan()
     }
+
+    if (live.effectsEnabled != null && Boolean(live.effectsEnabled) !== state.effectsEnabled) {
+        state.effectsEnabled = Boolean(live.effectsEnabled)
+        paintEffectsEnabled()
+    }
+    for (const [key, id] of effectSliders) {
+        const value = Number(live[key])
+        if (free(id) && Number.isFinite(value) && value !== state[key]) {
+            state[key] = value
+            setRange(id, value)
+        }
+    }
+    const beatMin = Number(live.globalBeatMin)
+    const beatMax = Number(live.globalBeatMax)
+    if (free('fx-time-min') && free('fx-time-max') && Number.isInteger(beatMin) && Number.isInteger(beatMax) &&
+        (beatMin !== state.globalBeatMin || beatMax !== state.globalBeatMax)) {
+        state.globalBeatMin = beatMin
+        state.globalBeatMax = beatMax
+        paintEffectTime()
+    }
+
+    let repeatChanged = false
+    if (live.repeatEnabled != null && Boolean(live.repeatEnabled) !== state.repeatEnabled) {
+        state.repeatEnabled = Boolean(live.repeatEnabled)
+        repeatChanged = true
+    }
+    const sizeMin = Number(live.repeatSizeMin)
+    const sizeMax = Number(live.repeatSizeMax)
+    if (free('br-size-min') && free('br-size-max') && Number.isInteger(sizeMin) && Number.isInteger(sizeMax) &&
+        (sizeMin !== state.repeatSizeMin || sizeMax !== state.repeatSizeMax)) {
+        state.repeatSizeMin = sizeMin
+        state.repeatSizeMax = sizeMax
+        repeatChanged = true
+    }
+    const length = Number(live.repeatLength)
+    if (free('br-length') && Number.isInteger(length) && length !== state.repeatLength) {
+        state.repeatLength = length
+        repeatChanged = true
+    }
+    for (const [key, id] of [['repeatChance', 'br-chance'], ['repeatMix', 'br-mix']]) {
+        const value = Number(live[key])
+        if (free(id) && Number.isFinite(value) && value !== state[key]) {
+            state[key] = value
+            repeatChanged = true
+        }
+    }
+    if (repeatChanged) {
+        paintBeatRepeat()
+    }
 }
+
+// The effect sliders that host parameters move: state key, input id.
+const effectSliders = [
+    ['globalPower', 'fx-power'],
+    ['globalChance', 'fx-chance'],
+    ['delayPower', 'fx-delay-power'],
+    ['delayChance', 'fx-delay-chance'],
+    ['reverbPower', 'fx-reverb-power'],
+    ['reverbChance', 'fx-reverb-chance'],
+    ['reversePower', 'fx-reverse-power'],
+    ['reverseChance', 'fx-reverse-chance'],
+    ['filterPower', 'fx-filter-power'],
+    ['filterChance', 'fx-filter-chance'],
+    ['flangerPower', 'fx-flanger-power'],
+    ['flangerChance', 'fx-flanger-chance'],
+    ['trancePower', 'fx-trance-power'],
+    ['tranceChance', 'fx-trance-chance'],
+    ['shiftPower', 'fx-shift-power'],
+    ['shiftChance', 'fx-shift-chance'],
+]
 
 function applyBankSettings(bank) {
     if (bank.bpm == null) {
@@ -1031,10 +1100,6 @@ function paintSliders() {
     syncCaptions()
 }
 
-function randomUnit() {
-    return Math.round(Math.random() * 100) / 100
-}
-
 function paintEffectsEnabled() {
     const enable = document.getElementById('fx-enable')
     if (enable) {
@@ -1047,42 +1112,6 @@ function onEffectsEnabled() {
     state.effectsEnabled = !state.effectsEnabled
     paintEffectsEnabled()
     void native('setEffectsEnabled', state.effectsEnabled)
-}
-
-function shuffleEffects() {
-    const picks = [
-        ['globalPower', 'fx-power', 'setGlobalPower', randomUnit()],
-        ['globalChance', 'fx-chance', 'setGlobalChance', randomUnit()],
-        ['delayPower', 'fx-delay-power', 'setDelayPower', randomUnit()],
-        ['delayChance', 'fx-delay-chance', 'setDelayChance', randomUnit()],
-        ['reverbPower', 'fx-reverb-power', 'setReverbPower', randomUnit()],
-        ['reverbChance', 'fx-reverb-chance', 'setReverbChance', randomUnit()],
-        ['reversePower', 'fx-reverse-power', 'setReversePower', randomUnit()],
-        ['reverseChance', 'fx-reverse-chance', 'setReverseChance', randomUnit()],
-        ['filterPower', 'fx-filter-power', 'setFilterPower', randomUnit()],
-        ['filterChance', 'fx-filter-chance', 'setFilterChance', randomUnit()],
-        ['flangerPower', 'fx-flanger-power', 'setFlangerPower', randomUnit()],
-        ['flangerChance', 'fx-flanger-chance', 'setFlangerChance', randomUnit()],
-        ['trancePower', 'fx-trance-power', 'setTrancePower', randomUnit()],
-        ['tranceChance', 'fx-trance-chance', 'setTranceChance', randomUnit()],
-        ['shiftPower', 'fx-shift-power', 'setShiftPower', randomUnit()],
-        ['shiftChance', 'fx-shift-chance', 'setShiftChance', randomUnit()],
-    ]
-    for (const [key, id, name, value] of picks) {
-        state[key] = value
-        const input = document.getElementById(id)
-        if (input instanceof HTMLInputElement) {
-            input.value = String(value)
-            placeThumb(input)
-        }
-        void native(name, value)
-    }
-    const a = -4 + Math.floor(Math.random() * 6)
-    const b = -4 + Math.floor(Math.random() * 6)
-    state.globalBeatMin = Math.min(a, b)
-    state.globalBeatMax = Math.max(a, b)
-    paintEffectTime()
-    void native('setGlobalBeatRange', state.globalBeatMin, state.globalBeatMax)
 }
 
 function wire() {
@@ -1141,7 +1170,7 @@ function wire() {
     document.getElementById('fx-shift-power')?.addEventListener('input', onShiftPower)
     document.getElementById('fx-shift-chance')?.addEventListener('input', onShiftChance)
     document.getElementById('fx-enable')?.addEventListener('click', onEffectsEnabled)
-    document.getElementById('fx-shuffle')?.addEventListener('click', shuffleEffects)
+    document.getElementById('fx-shuffle')?.addEventListener('click', () => void native('shuffle'))
 
     document.getElementById('br-power')?.addEventListener('click', onRepeatPower)
     document.querySelectorAll('.br-part').forEach((box) => box.addEventListener('change', onRepeatPosition))

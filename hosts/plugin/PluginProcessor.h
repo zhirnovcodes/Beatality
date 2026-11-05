@@ -5,13 +5,14 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdint>
 #include <vector>
 
 // VST3 and standalone host. The message thread only queues commands.
 // The audio thread owns the engine.
-class Processor : public juce::AudioProcessor {
+class Processor : public juce::AudioProcessor, private juce::Timer {
 public:
     Processor();
     ~Processor() override;
@@ -70,6 +71,10 @@ public:
     void setTranceChance(double chance);
     void setShiftPower(double power);
     void setShiftChance(double chance);
+    // Every effect knob at once, onto the host parameters.
+    void setEffectsSettings(const bt::Effects& settings);
+    // The Shuffle button: a random power and chance for each effect, and a random effect time range.
+    void shuffleEffects();
     void setRepeatEnabled(bool on);
     // 2^exponent beats, -5..1. min is not above max.
     void setRepeatSizeRange(int min, int max);
@@ -101,26 +106,29 @@ public:
     int loopBeats() const { return loopParam->get(); }
     int sliceExponent() const { return sliceParam->get(); }
     int attackMs() const { return savedAttack; }
-    bool effectsEnabled() const { return saved.enabled; }
-    double globalPower() const { return saved.globalPower; }
-    int globalBeatMin() const { return saved.beatMin; }
-    int globalBeatMax() const { return saved.beatMax; }
-    double globalChance() const { return saved.globalChance; }
-    double reverbPower() const { return saved.reverbPower; }
-    double reverbChance() const { return saved.reverbChance; }
-    double delayPower() const { return saved.delayPower; }
-    double delayChance() const { return saved.delayChance; }
-    double reversePower() const { return saved.reversePower; }
-    double reverseChance() const { return saved.reverseChance; }
-    double filterPower() const { return saved.filterPower; }
-    double filterChance() const { return saved.filterChance; }
-    double flangerPower() const { return saved.flangerPower; }
-    double flangerChance() const { return saved.flangerChance; }
-    double trancePower() const { return saved.trancePower; }
-    double tranceChance() const { return saved.tranceChance; }
-    double shiftPower() const { return saved.shiftPower; }
-    double shiftChance() const { return saved.shiftChance; }
-    const bt::BeatRepeatSettings& beatRepeat() const { return savedRepeat; }
+    // The effects and the beat repeat knobs are host parameters too. Loop parts are not.
+    bool effectsEnabled() const { return effectsOnParam->get(); }
+    double globalPower() const { return globalPowerParam->get(); }
+    int globalBeatMin() const { return fxTimeMinParam->get(); }
+    int globalBeatMax() const { return std::max(fxTimeMinParam->get(), fxTimeMaxParam->get()); }
+    double globalChance() const { return globalChanceParam->get(); }
+    double reverbPower() const { return reverbPowerParam->get(); }
+    double reverbChance() const { return reverbChanceParam->get(); }
+    double delayPower() const { return delayPowerParam->get(); }
+    double delayChance() const { return delayChanceParam->get(); }
+    double reversePower() const { return reversePowerParam->get(); }
+    double reverseChance() const { return reverseChanceParam->get(); }
+    double filterPower() const { return filterPowerParam->get(); }
+    double filterChance() const { return filterChanceParam->get(); }
+    double flangerPower() const { return flangerPowerParam->get(); }
+    double flangerChance() const { return flangerChanceParam->get(); }
+    double trancePower() const { return trancePowerParam->get(); }
+    double tranceChance() const { return tranceChanceParam->get(); }
+    double shiftPower() const { return shiftPowerParam->get(); }
+    double shiftChance() const { return shiftChanceParam->get(); }
+    bt::BeatRepeatSettings beatRepeat() const;
+    // Counts the times the shuffle parameter switched on.
+    int shuffleCount() const;
     double outputVolume() const { return volumeParam->get(); }
     double outputPanMin() const { return panMinParam->get(); }
     double outputPanMax() const { return panMaxParam->get(); }
@@ -165,8 +173,11 @@ private:
         double warpParam = 0;
     };
 
+    // Message thread. Shuffles for the shuffle parameter, and keeps each min..max range in order.
+    void timerCallback() override;
+
     struct Impl;
-    // Ids match the web plugin's parameters: loop, slice, randomize, volume, panMin, panMax.
+    // Ids match the web plugin's parameters.
     // The audio thread reads them each block and applies the ones that changed.
     juce::AudioProcessorValueTreeState params;
     juce::AudioParameterInt* loopParam = nullptr;
@@ -176,6 +187,34 @@ private:
     juce::AudioParameterFloat* volumeParam = nullptr;
     juce::AudioParameterFloat* panMinParam = nullptr;
     juce::AudioParameterFloat* panMaxParam = nullptr;
+    juce::AudioParameterBool* effectsOnParam = nullptr;
+    // Shuffles the effects each time it switches on.
+    juce::AudioParameterBool* shuffleParam = nullptr;
+    juce::AudioParameterFloat* globalPowerParam = nullptr;
+    juce::AudioParameterFloat* globalChanceParam = nullptr;
+    // Exponents. A host may send min above max; max is held at min.
+    juce::AudioParameterInt* fxTimeMinParam = nullptr;
+    juce::AudioParameterInt* fxTimeMaxParam = nullptr;
+    juce::AudioParameterFloat* delayPowerParam = nullptr;
+    juce::AudioParameterFloat* delayChanceParam = nullptr;
+    juce::AudioParameterFloat* reverbPowerParam = nullptr;
+    juce::AudioParameterFloat* reverbChanceParam = nullptr;
+    juce::AudioParameterFloat* reversePowerParam = nullptr;
+    juce::AudioParameterFloat* reverseChanceParam = nullptr;
+    juce::AudioParameterFloat* filterPowerParam = nullptr;
+    juce::AudioParameterFloat* filterChanceParam = nullptr;
+    juce::AudioParameterFloat* flangerPowerParam = nullptr;
+    juce::AudioParameterFloat* flangerChanceParam = nullptr;
+    juce::AudioParameterFloat* trancePowerParam = nullptr;
+    juce::AudioParameterFloat* tranceChanceParam = nullptr;
+    juce::AudioParameterFloat* shiftPowerParam = nullptr;
+    juce::AudioParameterFloat* shiftChanceParam = nullptr;
+    juce::AudioParameterBool* repeatOnParam = nullptr;
+    juce::AudioParameterInt* repeatSizeMinParam = nullptr;
+    juce::AudioParameterInt* repeatSizeMaxParam = nullptr;
+    juce::AudioParameterFloat* repeatMixParam = nullptr;
+    juce::AudioParameterInt* repeatLengthParam = nullptr;
+    juce::AudioParameterFloat* repeatChanceParam = nullptr;
     std::unique_ptr<Impl> impl;
     juce::StringArray names;
     std::vector<TrackPicture> pictures;
@@ -184,8 +223,17 @@ private:
     double savedBpm = 120;
     bool savedBpmSync = false;
     int savedAttack = 2;
-    bt::Effects saved;
-    bt::BeatRepeatSettings savedRepeat;
+    // The loop parts. The other beat repeat knobs are host parameters.
+    bool savedPositions[bt::RepeatSequence::kPositions]{};
+    // The shuffle count last handled.
+    int shufflesDone = 0;
+    // The range ends the timer last saw. The end that moved since is the one the host or MIDI sent.
+    float seenPanMin = 0;
+    float seenPanMax = 0;
+    int seenFxTimeMin = 0;
+    int seenFxTimeMax = 0;
+    int seenSizeMin = 0;
+    int seenSizeMax = 0;
     std::atomic<std::uint32_t> view{0};
     std::atomic<int> slot{-1};
     std::atomic<double> head{0};

@@ -19,6 +19,7 @@ export class BeatalityParameters {
     private readonly sent = new Map<string, number>()
     private stopModel: (() => void) | null = null
     private randomizeHeld = 0
+    private shuffleHeld = 0
 
     constructor(private readonly model: WebViewModel) {
         this.entries = [
@@ -60,6 +61,145 @@ export class BeatalityParameters {
                 read: () => model.outputPanMax,
                 write: (pan) => model.setOutputPanMax(pan),
             },
+            {
+                info: { id: 'effectsOn', label: 'Effects on', kind: 'boolean', min: 0, max: 1 },
+                read: () => (model.effectsEnabled ? 1 : 0),
+                write: (on) => model.setEffectsEnabled(on > 0.5),
+            },
+            {
+                // Presses Shuffle once each time the value rises past 0.5.
+                info: { id: 'shuffle', label: 'Shuffle', kind: 'boolean', min: 0, max: 1 },
+                read: () => this.shuffleHeld,
+                write: (value) => {
+                    const held = value > 0.5 ? 1 : 0
+                    if (held === 1 && this.shuffleHeld === 0) {
+                        model.shuffleEffects()
+                    }
+                    this.shuffleHeld = held
+                },
+            },
+            {
+                info: { id: 'globalPower', label: 'Global power', kind: 'float', min: 0, max: 1 },
+                read: () => model.globalPower,
+                write: (value) => model.setGlobalPower(value),
+            },
+            {
+                info: { id: 'globalChance', label: 'Global chance', kind: 'float', min: 0, max: 1 },
+                read: () => model.globalChance,
+                write: (value) => model.setGlobalChance(value),
+            },
+            {
+                // The model keeps min no higher than max.
+                info: { id: 'fxTimeMin', label: 'Effect time minimum', kind: 'int', min: -4, max: 1 },
+                read: () => model.globalBeatMinExp,
+                write: (exponent) => model.setGlobalBeatMin(exponent),
+            },
+            {
+                info: { id: 'fxTimeMax', label: 'Effect time maximum', kind: 'int', min: -4, max: 1 },
+                read: () => model.globalBeatMaxExp,
+                write: (exponent) => model.setGlobalBeatMax(exponent),
+            },
+            {
+                info: { id: 'delayPower', label: 'Delay power', kind: 'float', min: 0, max: 1 },
+                read: () => model.delayPower,
+                write: (value) => model.setDelayPower(value),
+            },
+            {
+                info: { id: 'delayChance', label: 'Delay chance', kind: 'float', min: 0, max: 1 },
+                read: () => model.delayChance,
+                write: (value) => model.setDelayChance(value),
+            },
+            {
+                info: { id: 'reverbPower', label: 'Reverb power', kind: 'float', min: 0, max: 1 },
+                read: () => model.reverbPower,
+                write: (value) => model.setReverbPower(value),
+            },
+            {
+                info: { id: 'reverbChance', label: 'Reverb chance', kind: 'float', min: 0, max: 1 },
+                read: () => model.reverbChance,
+                write: (value) => model.setReverbChance(value),
+            },
+            {
+                info: { id: 'reversePower', label: 'Reverse power', kind: 'float', min: 0, max: 1 },
+                read: () => model.reversePower,
+                write: (value) => model.setReversePower(value),
+            },
+            {
+                info: { id: 'reverseChance', label: 'Reverse chance', kind: 'float', min: 0, max: 1 },
+                read: () => model.reverseChance,
+                write: (value) => model.setReverseChance(value),
+            },
+            {
+                info: { id: 'filterPower', label: 'Filter power', kind: 'float', min: 0, max: 1 },
+                read: () => model.filterPower,
+                write: (value) => model.setFilterPower(value),
+            },
+            {
+                info: { id: 'filterChance', label: 'Filter chance', kind: 'float', min: 0, max: 1 },
+                read: () => model.filterChance,
+                write: (value) => model.setFilterChance(value),
+            },
+            {
+                info: { id: 'flangerPower', label: 'Flanger power', kind: 'float', min: 0, max: 1 },
+                read: () => model.flangerPower,
+                write: (value) => model.setFlangerPower(value),
+            },
+            {
+                info: { id: 'flangerChance', label: 'Flanger chance', kind: 'float', min: 0, max: 1 },
+                read: () => model.flangerChance,
+                write: (value) => model.setFlangerChance(value),
+            },
+            {
+                info: { id: 'trancePower', label: 'Trance power', kind: 'float', min: 0, max: 1 },
+                read: () => model.trancePower,
+                write: (value) => model.setTrancePower(value),
+            },
+            {
+                info: { id: 'tranceChance', label: 'Trance chance', kind: 'float', min: 0, max: 1 },
+                read: () => model.tranceChance,
+                write: (value) => model.setTranceChance(value),
+            },
+            {
+                info: { id: 'shiftPower', label: 'Shift power', kind: 'float', min: 0, max: 1 },
+                read: () => model.shiftPower,
+                write: (value) => model.setShiftPower(value),
+            },
+            {
+                info: { id: 'shiftChance', label: 'Shift chance', kind: 'float', min: 0, max: 1 },
+                read: () => model.shiftChance,
+                write: (value) => model.setShiftChance(value),
+            },
+            {
+                info: { id: 'repeatOn', label: 'Beat repeat on', kind: 'boolean', min: 0, max: 1 },
+                read: () => (model.repeatEnabled ? 1 : 0),
+                write: (on) => model.setRepeatEnabled(on > 0.5),
+            },
+            {
+                // The model keeps min no higher than max.
+                info: { id: 'repeatSizeMin', label: 'Size minimum', kind: 'int', min: -5, max: 1 },
+                read: () => model.repeatSizeMinExp,
+                write: (exponent) => model.setRepeatSizeMin(exponent),
+            },
+            {
+                info: { id: 'repeatSizeMax', label: 'Size maximum', kind: 'int', min: -5, max: 1 },
+                read: () => model.repeatSizeMaxExp,
+                write: (exponent) => model.setRepeatSizeMax(exponent),
+            },
+            {
+                info: { id: 'repeatMix', label: 'Mix', kind: 'float', min: 0, max: 1 },
+                read: () => model.repeatMix,
+                write: (value) => model.setRepeatMix(value),
+            },
+            {
+                info: { id: 'repeatLength', label: 'Length', kind: 'int', min: -4, max: 1 },
+                read: () => model.repeatLengthExp,
+                write: (exponent) => model.setRepeatLength(exponent),
+            },
+            {
+                info: { id: 'repeatChance', label: 'Chance', kind: 'float', min: 0, max: 1 },
+                read: () => model.repeatChance,
+                write: (value) => model.setRepeatChance(value),
+            },
         ]
     }
 
@@ -80,7 +220,7 @@ export class BeatalityParameters {
         const { kind, min, max } = entry.info
         const scaled = min + Math.min(1, Math.max(0, value)) * (max - min)
         entry.write(kind === 'float' ? scaled : Math.round(scaled))
-        // Randomize holds no model state, so the model does not report it.
+        // Randomize and Shuffle hold no model state, so the model does not report them.
         if (kind === 'boolean') {
             this.report()
         }

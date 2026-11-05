@@ -179,29 +179,6 @@ export function Widget({
         placeThumb(input)
     }
 
-    const shuffleEffects = () => {
-        model.setGlobalPower(randomUnit())
-        model.setGlobalChance(randomUnit())
-        const a = -4 + Math.floor(Math.random() * 6)
-        const b = -4 + Math.floor(Math.random() * 6)
-        model.setGlobalBeatMin(Math.min(a, b))
-        model.setGlobalBeatMax(Math.max(a, b))
-        model.setDelayPower(randomUnit())
-        model.setDelayChance(randomUnit())
-        model.setReverbPower(randomUnit())
-        model.setReverbChance(randomUnit())
-        model.setReversePower(randomUnit())
-        model.setReverseChance(randomUnit())
-        model.setFilterPower(randomUnit())
-        model.setFilterChance(randomUnit())
-        model.setFlangerPower(randomUnit())
-        model.setFlangerChance(randomUnit())
-        model.setTrancePower(randomUnit())
-        model.setTranceChance(randomUnit())
-        model.setShiftPower(randomUnit())
-        model.setShiftChance(randomUnit())
-    }
-
     const onSelectBank = () => {
         const bank = model.factoryBanks[bankIndex]
         if (!bank || loadingPack) {
@@ -426,12 +403,13 @@ export function Widget({
                         <button
                             type="button"
                             className="fx-btn fx-enable"
+                            data-param="effectsOn"
                             aria-pressed={model.effectsEnabled}
                             onClick={() => model.setEffectsEnabled(!model.effectsEnabled)}
                         >
                             {model.effectsEnabled ? 'EFFECTS ON' : 'EFFECTS OFF'}
                         </button>
-                        <button type="button" className="fx-btn fx-shuffle" onClick={shuffleEffects}>
+                        <button type="button" className="fx-btn fx-shuffle" data-param="shuffle" onClick={() => model.shuffleEffects()}>
                             SHUFFLE
                         </button>
                         <div className="fx-caps" aria-hidden="true">
@@ -450,6 +428,7 @@ export function Widget({
                         <div className="fx-sliders">
                             <FxSlider
                                 label="Global power"
+                                param="globalPower"
                                 left={32}
                                 min={0}
                                 max={1}
@@ -459,6 +438,7 @@ export function Widget({
                             />
                             <FxSlider
                                 label="Global chance (%)"
+                                param="globalChance"
                                 left={50}
                                 min={0}
                                 max={1}
@@ -486,6 +466,7 @@ export function Widget({
                                     step={1}
                                     value={model.globalBeatMinExp}
                                     aria-label="Effect time minimum"
+                                    data-param="fxTimeMin"
                                     aria-valuetext={`${beatLabel(model.globalBeatMinExp)} beat`}
                                     onInput={(event) => model.setGlobalBeatMin((event.currentTarget as HTMLInputElement).valueAsNumber)}
                                 />
@@ -497,12 +478,14 @@ export function Widget({
                                     step={1}
                                     value={model.globalBeatMaxExp}
                                     aria-label="Effect time maximum"
+                                    data-param="fxTimeMax"
                                     aria-valuetext={`${beatLabel(model.globalBeatMaxExp)} beat`}
                                     onInput={(event) => model.setGlobalBeatMax((event.currentTarget as HTMLInputElement).valueAsNumber)}
                                 />
                             </div>
                             <FxSlider
                                 label="Delay power"
+                                param="delayPower"
                                 left={133}
                                 min={0}
                                 max={1}
@@ -512,6 +495,7 @@ export function Widget({
                             />
                             <FxSlider
                                 label="Delay chance (%)"
+                                param="delayChance"
                                 left={151}
                                 min={0}
                                 max={1}
@@ -521,6 +505,7 @@ export function Widget({
                             />
                             <FxSlider
                                 label="Reverb power"
+                                param="reverbPower"
                                 left={181}
                                 min={0}
                                 max={1}
@@ -530,6 +515,7 @@ export function Widget({
                             />
                             <FxSlider
                                 label="Reverb chance (%)"
+                                param="reverbChance"
                                 left={199}
                                 min={0}
                                 max={1}
@@ -539,6 +525,7 @@ export function Widget({
                             />
                             <FxSlider
                                 label="Reverse power"
+                                param="reversePower"
                                 left={229}
                                 min={0}
                                 max={1}
@@ -548,6 +535,7 @@ export function Widget({
                             />
                             <FxSlider
                                 label="Reverse chance (%)"
+                                param="reverseChance"
                                 left={247}
                                 min={0}
                                 max={1}
@@ -557,6 +545,7 @@ export function Widget({
                             />
                             <FxSlider
                                 label="Filter power"
+                                param="filterPower"
                                 left={277}
                                 min={0}
                                 max={1}
@@ -566,6 +555,7 @@ export function Widget({
                             />
                             <FxSlider
                                 label="Filter chance (%)"
+                                param="filterChance"
                                 left={295}
                                 min={0}
                                 max={1}
@@ -575,6 +565,7 @@ export function Widget({
                             />
                             <FxSlider
                                 label="Flanger power"
+                                param="flangerPower"
                                 left={325}
                                 min={0}
                                 max={1}
@@ -584,6 +575,7 @@ export function Widget({
                             />
                             <FxSlider
                                 label="Flanger chance (%)"
+                                param="flangerChance"
                                 left={343}
                                 min={0}
                                 max={1}
@@ -593,6 +585,7 @@ export function Widget({
                             />
                             <FxSlider
                                 label="Trance power"
+                                param="trancePower"
                                 left={373}
                                 min={0}
                                 max={1}
@@ -602,6 +595,7 @@ export function Widget({
                             />
                             <FxSlider
                                 label="Trance chance (%)"
+                                param="tranceChance"
                                 left={391}
                                 min={0}
                                 max={1}
@@ -611,6 +605,7 @@ export function Widget({
                             />
                             <FxSlider
                                 label="Shift power"
+                                param="shiftPower"
                                 left={421}
                                 min={0}
                                 max={1}
@@ -620,6 +615,7 @@ export function Widget({
                             />
                             <FxSlider
                                 label="Shift chance (%)"
+                                param="shiftChance"
                                 left={439}
                                 min={0}
                                 max={1}
@@ -853,6 +849,7 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                     className="br-power"
                     aria-pressed={model.repeatEnabled}
                     aria-label="Beat repeat on"
+                    data-param="repeatOn"
                     onClick={() => model.setRepeatEnabled(!model.repeatEnabled)}
                 >
                     ON
@@ -886,6 +883,7 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                         step={1}
                         value={lo}
                         aria-label="Size minimum"
+                        data-param="repeatSizeMin"
                         aria-valuetext={`${beatLabel(model.repeatSizeMinExp)} beat`}
                         onInput={(event) => model.setRepeatSizeMin(value(event) + repeatSizeBase)}
                     />
@@ -897,6 +895,7 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                         step={1}
                         value={hi}
                         aria-label="Size maximum"
+                        data-param="repeatSizeMax"
                         aria-valuetext={`${beatLabel(model.repeatSizeMaxExp)} beat`}
                         onInput={(event) => model.setRepeatSizeMax(value(event) + repeatSizeBase)}
                     />
@@ -912,6 +911,7 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                         step={0.01}
                         value={model.repeatMix}
                         aria-label="Mix"
+                        data-param="repeatMix"
                         onInput={onSlider((mix) => model.setRepeatMix(mix))}
                     />
                 </div>
@@ -931,6 +931,7 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                         step={1}
                         value={length}
                         aria-label="Length"
+                        data-param="repeatLength"
                         aria-valuetext={`${beatLabel(model.repeatLengthExp)} beat`}
                         onInput={onSlider((index) => model.setRepeatLength(index + repeatLengthBase))}
                     />
@@ -946,6 +947,7 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                         step={0.01}
                         value={model.repeatChance}
                         aria-label="Chance"
+                        data-param="repeatChance"
                         onInput={onSlider((chance) => model.setRepeatChance(chance))}
                     />
                 </div>
@@ -971,6 +973,7 @@ function FxCap({ name, left }: { name: string; left: number }) {
 
 function FxSlider({
     label,
+    param,
     left,
     min,
     max,
@@ -982,6 +985,8 @@ function FxSlider({
     onInput,
 }: {
     label: string
+    // The host parameter this slider drives.
+    param?: string
     left: number
     min: number
     max: number
@@ -1007,6 +1012,7 @@ function FxSlider({
                 disabled={idle}
                 aria-label={label}
                 aria-valuetext={valueText}
+                data-param={param}
                 onInput={onInput}
             />
         </div>
@@ -1037,10 +1043,6 @@ function snapTo(value: number, min: number, max: number, target: number): number
         return target
     }
     return value
-}
-
-function randomUnit(): number {
-    return Math.round(Math.random() * 100) / 100
 }
 
 function placeThumb(input: HTMLInputElement) {

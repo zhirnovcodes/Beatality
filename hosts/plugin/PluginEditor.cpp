@@ -220,6 +220,10 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
             processor.randomizeTracks();
             completion(true);
         })
+        .withNativeFunction("shuffle", [this](const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            processor.shuffleEffects();
+            completion(true);
+        })
         .withNativeFunction("setBpm", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
             if (!args.isEmpty()) {
                 processor.setBpm(static_cast<double>(args[0]));
@@ -461,9 +465,19 @@ void Editor::pushLive() {
     const double volume = processor.outputVolume();
     const double panMin = processor.outputPanMin();
     const double panMax = processor.outputPanMax();
+    const bt::BeatRepeatSettings repeat = processor.beatRepeat();
+    const double fx[] = {processor.globalPower(),  processor.globalChance(),  processor.delayPower(),    processor.delayChance(),
+                         processor.reverbPower(),  processor.reverbChance(),  processor.reversePower(),  processor.reverseChance(),
+                         processor.filterPower(),  processor.filterChance(),  processor.flangerPower(),  processor.flangerChance(),
+                         processor.trancePower(),  processor.tranceChance(),  processor.shiftPower(),    processor.shiftChance()};
     juce::String key;
     key << playhead << '|' << playTrack << '|' << playSlot << '|' << (canAppend ? 1 : 0) << '|' << error << '|' << loop << '|'
-        << slices << '|' << volume << '|' << panMin << '|' << panMax;
+        << slices << '|' << volume << '|' << panMin << '|' << panMax << '|' << (processor.effectsEnabled() ? 1 : 0) << '|'
+        << processor.globalBeatMin() << '|' << processor.globalBeatMax() << '|' << (repeat.enabled ? 1 : 0) << '|' << repeat.sizeMin << '|'
+        << repeat.sizeMax << '|' << repeat.length << '|' << repeat.chance << '|' << repeat.mix;
+    for (const double value : fx) {
+        key << '|' << value;
+    }
     if (key == lastLive) {
         return;
     }
@@ -480,6 +494,31 @@ void Editor::pushLive() {
     object->setProperty("volume", volume);
     object->setProperty("panMin", panMin);
     object->setProperty("panMax", panMax);
+    object->setProperty("effectsEnabled", processor.effectsEnabled());
+    object->setProperty("globalPower", processor.globalPower());
+    object->setProperty("globalBeatMin", processor.globalBeatMin());
+    object->setProperty("globalBeatMax", processor.globalBeatMax());
+    object->setProperty("globalChance", processor.globalChance());
+    object->setProperty("reverbPower", processor.reverbPower());
+    object->setProperty("reverbChance", processor.reverbChance());
+    object->setProperty("delayPower", processor.delayPower());
+    object->setProperty("delayChance", processor.delayChance());
+    object->setProperty("reversePower", processor.reversePower());
+    object->setProperty("reverseChance", processor.reverseChance());
+    object->setProperty("filterPower", processor.filterPower());
+    object->setProperty("filterChance", processor.filterChance());
+    object->setProperty("flangerPower", processor.flangerPower());
+    object->setProperty("flangerChance", processor.flangerChance());
+    object->setProperty("trancePower", processor.trancePower());
+    object->setProperty("tranceChance", processor.tranceChance());
+    object->setProperty("shiftPower", processor.shiftPower());
+    object->setProperty("shiftChance", processor.shiftChance());
+    object->setProperty("repeatEnabled", repeat.enabled);
+    object->setProperty("repeatSizeMin", repeat.sizeMin);
+    object->setProperty("repeatSizeMax", repeat.sizeMax);
+    object->setProperty("repeatLength", repeat.length);
+    object->setProperty("repeatChance", repeat.chance);
+    object->setProperty("repeatMix", repeat.mix);
     deliver("onLive", juce::var(object));
 }
 
@@ -571,7 +610,7 @@ void Editor::pushBank() {
     object->setProperty("tranceChance", processor.tranceChance());
     object->setProperty("shiftPower", processor.shiftPower());
     object->setProperty("shiftChance", processor.shiftChance());
-    const bt::BeatRepeatSettings& repeat = processor.beatRepeat();
+    const bt::BeatRepeatSettings repeat = processor.beatRepeat();
     juce::Array<juce::var> positions;
     for (const bool on : repeat.positions) {
         positions.add(on);

@@ -313,7 +313,7 @@ AppendPayload* payloadFromReader(juce::AudioFormatReader& reader, double rate, s
 class CommandQueue {
 public:
     struct Slot {
-        enum class Kind { Randomize, Remove, Append, Clear, Bpm, BpmSync, Attack, EffectsEnabled, GlobalPower, GlobalBeatRange, GlobalChance, ReverbPower, ReverbChance, DelayPower, DelayChance, ReversePower, ReverseChance, FilterPower, FilterChance, FlangerPower, FlangerChance, TrancePower, TranceChance, ShiftPower, ShiftChance, RepeatEnabled, RepeatSizeRange, RepeatLength, RepeatChance, RepeatPosition, RepeatMix, Track, Warp, Pack };
+        enum class Kind { Randomize, Remove, Append, Clear, Bpm, BpmSync, Attack, RepeatPosition, Track, Warp, Pack };
         Kind kind = Kind::Randomize;
         AppendPayload* append = nullptr;
         PackPayload* pack = nullptr;
@@ -402,6 +402,45 @@ juce::AudioProcessorValueTreeState::ParameterLayout parameterLayout() {
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"volume", 1}, "Volume", juce::NormalisableRange<float>(0.0f, kVolumeMax), 1.0f));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"panMin", 1}, "Pan minimum", juce::NormalisableRange<float>(-1.0f, 1.0f), 0.0f));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"panMax", 1}, "Pan maximum", juce::NormalisableRange<float>(-1.0f, 1.0f), 0.0f));
+
+    // Defaults match bt::Effects and bt::BeatRepeatSettings, which the engine starts with.
+    const bt::Effects fx;
+    const bt::BeatRepeatSettings repeat;
+    const auto unit = [&layout](const char* id, const char* name, double value) {
+        layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{id, 1}, name, juce::NormalisableRange<float>(0.0f, 1.0f),
+                                                               static_cast<float>(value)));
+    };
+    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"effectsOn", 1}, "Effects on", fx.enabled));
+    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"shuffle", 1}, "Shuffle", false));
+    unit("globalPower", "Global power", fx.globalPower);
+    unit("globalChance", "Global chance", fx.globalChance);
+    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"fxTimeMin", 1}, "Effect time minimum", bt::Effects::kBeatMin,
+                                                         bt::Effects::kBeatMax, fx.beatMin));
+    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"fxTimeMax", 1}, "Effect time maximum", bt::Effects::kBeatMin,
+                                                         bt::Effects::kBeatMax, fx.beatMax));
+    unit("delayPower", "Delay power", fx.delayPower);
+    unit("delayChance", "Delay chance", fx.delayChance);
+    unit("reverbPower", "Reverb power", fx.reverbPower);
+    unit("reverbChance", "Reverb chance", fx.reverbChance);
+    unit("reversePower", "Reverse power", fx.reversePower);
+    unit("reverseChance", "Reverse chance", fx.reverseChance);
+    unit("filterPower", "Filter power", fx.filterPower);
+    unit("filterChance", "Filter chance", fx.filterChance);
+    unit("flangerPower", "Flanger power", fx.flangerPower);
+    unit("flangerChance", "Flanger chance", fx.flangerChance);
+    unit("trancePower", "Trance power", fx.trancePower);
+    unit("tranceChance", "Trance chance", fx.tranceChance);
+    unit("shiftPower", "Shift power", fx.shiftPower);
+    unit("shiftChance", "Shift chance", fx.shiftChance);
+    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"repeatOn", 1}, "Beat repeat on", repeat.enabled));
+    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"repeatSizeMin", 1}, "Size minimum", bt::BeatRepeatSettings::kSizeMin,
+                                                         bt::BeatRepeatSettings::kSizeMax, repeat.sizeMin));
+    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"repeatSizeMax", 1}, "Size maximum", bt::BeatRepeatSettings::kSizeMin,
+                                                         bt::BeatRepeatSettings::kSizeMax, repeat.sizeMax));
+    unit("repeatMix", "Mix", repeat.mix);
+    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"repeatLength", 1}, "Length", bt::BeatRepeatSettings::kLengthMin,
+                                                         bt::BeatRepeatSettings::kLengthMax, repeat.length));
+    unit("repeatChance", "Chance", repeat.chance);
     return layout;
 }
 
@@ -640,131 +679,14 @@ struct Processor::Impl {
         }
     }
 
-    void applyEffectsEnabled(bool on) {
-        effects.enabled = on;
-        applyEffects();
-    }
-
-    void applyGlobalPower(double power) {
-        effects.globalPower = power;
-        applyEffects();
-    }
-
-    void applyGlobalBeatRange(int min, int max) {
-        effects.beatMin = min;
-        effects.beatMax = max;
-        applyEffects();
-    }
-
-    void applyGlobalChance(double chance) {
-        effects.globalChance = chance;
-        applyEffects();
-    }
-
-    void applyReverbPower(double power) {
-        effects.reverbPower = power;
-        applyEffects();
-    }
-
-    void applyReverbChance(double chance) {
-        effects.reverbChance = chance;
-        applyEffects();
-    }
-
-    void applyDelayPower(double power) {
-        effects.delayPower = power;
-        applyEffects();
-    }
-
-    void applyDelayChance(double chance) {
-        effects.delayChance = chance;
-        applyEffects();
-    }
-
-    void applyReversePower(double power) {
-        effects.reversePower = power;
-        applyEffects();
-    }
-
-    void applyReverseChance(double chance) {
-        effects.reverseChance = chance;
-        applyEffects();
-    }
-
-    void applyFilterPower(double power) {
-        effects.filterPower = power;
-        applyEffects();
-    }
-
-    void applyFilterChance(double chance) {
-        effects.filterChance = chance;
-        applyEffects();
-    }
-
-    void applyFlangerPower(double power) {
-        effects.flangerPower = power;
-        applyEffects();
-    }
-
-    void applyFlangerChance(double chance) {
-        effects.flangerChance = chance;
-        applyEffects();
-    }
-
-    void applyTrancePower(double power) {
-        effects.trancePower = power;
-        applyEffects();
-    }
-
-    void applyTranceChance(double chance) {
-        effects.tranceChance = chance;
-        applyEffects();
-    }
-
-    void applyShiftPower(double power) {
-        effects.shiftPower = power;
-        applyEffects();
-    }
-
-    void applyShiftChance(double chance) {
-        effects.shiftChance = chance;
-        applyEffects();
-    }
-
     void applyRepeat() {
         if (engine != nullptr) {
             engine->setBeatRepeat(repeat);
         }
     }
 
-    void applyRepeatEnabled(bool on) {
-        repeat.enabled = on;
-        applyRepeat();
-    }
-
-    void applyRepeatSizeRange(int min, int max) {
-        repeat.sizeMin = min;
-        repeat.sizeMax = max;
-        applyRepeat();
-    }
-
-    void applyRepeatLength(int exponent) {
-        repeat.length = exponent;
-        applyRepeat();
-    }
-
-    void applyRepeatChance(double chance) {
-        repeat.chance = chance;
-        applyRepeat();
-    }
-
     void applyRepeatPosition(int index, bool on) {
         repeat.positions[index] = on;
-        applyRepeat();
-    }
-
-    void applyRepeatMix(double mix) {
-        repeat.mix = mix;
         applyRepeat();
     }
 
@@ -786,6 +708,15 @@ struct Processor::Impl {
         double volume = 1;
         double panMin = 0;
         double panMax = 0;
+        // Every field is a host parameter.
+        bt::Effects effects;
+        bool repeatOn = false;
+        int repeatSizeMin = 0;
+        int repeatSizeMax = 0;
+        int repeatLength = 0;
+        double repeatChance = 0;
+        double repeatMix = 1;
+        bool shuffle = false;
     };
 
     // Applies the parameters that moved since the last block. A host may send min above max; max is held at min.
@@ -803,8 +734,37 @@ struct Processor::Impl {
         if (controls.volume != applied.volume || controls.panMin != applied.panMin || panMax != applied.panMax) {
             applyOutput(controls.volume, controls.panMin, panMax);
         }
+        bt::Effects fx = controls.effects;
+        fx.beatMax = std::max(fx.beatMin, fx.beatMax);
+        const bt::Effects& was = applied.effects;
+        if (fx.enabled != was.enabled || fx.globalPower != was.globalPower || fx.beatMin != was.beatMin || fx.beatMax != was.beatMax ||
+            fx.globalChance != was.globalChance || fx.reverbPower != was.reverbPower || fx.reverbChance != was.reverbChance ||
+            fx.delayPower != was.delayPower || fx.delayChance != was.delayChance || fx.reversePower != was.reversePower ||
+            fx.reverseChance != was.reverseChance || fx.filterPower != was.filterPower || fx.filterChance != was.filterChance ||
+            fx.flangerPower != was.flangerPower || fx.flangerChance != was.flangerChance || fx.trancePower != was.trancePower ||
+            fx.tranceChance != was.tranceChance || fx.shiftPower != was.shiftPower || fx.shiftChance != was.shiftChance) {
+            effects = fx;
+            applyEffects();
+        }
+        const int sizeMax = std::max(controls.repeatSizeMin, controls.repeatSizeMax);
+        if (controls.repeatOn != applied.repeatOn || controls.repeatSizeMin != applied.repeatSizeMin || sizeMax != applied.repeatSizeMax ||
+            controls.repeatLength != applied.repeatLength || controls.repeatChance != applied.repeatChance ||
+            controls.repeatMix != applied.repeatMix) {
+            repeat.enabled = controls.repeatOn;
+            repeat.sizeMin = controls.repeatSizeMin;
+            repeat.sizeMax = sizeMax;
+            repeat.length = controls.repeatLength;
+            repeat.chance = controls.repeatChance;
+            repeat.mix = controls.repeatMix;
+            applyRepeat();
+        }
+        if (controls.shuffle && !applied.shuffle) {
+            shuffles.fetch_add(1, std::memory_order_relaxed);
+        }
         applied = controls;
         applied.panMax = panMax;
+        applied.effects = fx;
+        applied.repeatSizeMax = sizeMax;
     }
 
     void applyTrack(int index, double start, double length, bool loop, double volume, double pan) {
@@ -861,77 +821,8 @@ struct Processor::Impl {
         case CommandQueue::Slot::Kind::Attack:
             applyAttack(slot.number);
             break;
-        case CommandQueue::Slot::Kind::EffectsEnabled:
-            applyEffectsEnabled(slot.flag);
-            break;
-        case CommandQueue::Slot::Kind::GlobalPower:
-            applyGlobalPower(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::GlobalBeatRange:
-            applyGlobalBeatRange(slot.index, slot.number);
-            break;
-        case CommandQueue::Slot::Kind::GlobalChance:
-            applyGlobalChance(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::ReverbPower:
-            applyReverbPower(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::ReverbChance:
-            applyReverbChance(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::DelayPower:
-            applyDelayPower(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::DelayChance:
-            applyDelayChance(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::ReversePower:
-            applyReversePower(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::ReverseChance:
-            applyReverseChance(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::FilterPower:
-            applyFilterPower(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::FilterChance:
-            applyFilterChance(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::FlangerPower:
-            applyFlangerPower(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::FlangerChance:
-            applyFlangerChance(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::TrancePower:
-            applyTrancePower(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::TranceChance:
-            applyTranceChance(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::ShiftPower:
-            applyShiftPower(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::ShiftChance:
-            applyShiftChance(slot.first);
-            break;
-        case CommandQueue::Slot::Kind::RepeatEnabled:
-            applyRepeatEnabled(slot.flag);
-            break;
-        case CommandQueue::Slot::Kind::RepeatSizeRange:
-            applyRepeatSizeRange(slot.index, slot.number);
-            break;
-        case CommandQueue::Slot::Kind::RepeatLength:
-            applyRepeatLength(slot.number);
-            break;
-        case CommandQueue::Slot::Kind::RepeatChance:
-            applyRepeatChance(slot.first);
-            break;
         case CommandQueue::Slot::Kind::RepeatPosition:
             applyRepeatPosition(slot.index, slot.flag);
-            break;
-        case CommandQueue::Slot::Kind::RepeatMix:
-            applyRepeatMix(slot.first);
             break;
         case CommandQueue::Slot::Kind::Track:
             applyTrack(slot.index, slot.first, slot.second, slot.flag, slot.third, slot.fourth);
@@ -1195,6 +1086,8 @@ struct Processor::Impl {
     double outputPanMax = 0;
     // The parameter values last applied. They start at the parameters' defaults.
     Controls applied;
+    // Rising edges of the shuffle parameter. The processor's timer reads it on the message thread.
+    std::atomic<int> shuffles{0};
 };
 
 Processor::Processor()
@@ -1206,9 +1099,44 @@ Processor::Processor()
       volumeParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("volume"))),
       panMinParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("panMin"))),
       panMaxParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("panMax"))),
-      impl(std::make_unique<Impl>(view, slot, head)) {}
+      effectsOnParam(dynamic_cast<juce::AudioParameterBool*>(params.getParameter("effectsOn"))),
+      shuffleParam(dynamic_cast<juce::AudioParameterBool*>(params.getParameter("shuffle"))),
+      globalPowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("globalPower"))),
+      globalChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("globalChance"))),
+      fxTimeMinParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("fxTimeMin"))),
+      fxTimeMaxParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("fxTimeMax"))),
+      delayPowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("delayPower"))),
+      delayChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("delayChance"))),
+      reverbPowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("reverbPower"))),
+      reverbChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("reverbChance"))),
+      reversePowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("reversePower"))),
+      reverseChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("reverseChance"))),
+      filterPowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("filterPower"))),
+      filterChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("filterChance"))),
+      flangerPowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("flangerPower"))),
+      flangerChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("flangerChance"))),
+      trancePowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("trancePower"))),
+      tranceChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("tranceChance"))),
+      shiftPowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("shiftPower"))),
+      shiftChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("shiftChance"))),
+      repeatOnParam(dynamic_cast<juce::AudioParameterBool*>(params.getParameter("repeatOn"))),
+      repeatSizeMinParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("repeatSizeMin"))),
+      repeatSizeMaxParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("repeatSizeMax"))),
+      repeatMixParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("repeatMix"))),
+      repeatLengthParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("repeatLength"))),
+      repeatChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("repeatChance"))),
+      impl(std::make_unique<Impl>(view, slot, head)) {
+    seenPanMin = panMinParam->get();
+    seenPanMax = panMaxParam->get();
+    seenFxTimeMin = fxTimeMinParam->get();
+    seenFxTimeMax = fxTimeMaxParam->get();
+    seenSizeMin = repeatSizeMinParam->get();
+    seenSizeMax = repeatSizeMaxParam->get();
+    startTimerHz(30);
+}
 
 Processor::~Processor() {
+    stopTimer();
     impl->engine.reset();
     impl->queue.discard();
 }
@@ -1239,7 +1167,40 @@ void Processor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&
     while (impl->queue.pop(slot)) {
         impl->applySlot(slot);
     }
-    impl->followControls({loopParam->get(), sliceParam->get(), randomizeParam->get(), volumeParam->get(), panMinParam->get(), panMaxParam->get()});
+    Impl::Controls controls;
+    controls.loop = loopParam->get();
+    controls.slice = sliceParam->get();
+    controls.randomize = randomizeParam->get();
+    controls.volume = volumeParam->get();
+    controls.panMin = panMinParam->get();
+    controls.panMax = panMaxParam->get();
+    controls.effects.enabled = effectsOnParam->get();
+    controls.effects.globalPower = globalPowerParam->get();
+    controls.effects.beatMin = fxTimeMinParam->get();
+    controls.effects.beatMax = fxTimeMaxParam->get();
+    controls.effects.globalChance = globalChanceParam->get();
+    controls.effects.reverbPower = reverbPowerParam->get();
+    controls.effects.reverbChance = reverbChanceParam->get();
+    controls.effects.delayPower = delayPowerParam->get();
+    controls.effects.delayChance = delayChanceParam->get();
+    controls.effects.reversePower = reversePowerParam->get();
+    controls.effects.reverseChance = reverseChanceParam->get();
+    controls.effects.filterPower = filterPowerParam->get();
+    controls.effects.filterChance = filterChanceParam->get();
+    controls.effects.flangerPower = flangerPowerParam->get();
+    controls.effects.flangerChance = flangerChanceParam->get();
+    controls.effects.trancePower = trancePowerParam->get();
+    controls.effects.tranceChance = tranceChanceParam->get();
+    controls.effects.shiftPower = shiftPowerParam->get();
+    controls.effects.shiftChance = shiftChanceParam->get();
+    controls.repeatOn = repeatOnParam->get();
+    controls.repeatSizeMin = repeatSizeMinParam->get();
+    controls.repeatSizeMax = repeatSizeMaxParam->get();
+    controls.repeatLength = repeatLengthParam->get();
+    controls.repeatChance = repeatChanceParam->get();
+    controls.repeatMix = repeatMixParam->get();
+    controls.shuffle = shuffleParam->get();
+    impl->followControls(controls);
     double hostBpm = 0.0;
     if (juce::AudioPlayHead* playHead = getPlayHead()) {
         if (const auto info = playHead->getPosition()) {
@@ -1502,250 +1463,160 @@ void Processor::setAttack(int ms) {
 }
 
 void Processor::setEffectsEnabled(bool on) {
-    saved.enabled = on;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::EffectsEnabled;
-    slot.flag = on;
-    impl->queue.push(slot);
+    setFromWindow(*effectsOnParam, on ? 1.0f : 0.0f);
 }
 
 void Processor::setGlobalPower(double power) {
     if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    saved.globalPower = power;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::GlobalPower;
-    slot.first = power;
-    impl->queue.push(slot);
+    setFromWindow(*globalPowerParam, static_cast<float>(power));
 }
 
 void Processor::setGlobalBeatRange(int min, int max) {
     if (min < bt::Effects::kBeatMin || max > bt::Effects::kBeatMax || min > max) {
         return;
     }
-    saved.beatMin = min;
-    saved.beatMax = max;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::GlobalBeatRange;
-    slot.index = min;
-    slot.number = max;
-    impl->queue.push(slot);
+    setFromWindow(*fxTimeMinParam, static_cast<float>(min));
+    setFromWindow(*fxTimeMaxParam, static_cast<float>(max));
 }
 
 void Processor::setGlobalChance(double chance) {
     if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    saved.globalChance = chance;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::GlobalChance;
-    slot.first = chance;
-    impl->queue.push(slot);
+    setFromWindow(*globalChanceParam, static_cast<float>(chance));
 }
 
 void Processor::setReverbPower(double power) {
     if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    saved.reverbPower = power;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::ReverbPower;
-    slot.first = power;
-    impl->queue.push(slot);
+    setFromWindow(*reverbPowerParam, static_cast<float>(power));
 }
 
 void Processor::setReverbChance(double chance) {
     if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    saved.reverbChance = chance;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::ReverbChance;
-    slot.first = chance;
-    impl->queue.push(slot);
+    setFromWindow(*reverbChanceParam, static_cast<float>(chance));
 }
 
 void Processor::setDelayPower(double power) {
     if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    saved.delayPower = power;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::DelayPower;
-    slot.first = power;
-    impl->queue.push(slot);
+    setFromWindow(*delayPowerParam, static_cast<float>(power));
 }
 
 void Processor::setDelayChance(double chance) {
     if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    saved.delayChance = chance;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::DelayChance;
-    slot.first = chance;
-    impl->queue.push(slot);
+    setFromWindow(*delayChanceParam, static_cast<float>(chance));
 }
 
 void Processor::setReversePower(double power) {
     if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    saved.reversePower = power;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::ReversePower;
-    slot.first = power;
-    impl->queue.push(slot);
+    setFromWindow(*reversePowerParam, static_cast<float>(power));
 }
 
 void Processor::setReverseChance(double chance) {
     if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    saved.reverseChance = chance;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::ReverseChance;
-    slot.first = chance;
-    impl->queue.push(slot);
+    setFromWindow(*reverseChanceParam, static_cast<float>(chance));
 }
 
 void Processor::setFilterPower(double power) {
     if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    saved.filterPower = power;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::FilterPower;
-    slot.first = power;
-    impl->queue.push(slot);
+    setFromWindow(*filterPowerParam, static_cast<float>(power));
 }
 
 void Processor::setFilterChance(double chance) {
     if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    saved.filterChance = chance;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::FilterChance;
-    slot.first = chance;
-    impl->queue.push(slot);
+    setFromWindow(*filterChanceParam, static_cast<float>(chance));
 }
 
 void Processor::setFlangerPower(double power) {
     if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    saved.flangerPower = power;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::FlangerPower;
-    slot.first = power;
-    impl->queue.push(slot);
+    setFromWindow(*flangerPowerParam, static_cast<float>(power));
 }
 
 void Processor::setFlangerChance(double chance) {
     if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    saved.flangerChance = chance;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::FlangerChance;
-    slot.first = chance;
-    impl->queue.push(slot);
+    setFromWindow(*flangerChanceParam, static_cast<float>(chance));
 }
 
 void Processor::setTrancePower(double power) {
     if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    saved.trancePower = power;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::TrancePower;
-    slot.first = power;
-    impl->queue.push(slot);
+    setFromWindow(*trancePowerParam, static_cast<float>(power));
 }
 
 void Processor::setTranceChance(double chance) {
     if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    saved.tranceChance = chance;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::TranceChance;
-    slot.first = chance;
-    impl->queue.push(slot);
+    setFromWindow(*tranceChanceParam, static_cast<float>(chance));
 }
 
 void Processor::setShiftPower(double power) {
     if (!std::isfinite(power) || power < bt::Effects::kPowerMin || power > bt::Effects::kPowerMax) {
         return;
     }
-    saved.shiftPower = power;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::ShiftPower;
-    slot.first = power;
-    impl->queue.push(slot);
+    setFromWindow(*shiftPowerParam, static_cast<float>(power));
 }
 
 void Processor::setShiftChance(double chance) {
     if (!std::isfinite(chance) || chance < bt::Effects::kChanceMin || chance > bt::Effects::kChanceMax) {
         return;
     }
-    saved.shiftChance = chance;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::ShiftChance;
-    slot.first = chance;
-    impl->queue.push(slot);
+    setFromWindow(*shiftChanceParam, static_cast<float>(chance));
 }
 
 void Processor::setRepeatEnabled(bool on) {
-    savedRepeat.enabled = on;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::RepeatEnabled;
-    slot.flag = on;
-    impl->queue.push(slot);
+    setFromWindow(*repeatOnParam, on ? 1.0f : 0.0f);
 }
 
 void Processor::setRepeatSizeRange(int min, int max) {
     if (min < bt::BeatRepeatSettings::kSizeMin || max > bt::BeatRepeatSettings::kSizeMax || min > max) {
         return;
     }
-    savedRepeat.sizeMin = min;
-    savedRepeat.sizeMax = max;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::RepeatSizeRange;
-    slot.index = min;
-    slot.number = max;
-    impl->queue.push(slot);
+    setFromWindow(*repeatSizeMinParam, static_cast<float>(min));
+    setFromWindow(*repeatSizeMaxParam, static_cast<float>(max));
 }
 
 void Processor::setRepeatLength(int exponent) {
     if (exponent < bt::BeatRepeatSettings::kLengthMin || exponent > bt::BeatRepeatSettings::kLengthMax) {
         return;
     }
-    savedRepeat.length = exponent;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::RepeatLength;
-    slot.number = exponent;
-    impl->queue.push(slot);
+    setFromWindow(*repeatLengthParam, static_cast<float>(exponent));
 }
 
 void Processor::setRepeatChance(double chance) {
     if (!std::isfinite(chance) || chance < bt::BeatRepeatSettings::kChanceMin || chance > bt::BeatRepeatSettings::kChanceMax) {
         return;
     }
-    savedRepeat.chance = chance;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::RepeatChance;
-    slot.first = chance;
-    impl->queue.push(slot);
+    setFromWindow(*repeatChanceParam, static_cast<float>(chance));
 }
 
 void Processor::setRepeatPosition(int index, bool on) {
     if (index < 0 || index >= bt::RepeatSequence::kPositions) {
         return;
     }
-    savedRepeat.positions[index] = on;
+    savedPositions[index] = on;
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::RepeatPosition;
     slot.index = index;
@@ -1757,11 +1628,100 @@ void Processor::setRepeatMix(double mix) {
     if (!std::isfinite(mix) || mix < bt::BeatRepeatSettings::kMixMin || mix > bt::BeatRepeatSettings::kMixMax) {
         return;
     }
-    savedRepeat.mix = mix;
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::RepeatMix;
-    slot.first = mix;
-    impl->queue.push(slot);
+    setFromWindow(*repeatMixParam, static_cast<float>(mix));
+}
+
+void Processor::setEffectsSettings(const bt::Effects& settings) {
+    setFromWindow(*effectsOnParam, settings.enabled ? 1.0f : 0.0f);
+    setFromWindow(*globalPowerParam, static_cast<float>(settings.globalPower));
+    setFromWindow(*globalChanceParam, static_cast<float>(settings.globalChance));
+    setFromWindow(*fxTimeMinParam, static_cast<float>(settings.beatMin));
+    setFromWindow(*fxTimeMaxParam, static_cast<float>(settings.beatMax));
+    setFromWindow(*delayPowerParam, static_cast<float>(settings.delayPower));
+    setFromWindow(*delayChanceParam, static_cast<float>(settings.delayChance));
+    setFromWindow(*reverbPowerParam, static_cast<float>(settings.reverbPower));
+    setFromWindow(*reverbChanceParam, static_cast<float>(settings.reverbChance));
+    setFromWindow(*reversePowerParam, static_cast<float>(settings.reversePower));
+    setFromWindow(*reverseChanceParam, static_cast<float>(settings.reverseChance));
+    setFromWindow(*filterPowerParam, static_cast<float>(settings.filterPower));
+    setFromWindow(*filterChanceParam, static_cast<float>(settings.filterChance));
+    setFromWindow(*flangerPowerParam, static_cast<float>(settings.flangerPower));
+    setFromWindow(*flangerChanceParam, static_cast<float>(settings.flangerChance));
+    setFromWindow(*trancePowerParam, static_cast<float>(settings.trancePower));
+    setFromWindow(*tranceChanceParam, static_cast<float>(settings.tranceChance));
+    setFromWindow(*shiftPowerParam, static_cast<float>(settings.shiftPower));
+    setFromWindow(*shiftChanceParam, static_cast<float>(settings.shiftChance));
+}
+
+void Processor::shuffleEffects() {
+    juce::Random& random = juce::Random::getSystemRandom();
+    // 0..1 in steps of 0.01.
+    const auto unit = [&random] { return random.nextInt(101) / 100.0; };
+    bt::Effects settings;
+    settings.enabled = effectsEnabled();
+    settings.globalPower = unit();
+    settings.globalChance = unit();
+    const int span = bt::Effects::kBeatMax - bt::Effects::kBeatMin + 1;
+    const int a = bt::Effects::kBeatMin + random.nextInt(span);
+    const int b = bt::Effects::kBeatMin + random.nextInt(span);
+    settings.beatMin = std::min(a, b);
+    settings.beatMax = std::max(a, b);
+    settings.delayPower = unit();
+    settings.delayChance = unit();
+    settings.reverbPower = unit();
+    settings.reverbChance = unit();
+    settings.reversePower = unit();
+    settings.reverseChance = unit();
+    settings.filterPower = unit();
+    settings.filterChance = unit();
+    settings.flangerPower = unit();
+    settings.flangerChance = unit();
+    settings.trancePower = unit();
+    settings.tranceChance = unit();
+    settings.shiftPower = unit();
+    settings.shiftChance = unit();
+    setEffectsSettings(settings);
+}
+
+void Processor::timerCallback() {
+    const int shuffles = shuffleCount();
+    if (shuffles != shufflesDone) {
+        shufflesDone = shuffles;
+        shuffleEffects();
+    }
+    // An end moved past the other pushes the other along, as the window's sliders do.
+    const auto order = [](auto& minParam, auto& maxParam, auto& seenMin, auto& seenMax) {
+        const auto min = minParam.get();
+        const auto max = maxParam.get();
+        if (min > max) {
+            if (min != seenMin) {
+                setFromWindow(maxParam, static_cast<float>(min));
+            } else {
+                setFromWindow(minParam, static_cast<float>(max));
+            }
+        }
+        seenMin = minParam.get();
+        seenMax = maxParam.get();
+    };
+    order(*panMinParam, *panMaxParam, seenPanMin, seenPanMax);
+    order(*fxTimeMinParam, *fxTimeMaxParam, seenFxTimeMin, seenFxTimeMax);
+    order(*repeatSizeMinParam, *repeatSizeMaxParam, seenSizeMin, seenSizeMax);
+}
+
+bt::BeatRepeatSettings Processor::beatRepeat() const {
+    bt::BeatRepeatSettings repeat;
+    repeat.enabled = repeatOnParam->get();
+    repeat.sizeMin = repeatSizeMinParam->get();
+    repeat.sizeMax = std::max(repeat.sizeMin, repeatSizeMaxParam->get());
+    repeat.length = repeatLengthParam->get();
+    repeat.chance = repeatChanceParam->get();
+    std::copy(std::begin(savedPositions), std::end(savedPositions), std::begin(repeat.positions));
+    repeat.mix = repeatMixParam->get();
+    return repeat;
+}
+
+int Processor::shuffleCount() const {
+    return impl->shuffles.load(std::memory_order_relaxed);
 }
 
 void Processor::setOutput(double volume, double panMin, double panMax) {

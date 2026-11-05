@@ -91,6 +91,10 @@ function clamp(value: number, min: number, max: number): number {
     return value > max ? max : value
 }
 
+function randomUnit(): number {
+    return Math.round(Math.random() * 100) / 100
+}
+
 function sliceLabel(exponent: number): string {
     if (exponent >= 0) {
         return String(sliceBeats(exponent))
@@ -532,6 +536,30 @@ export class WebViewModel {
         this.shiftChance = chance
         this.notify()
         this.actions?.setShiftChance(chance)
+    }
+
+    // The Shuffle button. A random power and chance for each effect, and a random effect time range.
+    shuffleEffects() {
+        this.setGlobalPower(randomUnit())
+        this.setGlobalChance(randomUnit())
+        const a = -4 + Math.floor(Math.random() * 6)
+        const b = -4 + Math.floor(Math.random() * 6)
+        this.setGlobalBeatMin(Math.min(a, b))
+        this.setGlobalBeatMax(Math.max(a, b))
+        this.setDelayPower(randomUnit())
+        this.setDelayChance(randomUnit())
+        this.setReverbPower(randomUnit())
+        this.setReverbChance(randomUnit())
+        this.setReversePower(randomUnit())
+        this.setReverseChance(randomUnit())
+        this.setFilterPower(randomUnit())
+        this.setFilterChance(randomUnit())
+        this.setFlangerPower(randomUnit())
+        this.setFlangerChance(randomUnit())
+        this.setTrancePower(randomUnit())
+        this.setTranceChance(randomUnit())
+        this.setShiftPower(randomUnit())
+        this.setShiftChance(randomUnit())
     }
 
     setRepeatEnabled(on: boolean) {
