@@ -417,7 +417,7 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
 }
 
 void Editor::chooseFiles() {
-    chooser = std::make_unique<juce::FileChooser>("Append samples", juce::File(), "*.wav;*.mp3");
+    chooser = std::make_unique<juce::FileChooser>("Append samples", juce::File(), "*.wav;*.mp3;*.alc");
     const auto browserFlags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles |
                               juce::FileBrowserComponent::canSelectMultipleItems;
     juce::Component::SafePointer<Editor> safe(this);

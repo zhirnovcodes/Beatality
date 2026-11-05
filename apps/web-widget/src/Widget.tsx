@@ -21,6 +21,7 @@ export function Widget({
     const [bankOpen, setBankOpen] = useState(false)
     const [bankIndex, setBankIndex] = useState(0)
     const [selection, setSelection] = useState<readonly number[]>([])
+    const [dropping, setDropping] = useState(false)
     const skin = useRef<HTMLDivElement>(null)
     const viewportId = useId()
     const bpmRef = useRef<HTMLInputElement>(null)
@@ -81,6 +82,32 @@ export function Widget({
         }
         input.value = ''
         model.append(picked)
+    }
+
+    // Files dropped on the sample screen are appended, like the Add button's picks.
+    const onDragOver = (event: DragEvent) => {
+        if (bankOpen || !event.dataTransfer?.types.includes('Files')) {
+            return
+        }
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'copy'
+        setDropping(true)
+    }
+
+    const onDragLeave = (event: DragEvent) => {
+        const area = event.currentTarget as HTMLElement
+        if (!(event.relatedTarget instanceof Node && area.contains(event.relatedTarget))) {
+            setDropping(false)
+        }
+    }
+
+    const onDrop = (event: DragEvent) => {
+        event.preventDefault()
+        setDropping(false)
+        const dropped = Array.from(event.dataTransfer?.files ?? [])
+        if (!bankOpen && dropped.length > 0) {
+            model.append(dropped)
+        }
     }
 
     const commitBpm = (event: Event) => {
@@ -616,7 +643,14 @@ export function Widget({
                 <section className="part bottom" aria-label="Samples">
                     <div className="window" />
                     <div className="content">
-                        <div className="viewport" id={viewportId} tabIndex={0}>
+                        <div
+                            className={dropping ? 'viewport dropping' : 'viewport'}
+                            id={viewportId}
+                            tabIndex={0}
+                            onDragOver={onDragOver}
+                            onDragLeave={onDragLeave}
+                            onDrop={onDrop}
+                        >
                             <div className="scroll-content">
                                 <div ref={placeGrid} />
                                 <div className="bank-view">

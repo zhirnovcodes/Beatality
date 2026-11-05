@@ -12,7 +12,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <mutex>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -65,6 +67,112 @@ std::vector<float> peakColumns(const float* left, const float* right, int frames
         peaks[static_cast<std::size_t>(column)] = average > 1.0f ? 1.0f : average;
     }
     return peaks;
+}
+
+// What an Ableton Live Clip (.alc) holds: the sample it points at, and the clip's region and tempo.
+// start and length are seconds in the sample. bpm is 0 when the clip is not warped.
+struct ClipSettings {
+    juce::File sample;
+    double start = 0;
+    double length = 0;
+    bool loop = false;
+    double bpm = 0;
+};
+
+// An .alc is gzipped Live set XML holding one AudioClip. Empty when it can't be read.
+std::optional<ClipSettings> readClip(const juce::File& alc) {
+    std::unique_ptr<juce::XmlElement> root;
+    {
+        juce::FileInputStream raw(alc);
+        if (!raw.openedOk()) {
+            return std::nullopt;
+        }
+        juce::GZIPDecompressorInputStream unzip(&raw, false, juce::GZIPDecompressorInputStream::gzipFormat);
+        root = juce::parseXML(unzip.readEntireStreamAsString());
+    }
+    if (root == nullptr) {
+        root = juce::parseXML(alc);
+    }
+    if (root == nullptr) {
+        return std::nullopt;
+    }
+
+    std::function<const juce::XmlElement*(const juce::XmlElement&, const juce::String&)> find =
+        [&find](const juce::XmlElement& element, const juce::String& tag) -> const juce::XmlElement* {
+        for (const auto* child : element.getChildIterator()) {
+            if (child->hasTagName(tag)) {
+                return child;
+            }
+            if (const auto* deeper = find(*child, tag)) {
+                return deeper;
+            }
+        }
+        return nullptr;
+    };
+    const juce::XmlElement* clip = find(*root, "AudioClip");
+    if (clip == nullptr) {
+        return std::nullopt;
+    }
+    const auto value = [](const juce::XmlElement* parent, const char* tag) -> juce::String {
+        const auto* child = parent != nullptr ? parent->getChildByName(tag) : nullptr;
+        return child != nullptr ? child->getStringAttribute("Value") : juce::String();
+    };
+
+    ClipSettings settings;
+    const auto* sampleRef = clip->getChildByName("SampleRef");
+    const auto* fileRef = sampleRef != nullptr ? sampleRef->getChildByName("FileRef") : nullptr;
+    // Live 11 and later write the absolute path. The relative one is from the clip's own folder.
+    const juce::String path = value(fileRef, "Path");
+    const juce::String relative = value(fileRef, "RelativePath");
+    if (path.isNotEmpty() && juce::File::isAbsolutePath(path)) {
+        settings.sample = juce::File(path);
+    }
+    if (!settings.sample.existsAsFile() && relative.isNotEmpty()) {
+        settings.sample = alc.getParentDirectory().getChildFile(relative);
+    }
+    if (!settings.sample.existsAsFile()) {
+        return std::nullopt;
+    }
+
+    // A warped clip counts in beats, and its warp markers map beats to seconds in the sample.
+    // An unwarped clip counts in seconds.
+    struct Marker {
+        double sec;
+        double beat;
+    };
+    std::vector<Marker> markers;
+    if (const auto* warpMarkers = clip->getChildByName("WarpMarkers")) {
+        for (const auto* marker : warpMarkers->getChildWithTagNameIterator("WarpMarker")) {
+            markers.push_back({marker->getDoubleAttribute("SecTime"), marker->getDoubleAttribute("BeatTime")});
+        }
+    }
+    const bool warped = value(clip, "IsWarped") == "true" && markers.size() >= 2;
+    const auto seconds = [&](double beat) {
+        if (!warped) {
+            return beat;
+        }
+        std::size_t at = 1;
+        while (at + 1 < markers.size() && beat > markers[at].beat) {
+            ++at;
+        }
+        const Marker& a = markers[at - 1];
+        const Marker& b = markers[at];
+        return a.sec + (beat - a.beat) * (b.sec - a.sec) / (b.beat - a.beat);
+    };
+    if (warped) {
+        const Marker& first = markers.front();
+        const Marker& last = markers.back();
+        settings.bpm = 60.0 * (last.beat - first.beat) / (last.sec - first.sec);
+    }
+
+    const auto* loop = clip->getChildByName("Loop");
+    settings.loop = value(loop, "LoopOn") == "true";
+    const double begin = value(loop, "LoopStart").getDoubleValue();
+    // Looped, the clip plays its loop brace. Not looped, it plays from the start marker to the end marker.
+    const double end = value(loop, settings.loop ? "LoopEnd" : "OutMarker").getDoubleValue();
+    settings.start = std::max(0.0, seconds(begin));
+    settings.length = std::max(0.0, seconds(end) - settings.start);
+    return settings;
 }
 
 struct AppendPayload {
@@ -1173,9 +1281,20 @@ void Processor::appendFiles(const juce::Array<juce::File>& files) {
     int added = 0;
     bool skipped = false;
     const double rate = impl->publishedRate.load(std::memory_order_relaxed);
-    for (const auto& file : files) {
+    for (const auto& picked : files) {
         if (!canAppend()) {
             break;
+        }
+        // A Live clip adds the sample it points at, with the clip's region, loop, and tempo.
+        std::optional<ClipSettings> clip;
+        juce::File file = picked;
+        if (picked.getFileExtension().equalsIgnoreCase(".alc")) {
+            clip = readClip(picked);
+            if (!clip) {
+                skipped = true;
+                continue;
+            }
+            file = clip->sample;
         }
         const auto extension = file.getFileExtension();
         if (!extension.equalsIgnoreCase(".wav") && !extension.equalsIgnoreCase(".mp3")) {
@@ -1199,6 +1318,17 @@ void Processor::appendFiles(const juce::Array<juce::File>& files) {
         picture.address = file.getFullPathName();
         // A new file takes the project tempo as its own, so it plays unchanged until its BPM is edited.
         picture.bpm = savedBpm;
+        if (clip) {
+            // start is a fraction of the file. length is a fraction of what follows the start.
+            const double duration = static_cast<double>(picture.frames) / picture.rate;
+            const double start = std::min(clip->start, duration);
+            picture.start = duration > 0 ? start / duration : 0.0;
+            picture.length = duration - start > 0 ? std::clamp(clip->length / (duration - start), 0.0, 1.0) : 1.0;
+            picture.loop = clip->loop;
+            if (clip->bpm > 0 && std::isfinite(clip->bpm)) {
+                picture.bpm = std::clamp(std::round(clip->bpm * 10.0) / 10.0, 1.0, 999.9);
+            }
+        }
         CommandQueue::Slot slot;
         slot.kind = CommandQueue::Slot::Kind::Append;
         slot.append = payload;
@@ -1213,6 +1343,17 @@ void Processor::appendFiles(const juce::Array<juce::File>& files) {
         warp.first = picture.bpm;
         warp.second = picture.warpParam;
         impl->queue.push(warp);
+        if (clip) {
+            CommandQueue::Slot track;
+            track.kind = CommandQueue::Slot::Kind::Track;
+            track.index = names.size();
+            track.first = picture.start;
+            track.second = picture.length;
+            track.third = picture.volume;
+            track.fourth = picture.pan;
+            track.flag = picture.loop;
+            impl->queue.push(track);
+        }
         names.add(file.getFileName());
         pictures.push_back(std::move(picture));
         ++added;

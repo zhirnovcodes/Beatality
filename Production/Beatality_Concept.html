@@ -513,7 +513,7 @@ The DAW project stores exactly the same settings as a preset, and nothing more (
   <tr><td>Start Position = 1.0</td><td>The usable length is 0, so the track is silent wherever it appears. The UI may cap the value just below 1.0.</td></tr>
   <tr><td>Slice Size &gt; Loop Size</td><td>Never allowed. If Loop Size is lowered below Slice Size, Slice Size is clamped down and the sequence is regenerated (<a href="#live">section 10</a>).</td></tr>
   <tr><td>Samples with different sample rates</td><td>All samples play at the correct pitch and speed, matching the output sample rate.</td></tr>
-  <tr><td>Unsupported file type</td><td>The file is rejected with a message and the track list doesn't change. Both products accept only WAV and MP3. An Ableton Live Clip (<code>.alc</code>) is not audio: it stores clip settings and points at a sample file, so it is rejected like any other unsupported file. The WAV or MP3 it points at can be added on its own.</td></tr>
+  <tr><td>Unsupported file type</td><td>The file is rejected with a message and the track list doesn't change. The plugin accepts WAV, MP3, and Ableton Live Clips (<code>.alc</code>). The web widget accepts WAV and MP3. A clip whose sample can't be found is rejected the same way.</td></tr>
   <tr><td>VST project reopened</td><td>All settings come back, the track list is empty, and there is no sequence. Stored Start Positions have no tracks to apply to, so they are dropped, the same as when a preset is loaded with no tracks.</td></tr>
   <tr><td>Very small slices (1/64 beat at high BPM)</td><td>Slots can be just a few milliseconds long. Declicking must still work, and the sound may turn into a buzzy granular texture. That is expected.</td></tr>
   <tr><td>VST: plugin BPM ≠ host tempo</td><td>Beatality plays at its own BPM, so it may drift against the host's grid. Keeping them matched is up to the user.</td></tr>
@@ -532,7 +532,7 @@ The DAW project stores exactly the same settings as a preset, and nothing more (
   <li>The user can save the current settings as a preset and load a preset back (<a href="#presets">section 11</a>). A preset does not include the samples or the sequence.</li>
   <li>The DAW project stores the plugin's settings only, the same contents as a preset. Samples and the sequence are not stored, so after a project is reopened the user adds the samples again and the first note generates a new sequence.</li>
   <li>Plugin parameters are not exposed to the DAW for automation.</li>
-  <li>Accepts WAV and MP3 files only.</li>
+  <li>Accepts WAV and MP3 files, and Ableton Live Clips (<code>.alc</code>). A clip adds the sample it points at, with the clip's start, length, loop on or off, and BPM (from its warp markers) as the track's settings.</li>
 </ul>
 
 <h3>14.2 Web widget</h3>
@@ -541,7 +541,7 @@ The DAW project stores exactly the same settings as a preset, and nothing more (
   <li>Same core behavior as the plugin, with a Play/Stop button instead of MIDI (<a href="#controls">section 5.2</a>).</li>
   <li>Includes the automatic randomization cycle (Randomize Every and the Loop Counter), which the VST does not have.</li>
   <li>Track list management works the same as in the plugin: add samples, delete the sample at an index, move a sample, edit Start Position.</li>
-  <li>Accepts WAV and MP3 files only.</li>
+  <li>Accepts WAV and MP3 files only. Files can be added with the Add button or dropped onto the sample screen.</li>
   <li>The user can load a preset from the server (<a href="#presets">section 11</a>). The widget does not save presets.</li>
   <li>Has to work within browser rules, for example audio can only start after the user interacts with the page.</li>
 </ul>
@@ -617,7 +617,7 @@ feel. The visual design is out of scope for this document and will be specified 
   <tr><td>DAW project contents</td><td><span class="resolved">Resolved:</span> the project stores the same settings as a preset and nothing else. Samples and the sequence are not stored.</td></tr>
   <tr><td>Track list actions</td><td><span class="resolved">Resolved:</span> add at the end, delete at an index, move from one index to another. A move does not change the sequence, and the sequence is not told about it. Each slot keeps its index (<a href="#tracks">section 4</a>).</td></tr>
   <tr><td>DAW automation</td><td><span class="resolved">Resolved:</span> no plugin parameters are exposed to the DAW.</td></tr>
-  <tr><td>File types</td><td><span class="resolved">Resolved:</span> WAV and MP3 only, on both platforms. Ableton Live Clips (<code>.alc</code>) are not accepted.</td></tr>
+  <tr><td>File types</td><td><span class="resolved">Resolved:</span> WAV and MP3 on both platforms. The plugin also accepts Ableton Live Clips (<code>.alc</code>) and takes the clip's start, length, loop, and BPM.</td></tr>
   <tr><td>Random seed</td><td><span class="resolved">Resolved:</span> a fresh unpredictable seed per instance, never shown or stored.</td></tr>
   <tr><td>Plugin format and business model</td><td><span class="resolved">Resolved:</span> VST3 first. The plugin is sold as a closed-source product.</td></tr>
 </table>

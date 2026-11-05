@@ -55,6 +55,8 @@
   scrollbar-width: none;            /* the skin draws its own scroll bar */
 }
 .beatality-skin .bottom .viewport::-webkit-scrollbar { display: none; }
+/* Files dragged over the screen: it lights up to show they will be added. */
+.beatality-skin .bottom .viewport.dropping { background: rgba(190, 255, 170, 0.14); }
 
 /* Sample buffer grid: fixed width (424 px), centred in the scroll area. One row per sample; the number of rows sets
    the scroll height. Row = 28 px, 4 px between rows; cells have no space between them. Columns = Loop / Slice length

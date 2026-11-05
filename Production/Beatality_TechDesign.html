@@ -891,7 +891,7 @@ public:
 <h4>SampleLoader</h4>
 <p>
 Decodes a WAV or MP3 file and converts it to the plugin's output sample rate on a background thread, so the UI and the audio never wait for a file.
-Any other file, including an Ableton Live Clip (<code>.alc</code>), is rejected.
+An Ableton Live Clip (<code>.alc</code>) is read as gzipped XML: the sample it points at is loaded, and the clip's start, length, loop, and BPM (from its warp markers) become the track's settings. Any other file is rejected.
 When it finishes, it reports either the ready audio data or an error.
 </p>
 <pre>
@@ -1108,7 +1108,7 @@ After a project opens, the plugin has its parameters back and an empty track lis
   <li><span class="resolved">Track list operations:</span> append, remove at index, move from one index to another. A move does not change the sequence and the sequence is not told about it. A slot keeps its index.</li>
   <li><span class="resolved">DAW automation:</span> no parameters are exposed to the DAW.</li>
   <li><span class="resolved">DAW project contents:</span> parameters only, in preset format. Samples are added again by the user.</li>
-  <li><span class="resolved">File formats:</span> WAV and MP3 on both platforms. An Ableton Live Clip (<code>.alc</code>) is a clip description that points at a sample; it is not audio, and it is rejected.</li>
+  <li><span class="resolved">File formats:</span> WAV and MP3 on both platforms. The plugin also accepts an Ableton Live Clip (<code>.alc</code>), which points at a sample and carries its start, length, loop, and BPM. The web widget does not, because a page cannot open the path inside it.</li>
   <li><span class="resolved">Randomness:</span> each instance starts from an unpredictable seed taken from the operating system or browser. The seed is not shown to the user.</li>
   <li><span class="resolved">First plugin target:</span> VST3.</li>
   <li><span class="resolved">Web snapshot channel:</span> messages about 30 times a second, which work on any website. This is enough for a demonstration widget; shared memory is the fallback if the display turns out to lag.</li>
