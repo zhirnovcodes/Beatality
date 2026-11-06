@@ -12,9 +12,8 @@ namespace {
 constexpr ChaosRange kPanMin{0, 0, -1, 0};
 constexpr ChaosRange kPanMax{0, 0, 0, 1};
 constexpr ChaosRange kSlice{-1, 0, SliceGrid::kExpMin, SliceGrid::kExpMax};
-constexpr ChaosRange kAttack{4, 6, 2, 16};
-constexpr ChaosRange kPower{0, 0.5, 0, 1};
-constexpr ChaosRange kChance{0, 0.25, 0, 1};
+constexpr ChaosRange kPower{0, 0.75, 0.25, 1};
+constexpr ChaosRange kChance{0, 0.35, 0, 1};
 constexpr ChaosRange kEffectTime{-2, 0, Effects::kBeatMin, Effects::kBeatMax};
 constexpr ChaosRange kRepeatSize{-2, -1, BeatRepeatSettings::kSizeMin, BeatRepeatSettings::kSizeMax};
 constexpr ChaosRange kRepeatMix{0, 0.5, 0, 1};
@@ -63,40 +62,50 @@ ChaosRoll rollChaos(Controls& controls, Rng& rng) {
     if (chaos.on(ChaosGroup::Slices)) {
         controls.play.sliceExp = chaosStep(kSlice, value, rng.nextFloat());
     }
-    if (chaos.on(ChaosGroup::Attack)) {
-        controls.play.attackMs = chaosStep(kAttack, value, rng.nextFloat());
-    }
     if (chaos.on(ChaosGroup::Randomize)) {
         roll.randomize = coin(rng);
     }
-    if (chaos.on(ChaosGroup::Effects)) {
-        Effects& fx = controls.effects;
+    Effects& fx = controls.effects;
+    if (chaos.on(ChaosGroup::EffectsGlobal)) {
         fx.globalPower = chaosValue(kPower, value, rng.nextFloat());
         fx.globalChance = chaosValue(kChance, value, rng.nextFloat());
         const auto [beatMin, beatMax] = stepPair(kEffectTime, value, rng);
         fx.beatMin = beatMin;
         fx.beatMax = beatMax;
+    }
+    if (chaos.on(ChaosGroup::EffectsOn)) {
+        fx.enabled = coin(rng);
+    }
+    if (chaos.on(ChaosGroup::EffectsPrivate)) {
         double* const powers[] = {&fx.delayPower, &fx.reverbPower, &fx.reversePower, &fx.filterPower,
                                   &fx.flangerPower, &fx.trancePower, &fx.shiftPower};
         double* const chances[] = {&fx.delayChance, &fx.reverbChance, &fx.reverseChance, &fx.filterChance,
                                    &fx.flangerChance, &fx.tranceChance, &fx.shiftChance};
         for (int i = 0; i < 7; ++i) {
             *powers[i] = chaosValue(kPower, value, rng.nextFloat());
-            *chances[i] = chaosValue(kChance, value, rng.nextFloat());
+            const double chance = chaosValue(kChance, value, rng.nextFloat());
+            roll.regenerateEffects = roll.regenerateEffects || chance != *chances[i];
+            *chances[i] = chance;
         }
     }
-    if (chaos.on(ChaosGroup::BeatRepeat)) {
-        BeatRepeatSettings& repeat = controls.repeat;
+    BeatRepeatSettings& repeat = controls.repeat;
+    if (chaos.on(ChaosGroup::RepeatOn)) {
         repeat.enabled = coin(rng);
+    }
+    if (chaos.on(ChaosGroup::RepeatPositions)) {
         for (bool& position : repeat.positions) {
             position = coin(rng);
         }
+    }
+    if (chaos.on(ChaosGroup::RepeatParams)) {
         const auto [sizeMin, sizeMax] = stepPair(kRepeatSize, value, rng);
         repeat.sizeMin = sizeMin;
         repeat.sizeMax = sizeMax;
         repeat.mix = chaosValue(kRepeatMix, value, rng.nextFloat());
         repeat.length = chaosStep(kRepeatLength, value, rng.nextFloat());
-        repeat.chance = chaosValue(kRepeatChance, value, rng.nextFloat());
+        const double chance = chaosValue(kRepeatChance, value, rng.nextFloat());
+        roll.regenerateRepeat = chance != repeat.chance;
+        repeat.chance = chance;
     }
     if (chaos.on(ChaosGroup::Value)) {
         chaos.value = chaosValue(kChaosValue, value, rng.nextFloat());

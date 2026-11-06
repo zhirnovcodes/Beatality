@@ -5,10 +5,13 @@ import { chaosGroupNames, type WebViewModel } from '../../viewmodels/web/WebView
 const chaosGroupIds = [
     'chaosPan',
     'chaosSlices',
-    'chaosAttack',
     'chaosRandomize',
-    'chaosEffects',
-    'chaosBeatRepeat',
+    'chaosEffectsGlobal',
+    'chaosEffectsOn',
+    'chaosEffectsPrivate',
+    'chaosRepeatOn',
+    'chaosRepeatPositions',
+    'chaosRepeatParams',
     'chaosValueOn',
     'chaosTime',
 ]

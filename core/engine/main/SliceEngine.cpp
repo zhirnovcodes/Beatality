@@ -275,12 +275,24 @@ void SliceEngine::noteOn() {
     }
 }
 
+void SliceEngine::regenerateEffects() { sequence_.regenerateEffects(rng_, controls_.effects); }
+
+void SliceEngine::regenerateRepeat() { repeatSequence_.generate(repeatRng_); }
+
 void SliceEngine::rollChaos() {
     Controls next = controls_;
     const ChaosRoll roll = chaos_.roll(next);
     apply(next);
+    // A randomize writes both sequences again, so it covers the two regenerates.
     if (roll.randomize && bank_.count() > 0) {
         randomize();
+        return;
+    }
+    if (roll.regenerateEffects) {
+        regenerateEffects();
+    }
+    if (roll.regenerateRepeat) {
+        regenerateRepeat();
     }
 }
 

@@ -336,6 +336,36 @@ void testEffectIdsFollowTheWeights() {
     CHECK(grown.effectAt(2) == bt::EffectId::None);
 }
 
+void testRegenerateEffectsKeepsTracksAndRolls() {
+    constexpr int kSlots = 64;
+    bt::Rng rng(21);
+    bt::Effects none;
+    bt::Sequence sequence;
+    sequence.generate(kSlots, 5, rng, none);
+    std::uint16_t slots[kSlots];
+    float rolls[kSlots];
+    float pans[kSlots];
+    float beats[kSlots];
+    for (int i = 0; i < kSlots; ++i) {
+        CHECK(sequence.effectAt(i) == bt::EffectId::None);
+        slots[i] = sequence.data()[i];
+        rolls[i] = sequence.rollAt(i);
+        pans[i] = sequence.panRollAt(i);
+        beats[i] = sequence.beatRollAt(i);
+    }
+    bt::Effects delayOnly;
+    delayOnly.delayChance = 1;
+    sequence.regenerateEffects(rng, delayOnly);
+    CHECK(sequence.size() == kSlots);
+    for (int i = 0; i < kSlots; ++i) {
+        CHECK(sequence.effectAt(i) == bt::EffectId::Delay);
+        CHECK(sequence.data()[i] == slots[i]);
+        CHECK(sequence.rollAt(i) == rolls[i]);
+        CHECK(sequence.panRollAt(i) == pans[i]);
+        CHECK(sequence.beatRollAt(i) == beats[i]);
+    }
+}
+
 void testSameSeedSameSequence() {
     bt::Rng aRng(42);
     bt::Rng bRng(42);
@@ -352,6 +382,7 @@ void testSameSeedSameSequence() {
 } // namespace
 
 int main() {
+    testRegenerateEffectsKeepsTracksAndRolls();
     testGridDefaults();
     testGridDivisions();
     testSliceShrinksToTheLoop();

@@ -1114,12 +1114,11 @@ void testTriggerChaosRollsWhileStopped() {
     bt::SliceEngine engine(1000, 1);
     bt::Controls controls = engine.controls();
     controls.chaos.value = 1;
-    controls.chaos.groups[static_cast<int>(bt::ChaosGroup::Attack)] = true;
     controls.chaos.groups[static_cast<int>(bt::ChaosGroup::Pan)] = true;
     engine.apply(controls);
     engine.triggerChaos();
     CHECK(!(engine.controls() == controls));
-    CHECK(engine.controls().play.attackMs >= 2 && engine.controls().play.attackMs <= 16);
+    CHECK(engine.controls().play.attackMs == controls.play.attackMs);
 }
 
 void testNoteOnRollsInNoteMode() {

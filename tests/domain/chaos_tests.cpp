@@ -53,9 +53,8 @@ void testChaosZeroStaysInTheNarrowRanges() {
         bt::rollChaos(controls, rng);
         CHECK(controls.play.panMin == 0.0 && controls.play.panMax == 0.0);
         CHECK(controls.play.sliceExp >= -1 && controls.play.sliceExp <= 0);
-        CHECK(controls.play.attackMs >= 4 && controls.play.attackMs <= 6);
-        CHECK(controls.effects.globalPower >= 0 && controls.effects.globalPower < 0.5);
-        CHECK(controls.effects.shiftChance >= 0 && controls.effects.shiftChance < 0.25);
+        CHECK(controls.effects.globalPower >= 0 && controls.effects.globalPower < 0.75);
+        CHECK(controls.effects.shiftChance >= 0 && controls.effects.shiftChance < 0.35);
         CHECK(controls.effects.beatMin >= -2 && controls.effects.beatMax <= 0);
         CHECK(controls.effects.beatMin <= controls.effects.beatMax);
         CHECK(controls.repeat.sizeMin >= -2 && controls.repeat.sizeMax <= -1);
@@ -80,7 +79,6 @@ void testChaosOneReachesTheWideEnds() {
         bt::rollChaos(controls, rng);
         CHECK(controls.play.panMin >= -1 && controls.play.panMin <= 0);
         CHECK(controls.play.panMax >= 0 && controls.play.panMax <= 1);
-        CHECK(controls.play.attackMs >= 2 && controls.play.attackMs <= 16);
         CHECK(controls.repeat.sizeMin >= bt::BeatRepeatSettings::kSizeMin && controls.repeat.sizeMax <= bt::BeatRepeatSettings::kSizeMax);
         lowSlice = lowSlice || controls.play.sliceExp == -4;
         highSlice = highSlice || controls.play.sliceExp == 4;
@@ -94,12 +92,12 @@ void testGroupsThatAreOffKeepTheirKnobs() {
     bt::Rng rng(3);
     bt::Controls controls;
     controls.chaos.value = 1;
-    controls.chaos.groups[static_cast<int>(bt::ChaosGroup::Attack)] = true;
+    controls.chaos.groups[static_cast<int>(bt::ChaosGroup::Pan)] = true;
     const bt::Controls before = controls;
     for (int i = 0; i < 100; ++i) {
         bt::rollChaos(controls, rng);
     }
-    CHECK(controls.play.panMin == before.play.panMin && controls.play.sliceExp == before.play.sliceExp);
+    CHECK(controls.play.sliceExp == before.play.sliceExp && controls.play.attackMs == before.play.attackMs);
     CHECK(controls.effects == before.effects);
     CHECK(controls.repeat == before.repeat);
     CHECK(controls.chaos == before.chaos);
@@ -128,13 +126,28 @@ void testSameSeedSameRoll() {
     CHECK(a == b);
 }
 
+void testRollAsksToRegenerateWhenChancesChange() {
+    bt::Rng rng(13);
+    bt::Controls controls = allOn(0.5);
+    const bt::ChaosRoll roll = bt::rollChaos(controls, rng);
+    CHECK(roll.regenerateEffects);
+    CHECK(roll.regenerateRepeat);
+
+    bt::Controls off;
+    off.chaos.value = 1;
+    off.chaos.groups[static_cast<int>(bt::ChaosGroup::Pan)] = true;
+    const bt::ChaosRoll quiet = bt::rollChaos(off, rng);
+    CHECK(!quiet.regenerateEffects);
+    CHECK(!quiet.regenerateRepeat);
+}
+
 void testRollUsesTheValueFromBeforeIt() {
     bt::Rng rng(9);
     for (int i = 0; i < kRolls; ++i) {
         bt::Controls controls = allOn(0);
         bt::rollChaos(controls, rng);
-        // Value 0 keeps attack in 4..6 even when the roll raised the value itself.
-        CHECK(controls.play.attackMs >= 4 && controls.play.attackMs <= 6);
+        // Value 0 keeps the global power under 0.75 even when the roll raised the value itself.
+        CHECK(controls.effects.globalPower < 0.75);
     }
 }
 
@@ -238,6 +251,7 @@ int main() {
     testRandomizeAndTogglesAreAnEvenChance();
     testSameSeedSameRoll();
     testRollUsesTheValueFromBeforeIt();
+    testRollAsksToRegenerateWhenChancesChange();
     testTickRollsOnEachNewUnit();
     testTickCountsLoopsAndSlices();
     testTickIsQuietWhenStoppedOrNotCounting();

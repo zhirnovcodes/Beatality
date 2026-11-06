@@ -36,6 +36,8 @@ public:
     void generate(int slotCount, int trackCount, Rng& rng, const Effects& settings = {});
     void append(int slotCount, Rng& rng, const Effects& settings = {}); // grow to slotCount
     void crop(int slotCount); // keep the prefix, clear the dropped tail
+    // Picks each live slot's effect id again from the chances in settings. Track picks and every roll stay.
+    void regenerateEffects(Rng& rng, const Effects& settings);
     // Replaces the live prefix. size 0 clears. The caller keeps slots for the copy.
     void assign(const std::uint16_t* slots, int size, int savedCount);
 

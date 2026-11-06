@@ -60,6 +60,11 @@ public:
     void triggerChaos();
     // A note-on. Chaos decides whether it rolls.
     void noteOn();
+    // Picks each slot's effect id again from the effect chances. The tracks and the rolls stay.
+    // The slice that is playing keeps its effect.
+    void regenerateEffects();
+    // Draws the beat repeat rolls again.
+    void regenerateRepeat();
     // Keeps the volume and pan already on that slot.
     void setTrack(int index, double start, double length, bool loop);
     // Web track. start is a fraction of the file, 0..1.

@@ -24,6 +24,10 @@ int chaosStep(const ChaosRange& range, double value, float roll);
 // What a roll asks of the engine besides the knobs.
 struct ChaosRoll {
     bool randomize = false;
+    // An effect's chance changed. Those chances only weight the effect ids when they are picked.
+    bool regenerateEffects = false;
+    // The beat repeat chance changed.
+    bool regenerateRepeat = false;
 };
 
 // Rolls every group that is on into controls, with the chaos value it had before the roll.

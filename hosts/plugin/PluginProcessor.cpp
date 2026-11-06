@@ -395,10 +395,13 @@ struct DeviceAudio {
 constexpr float kVolumeMax = 1.2f;
 
 // In bt::ChaosGroup order.
-const char* const kChaosGroupIds[bt::ChaosSettings::kGroups] = {"chaosPan",     "chaosSlices",     "chaosAttack",  "chaosRandomize",
-                                                               "chaosEffects", "chaosBeatRepeat", "chaosValueOn", "chaosTime"};
-const char* const kChaosGroupNames[bt::ChaosSettings::kGroups] = {"Chaos pan",     "Chaos slices",      "Chaos attack",      "Chaos randomize",
-                                                                 "Chaos effects", "Chaos beat repeat", "Chaos chaos value", "Chaos time"};
+const char* const kChaosGroupIds[bt::ChaosSettings::kGroups] = {
+    "chaosPan",      "chaosSlices",          "chaosRandomize",    "chaosEffectsGlobal", "chaosEffectsOn", "chaosEffectsPrivate",
+    "chaosRepeatOn", "chaosRepeatPositions", "chaosRepeatParams", "chaosValueOn",       "chaosTime"};
+const char* const kChaosGroupNames[bt::ChaosSettings::kGroups] = {
+    "Chaos pan",                "Chaos slices",                "Chaos randomize",          "Chaos effects (global)",
+    "Chaos effects on/off",     "Chaos effects (private)",     "Chaos beat repeat on/off", "Chaos beat repeat positions",
+    "Chaos beat repeat params", "Chaos chaos value",           "Chaos time"};
 
 juce::AudioProcessorValueTreeState::ParameterLayout parameterLayout() {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;

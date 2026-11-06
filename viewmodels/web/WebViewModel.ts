@@ -10,7 +10,7 @@ export interface FactoryBank {
 
 // The chaos knobs. trigger is 0 Randomize button, 1 Note, 2 Loop, 3 Slices, 4 Beats.
 // beatSize is 2^n beats, -2..1. loopSize is loops, 1..8. sliceSize is 2^n slices, -1..2.
-// groups is 8 toggles: pan, slices, attack, randomize, effects, beat repeat, chaos value, chaos time.
+// groups is one toggle per chaosGroupNames entry, in that order.
 export interface ChaosState {
     trigger: number
     value: number
@@ -59,7 +59,19 @@ export interface RolledControls {
 }
 
 export const chaosTriggers = ['Randomize button', 'Note', 'Loop', 'Slices', 'Beats']
-export const chaosGroupNames = ['Pan', 'Slices', 'Attack', 'Randomize', 'Effects', 'Beat Repeat', 'Chaos value', 'Chaos time']
+export const chaosGroupNames = [
+    'Pan',
+    'Slices',
+    'Randomize',
+    'Effects (global)',
+    'Effects on/off',
+    'Effects (private)',
+    'Beat repeat on/off',
+    'Beat repeat positions',
+    'Beat repeat params',
+    'Chaos value',
+    'Chaos time',
+]
 
 export interface ViewActions {
     midi: (status: number, note: number, velocity: number) => void

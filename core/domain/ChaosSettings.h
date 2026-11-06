@@ -7,7 +7,22 @@ namespace bt {
 enum class ChaosTrigger { Button, Note, Loop, Slices, Beats };
 
 // The knob groups a roll can change. Each one is on or off as a whole.
-enum class ChaosGroup { Pan, Slices, Attack, Randomize, Effects, BeatRepeat, Value, Time, Count };
+// EffectsGlobal is the global power, the global chance, and the effect time. EffectsPrivate is each effect's power and chance.
+// RepeatParams is the beat repeat size, mix, length, and chance.
+enum class ChaosGroup {
+    Pan,
+    Slices,
+    Randomize,
+    EffectsGlobal,
+    EffectsOn,
+    EffectsPrivate,
+    RepeatOn,
+    RepeatPositions,
+    RepeatParams,
+    Value,
+    Time,
+    Count
+};
 
 // The chaos knobs.
 // value is 0..1. It widens each knob's range from the range at 0 toward the range at 1.

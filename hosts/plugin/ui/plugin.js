@@ -44,7 +44,7 @@ const state = {
     chaosBeatSize: 0,
     chaosLoopSize: 1,
     chaosSliceSize: 0,
-    chaosGroups: [false, false, false, false, false, false, false, false],
+    chaosGroups: Array(11).fill(false),
 }
 
 // Warp modes in the engine's order: the index is the mode number setWarp takes.
@@ -739,7 +739,7 @@ function followHost(live) {
         paintBeatRepeat()
     }
 
-    // Attack and the loop parts are not host parameters, but chaos moves them.
+    // Attack and the loop parts are not host parameters, but the engine can move them.
     const attack = Number(live.attack)
     if (free('attack') && Number.isInteger(attack) && attack !== state.attackMs) {
         state.attackMs = attack

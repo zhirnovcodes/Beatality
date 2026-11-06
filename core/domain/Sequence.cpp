@@ -110,6 +110,12 @@ void Sequence::append(int slotCount, Rng& rng, const Effects& settings) {
     size_ = slotCount;
 }
 
+void Sequence::regenerateEffects(Rng& rng, const Effects& settings) {
+    for (int i = 0; i < size_; ++i) {
+        effects_[i] = pickEffect(rng, settings);
+    }
+}
+
 void Sequence::crop(int slotCount) {
     clearFrom(slots_, slotCount, size_);
     clearRolls(rolls_, slotCount, size_);
