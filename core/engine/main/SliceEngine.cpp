@@ -286,7 +286,7 @@ void SliceEngine::apply(const Controls& next) {
 }
 
 void SliceEngine::triggerChaos() {
-    if (controls_.chaos.trigger != ChaosTrigger::None) {
+    if (controls_.chaos.trigger == ChaosTrigger::Button) {
         rollChaos();
     }
 }

@@ -1122,6 +1122,15 @@ void testTriggerChaosRollsWhileStopped() {
     engine.triggerChaos();
     CHECK(!(engine.controls() == controls));
     CHECK(engine.controls().play.attackMs == controls.play.attackMs);
+
+    // Every other mode: the Randomize button does not roll.
+    for (const bt::ChaosTrigger trigger : {bt::ChaosTrigger::Note, bt::ChaosTrigger::Loop, bt::ChaosTrigger::Slices,
+                                           bt::ChaosTrigger::Beats, bt::ChaosTrigger::None}) {
+        controls.chaos.trigger = trigger;
+        engine.apply(controls);
+        engine.triggerChaos();
+        CHECK(engine.controls() == controls);
+    }
 }
 
 void testNoteOnRollsInNoteMode() {

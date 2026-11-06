@@ -130,7 +130,7 @@ BT_EXPORT void bt_midi(Instance* instance, int status, int, double velocity) {
     }
 }
 
-// Every chaos mode but None also rolls on Randomize.
+// The Button chaos mode also rolls on Randomize.
 BT_EXPORT void bt_randomize(Instance* instance) {
     if (instance == nullptr) {
         return;

@@ -2,9 +2,9 @@
 
 namespace bt {
 
-// What fires a chaos roll. The Randomize button fires one in every mode but None.
+// What fires a chaos roll. Button fires one when the Randomize button is pressed.
 // Note fires on each note-on. Loop, Slices, and Beats fire each time that many have played since the note started.
-// None never rolls: the Randomize button only writes a new sequence.
+// None never rolls. In every mode but Button the Randomize button only writes a new sequence.
 enum class ChaosTrigger { Button, Note, Loop, Slices, Beats, None };
 
 // The knob groups a roll can change. Each one is on or off as a whole.

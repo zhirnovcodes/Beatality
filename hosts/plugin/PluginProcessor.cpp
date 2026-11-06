@@ -624,7 +624,7 @@ struct Processor::Impl {
         if (engine == nullptr) {
             return;
         }
-        // Every trigger mode but None also rolls chaos on Randomize.
+        // The Button trigger mode also rolls chaos on Randomize.
         const bt::Controls before = engine->controls();
         if (engine->count() > 0) {
             engine->randomize();
