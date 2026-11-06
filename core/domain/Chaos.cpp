@@ -63,7 +63,7 @@ ChaosRoll rollChaos(Controls& controls, Rng& rng) {
         controls.play.sliceExp = chaosStep(kSlice, value, rng.nextFloat());
     }
     if (chaos.on(ChaosGroup::Randomize)) {
-        roll.randomize = coin(rng);
+        roll.randomize = true;
     }
     Effects& fx = controls.effects;
     if (chaos.on(ChaosGroup::EffectsGlobal)) {
@@ -122,7 +122,7 @@ Chaos::Chaos(std::uint64_t seed) : rng_(seed) {}
 
 bool Chaos::tick(const ChaosSettings& settings, const SliceGrid& grid, double sampleRate, bool playing, std::int64_t frame) {
     const ChaosTrigger trigger = settings.trigger;
-    if (!playing || trigger == ChaosTrigger::Button || trigger == ChaosTrigger::Note) {
+    if (!playing || (trigger != ChaosTrigger::Loop && trigger != ChaosTrigger::Slices && trigger != ChaosTrigger::Beats)) {
         return false;
     }
     double beats = std::ldexp(1.0, settings.beatSize);

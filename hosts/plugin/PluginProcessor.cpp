@@ -453,7 +453,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout parameterLayout() {
 
     const bt::ChaosSettings chaos;
     layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{"chaosTrigger", 1}, "Chaos trigger",
-                                                            juce::StringArray{"Randomize button", "Note", "Loop", "Slices", "Beats"},
+                                                            juce::StringArray{"Randomize button", "Note", "Loop", "Slices", "Beats", "None"},
                                                             static_cast<int>(chaos.trigger)));
     unit("chaosValue", "Chaos value", chaos.value);
     layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"chaosBeatSize", 1}, "Chaos beat size", bt::ChaosSettings::kBeatSizeMin,
@@ -624,7 +624,7 @@ struct Processor::Impl {
         if (engine == nullptr) {
             return;
         }
-        // Every trigger mode also rolls chaos on Randomize.
+        // Every trigger mode but None also rolls chaos on Randomize.
         const bt::Controls before = engine->controls();
         if (engine->count() > 0) {
             engine->randomize();
@@ -2103,7 +2103,7 @@ juce::String Processor::errorText() const {
 }
 
 void Processor::setChaosTrigger(int trigger) {
-    if (trigger < 0 || trigger > static_cast<int>(bt::ChaosTrigger::Beats)) {
+    if (trigger < 0 || trigger > static_cast<int>(bt::ChaosTrigger::None)) {
         return;
     }
     setFromWindow(*chaosTriggerParam, static_cast<float>(trigger));

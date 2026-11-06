@@ -850,7 +850,7 @@ function powerLabel(exponent: number): string {
 }
 
 // Trigger names in bt::ChaosTrigger order.
-const chaosTriggerNames = ['RAND BTN', 'NOTE', 'LOOP', 'SLICES', 'BEAT']
+const chaosTriggerNames = ['RAND BTN', 'NOTE', 'LOOP', 'SLICES', 'BEAT', 'NONE']
 
 // One toggle row: the caption, then its box. group is the bt::ChaosGroup number.
 function ChaosToggle({ model, name, group }: { model: WebViewModel; name: string; group: number }) {

@@ -31,7 +31,8 @@ struct ChaosRoll {
 };
 
 // Rolls every group that is on into controls, with the chaos value it had before the roll.
-// Groups that are off keep their knobs. Randomize and the on/off knobs are an even chance whatever the value.
+// Groups that are off keep their knobs. Randomize always writes a new sequence.
+// The on/off knobs are an even chance whatever the value.
 ChaosRoll rollChaos(Controls& controls, Rng& rng);
 
 // Decides when chaos rolls, and rolls. It keeps no note or button state: the engine asks at the moment.

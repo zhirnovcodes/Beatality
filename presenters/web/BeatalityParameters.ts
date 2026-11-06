@@ -221,8 +221,8 @@ export class BeatalityParameters {
                 write: (value) => model.setRepeatChance(value),
             },
             {
-                // 0 Randomize button, 1 Note, 2 Loop, 3 Slices, 4 Beats.
-                info: { id: 'chaosTrigger', label: 'Chaos trigger', kind: 'int', min: 0, max: 4 },
+                // 0 Randomize button, 1 Note, 2 Loop, 3 Slices, 4 Beats, 5 None.
+                info: { id: 'chaosTrigger', label: 'Chaos trigger', kind: 'int', min: 0, max: 5 },
                 read: () => model.chaosTrigger,
                 write: (trigger) => model.setChaosTrigger(trigger),
             },

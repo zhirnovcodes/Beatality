@@ -103,7 +103,7 @@ void testGroupsThatAreOffKeepTheirKnobs() {
     CHECK(controls.chaos == before.chaos);
 }
 
-void testRandomizeAndTogglesAreAnEvenChance() {
+void testRandomizeAlwaysAndTogglesAreAnEvenChance() {
     bt::Rng rng(5);
     int randomized = 0;
     int enabled = 0;
@@ -112,7 +112,7 @@ void testRandomizeAndTogglesAreAnEvenChance() {
         randomized += bt::rollChaos(controls, rng).randomize ? 1 : 0;
         enabled += controls.repeat.enabled ? 1 : 0;
     }
-    CHECK(randomized > kRolls * 4 / 10 && randomized < kRolls * 6 / 10);
+    CHECK(randomized == kRolls);
     CHECK(enabled > kRolls * 4 / 10 && enabled < kRolls * 6 / 10);
 }
 
@@ -204,7 +204,7 @@ void testTickIsQuietWhenStoppedOrNotCounting() {
         rolled = rolled || stopped.tick(settings, grid, 1000, false, frame);
     }
     CHECK(!rolled);
-    for (const bt::ChaosTrigger trigger : {bt::ChaosTrigger::Button, bt::ChaosTrigger::Note}) {
+    for (const bt::ChaosTrigger trigger : {bt::ChaosTrigger::Button, bt::ChaosTrigger::Note, bt::ChaosTrigger::None}) {
         settings.trigger = trigger;
         bt::Chaos chaos(1);
         for (int frame = 0; frame < 2000; ++frame) {
@@ -234,7 +234,7 @@ void testNoteRollsOnlyInNoteMode() {
     settings.trigger = bt::ChaosTrigger::Note;
     CHECK(chaos.noteOn(settings));
     for (const bt::ChaosTrigger trigger : {bt::ChaosTrigger::Button, bt::ChaosTrigger::Loop, bt::ChaosTrigger::Slices,
-                                           bt::ChaosTrigger::Beats}) {
+                                           bt::ChaosTrigger::Beats, bt::ChaosTrigger::None}) {
         settings.trigger = trigger;
         CHECK(!chaos.noteOn(settings));
     }
@@ -248,7 +248,7 @@ int main() {
     testChaosZeroStaysInTheNarrowRanges();
     testChaosOneReachesTheWideEnds();
     testGroupsThatAreOffKeepTheirKnobs();
-    testRandomizeAndTogglesAreAnEvenChance();
+    testRandomizeAlwaysAndTogglesAreAnEvenChance();
     testSameSeedSameRoll();
     testRollUsesTheValueFromBeforeIt();
     testRollAsksToRegenerateWhenChancesChange();

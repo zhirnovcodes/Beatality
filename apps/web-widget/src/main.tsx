@@ -52,7 +52,7 @@ projectBpm.addEventListener('change', () => {
     projectBpm.value = String(bpm)
 })
 
-// Localhost only: save the current state into the preset library, or delete a preset from it.
+// Localhost only: save the current state into the preset library, update a preset with it, or delete a preset.
 // The Vite dev server owns the /__presets routes. A build has neither the routes nor this row.
 if (import.meta.env.DEV) {
     const row = document.createElement('div')
@@ -61,12 +61,14 @@ if (import.meta.env.DEV) {
         <input class="preset-name" type="text" placeholder="Preset name" aria-label="Preset name" />
         <button type="button" class="preset-save">Save preset</button>
         <select class="preset-list" aria-label="Presets"></select>
+        <button type="button" class="preset-update">Update</button>
         <button type="button" class="preset-delete">Delete</button>
         <span class="preset-status" role="status"></span>`
     app.before(row)
     const nameInput = row.querySelector('.preset-name') as HTMLInputElement
     const saveButton = row.querySelector('.preset-save') as HTMLButtonElement
     const list = row.querySelector('.preset-list') as HTMLSelectElement
+    const updateButton = row.querySelector('.preset-update') as HTMLButtonElement
     const deleteButton = row.querySelector('.preset-delete') as HTMLButtonElement
     const status = row.querySelector('.preset-status') as HTMLSpanElement
     let banks: { name: string; file: string }[] = []
@@ -82,24 +84,45 @@ if (import.meta.env.DEV) {
                 return option
             }),
         )
+        updateButton.disabled = banks.length === 0
         deleteButton.disabled = banks.length === 0
         await plugin.reloadBanks()
     }
 
     const busy = (on: boolean, text: string) => {
         saveButton.disabled = on
+        updateButton.disabled = on || banks.length === 0
         deleteButton.disabled = on || banks.length === 0
         status.textContent = text
     }
 
-    const post = async (url: string, body: BodyInit): Promise<any> => {
-        const response = await fetch(url, { method: 'POST', body })
+    const send = async (method: string, url: string, body?: BodyInit): Promise<any> => {
+        const response = await fetch(url, { method, body })
         const result = await response.json()
         if (!response.ok) {
             throw new Error(result.error ?? response.statusText)
         }
         return result
     }
+
+    // Stores each track's sample in the library and returns the pack text that points at them.
+    // A missing sample has nothing to store and is left out.
+    const upload = async (name: string): Promise<{ text: string; skipped: number }> => {
+        const { doc, files } = plugin.preset(name)
+        const tracks = []
+        for (let i = 0; i < doc.tracks.length; i++) {
+            const file = files[i]
+            if (!file) {
+                continue
+            }
+            const { id } = await send('POST', '/__presets/sample?name=' + encodeURIComponent(file.name), file)
+            tracks.push({ ...doc.tracks[i], source: { type: 'internal' as const, id } })
+        }
+        return { text: JSON.stringify({ ...doc, tracks }), skipped: doc.tracks.length - tracks.length }
+    }
+
+    const leftOut = (skipped: number) => (skipped > 0 ? `, ${skipped} missing sample(s) left out` : '')
+    const removed = (ids: string[]) => (ids.length > 0 ? `, ${ids.length} unused sample(s) removed` : '')
 
     saveButton.addEventListener('click', async () => {
         const name = nameInput.value.trim()
@@ -113,23 +136,31 @@ if (import.meta.env.DEV) {
         }
         busy(true, 'Saving…')
         try {
-            const { doc, files } = plugin.preset(name)
-            const tracks = []
-            for (let i = 0; i < doc.tracks.length; i++) {
-                const file = files[i]
-                // A missing sample has nothing to store.
-                if (!file) {
-                    continue
-                }
-                const { id } = await post('/__presets/sample?name=' + encodeURIComponent(file.name), file)
-                tracks.push({ ...doc.tracks[i], source: { type: 'internal' as const, id } })
-            }
-            const skipped = doc.tracks.length - tracks.length
-            await post('/__presets/pack?name=' + encodeURIComponent(name), JSON.stringify({ ...doc, tracks }))
+            const { text, skipped } = await upload(name)
+            await send('POST', '/__presets/pack?name=' + encodeURIComponent(name), text)
             await refresh()
-            busy(false, `Saved "${name}"` + (skipped > 0 ? `, ${skipped} missing sample(s) left out.` : '.'))
+            busy(false, `Saved "${name}"${leftOut(skipped)}.`)
         } catch (error) {
             busy(false, 'Save failed: ' + String(error))
+        }
+    })
+
+    // The chosen preset takes the current state. Its samples follow the track list: new ones are stored,
+    // and the ones it no longer uses are removed unless another preset uses them.
+    updateButton.addEventListener('click', async () => {
+        const bank = banks.find((item) => item.file === list.value)
+        if (!bank || !confirm(`Update preset "${bank.name}" with the current settings and tracks?`)) {
+            return
+        }
+        busy(true, 'Updating…')
+        try {
+            const { text, skipped } = await upload(bank.name)
+            const result = await send('PUT', '/__presets/pack?file=' + encodeURIComponent(bank.file), text)
+            await refresh()
+            list.value = bank.file
+            busy(false, `Updated "${bank.name}"${leftOut(skipped)}${removed(result.removedSamples ?? [])}.`)
+        } catch (error) {
+            busy(false, 'Update failed: ' + String(error))
         }
     })
 
@@ -140,12 +171,9 @@ if (import.meta.env.DEV) {
         }
         busy(true, 'Deleting…')
         try {
-            const response = await fetch('/__presets/pack?file=' + encodeURIComponent(bank.file), { method: 'DELETE' })
-            if (!response.ok) {
-                throw new Error((await response.json()).error ?? response.statusText)
-            }
+            const result = await send('DELETE', '/__presets/pack?file=' + encodeURIComponent(bank.file))
             await refresh()
-            busy(false, `Deleted "${bank.name}".`)
+            busy(false, `Deleted "${bank.name}"${removed(result.removedSamples ?? [])}.`)
         } catch (error) {
             busy(false, 'Delete failed: ' + String(error))
         }

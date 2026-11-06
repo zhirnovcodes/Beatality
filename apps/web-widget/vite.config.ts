@@ -116,7 +116,8 @@ function storeSample(name: string, bytes: Buffer): string {
 // Localhost only: the dev page saves and deletes presets in public/packs. A build has no such routes.
 // POST /__presets/sample?name=<file>  raw bytes  -> { id }
 // POST /__presets/pack?name=<preset>  pack JSON  -> { file }
-// DELETE /__presets/pack?file=<file>             -> { ok }
+// PUT /__presets/pack?file=<file>     pack JSON  -> { ok, removedSamples }  overwrites, drops samples no preset uses now
+// DELETE /__presets/pack?file=<file>             -> { ok, removedSamples }
 function presetLibrary(): Plugin {
     return {
         name: 'beatality-preset-library',
@@ -165,18 +166,30 @@ function presetLibrary(): Plugin {
                         reply(200, { file })
                         return
                     }
-                    if (req.method === 'DELETE' && url.pathname === '/__presets/pack') {
+                    if ((req.method === 'DELETE' || req.method === 'PUT') && url.pathname === '/__presets/pack') {
                         const file = safeName(url.searchParams.get('file'))
-                        if (!file || !file.endsWith('.beatality')) {
-                            reply(400, { error: 'bad preset file' })
+                        const bank = readBanks().find((item) => item.file === file)
+                        if (!file || !bank) {
+                            reply(400, { error: 'no such preset' })
                             return
                         }
-                        const banks = readBanks().filter((bank) => bank.file !== file)
-                        // Only this pack's samples, and only the ones no other pack uses.
-                        const used = new Set(banks.flatMap((bank) => packSamples(bank.file)))
-                        const orphans = packSamples(file).filter((id) => !used.has(id) && safeName(id))
-                        fs.rmSync(path.join(packsDir, file), { force: true })
-                        writeBanks(banks)
+                        const before = packSamples(file)
+                        if (req.method === 'PUT') {
+                            // Update: the preset keeps its name and file, and takes the page's state.
+                            const doc = JSON.parse((await readBody(req)).toString('utf8'))
+                            if (doc?.format !== 'beatality.pack' || doc.version !== 1) {
+                                reply(400, { error: 'not a pack' })
+                                return
+                            }
+                            doc.name = bank.name
+                            fs.writeFileSync(path.join(packsDir, file), JSON.stringify(doc, null, 2) + '\n')
+                        } else {
+                            fs.rmSync(path.join(packsDir, file), { force: true })
+                            writeBanks(readBanks().filter((item) => item.file !== file))
+                        }
+                        // The samples this preset had, minus the ones any preset still uses.
+                        const used = new Set(readBanks().flatMap((item) => packSamples(item.file)))
+                        const orphans = before.filter((id) => !used.has(id) && safeName(id))
                         for (const id of orphans) {
                             fs.rmSync(path.join(samplesDir, id), { force: true })
                         }

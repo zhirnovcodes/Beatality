@@ -41,7 +41,7 @@ bool isNumber(const juce::var& value) {
 }
 
 // In bt::ChaosTrigger order.
-const char* const kChaosTriggerNames[] = {"button", "note", "loop", "slices", "beats"};
+const char* const kChaosTriggerNames[] = {"button", "note", "loop", "slices", "beats", "none"};
 
 double number(juce::DynamicObject& object, const char* key, double fallback, double low, double high) {
     const juce::var value = object.getProperty(key);
@@ -129,7 +129,7 @@ void decodeChaos(const juce::var& value, bt::ChaosSettings& chaos) {
     }
     using Settings = bt::ChaosSettings;
     const juce::String trigger = object->getProperty("trigger").toString();
-    for (int i = 0; i <= static_cast<int>(bt::ChaosTrigger::Beats); ++i) {
+    for (int i = 0; i <= static_cast<int>(bt::ChaosTrigger::None); ++i) {
         if (trigger == kChaosTriggerNames[i]) {
             chaos.trigger = static_cast<bt::ChaosTrigger>(i);
         }

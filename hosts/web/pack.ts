@@ -84,7 +84,7 @@ export interface PackRepeat {
 }
 
 // bt::ChaosSettings. trigger is a bt::ChaosTrigger name. groups are in bt::ChaosGroup order.
-export const chaosTriggerNames = ['button', 'note', 'loop', 'slices', 'beats'] as const
+export const chaosTriggerNames = ['button', 'note', 'loop', 'slices', 'beats', 'none'] as const
 export type ChaosTriggerName = (typeof chaosTriggerNames)[number]
 
 export interface PackChaos {

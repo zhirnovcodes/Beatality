@@ -10,7 +10,7 @@ export interface FactoryBank {
     file: string
 }
 
-// The chaos knobs. trigger is 0 Randomize button, 1 Note, 2 Loop, 3 Slices, 4 Beats.
+// The chaos knobs. trigger is 0 Randomize button, 1 Note, 2 Loop, 3 Slices, 4 Beats, 5 None.
 // beatSize is 2^n beats, -2..1. loopSize is loops, 1..8. sliceSize is 2^n slices, -1..2.
 // groups is one toggle per chaosGroupNames entry, in that order.
 export interface ChaosState {
@@ -60,7 +60,7 @@ export interface RolledControls {
     chaosSliceSize: number
 }
 
-export const chaosTriggers = ['Randomize button', 'Note', 'Loop', 'Slices', 'Beats']
+export const chaosTriggers = ['Randomize button', 'Note', 'Loop', 'Slices', 'Beats', 'None']
 export const chaosGroupNames = [
     'Pan',
     'Slices',

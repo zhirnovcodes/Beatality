@@ -285,7 +285,11 @@ void SliceEngine::apply(const Controls& next) {
     }
 }
 
-void SliceEngine::triggerChaos() { rollChaos(); }
+void SliceEngine::triggerChaos() {
+    if (controls_.chaos.trigger != ChaosTrigger::None) {
+        rollChaos();
+    }
+}
 
 void SliceEngine::noteOn() {
     if (chaos_.noteOn(controls_.chaos)) {

@@ -196,7 +196,7 @@ export interface RepeatMixMessage {
     mix: number
 }
 
-// The chaos knobs. trigger is 0 Randomize button, 1 Note, 2 Loop, 3 Slices, 4 Beats.
+// The chaos knobs. trigger is 0 Randomize button, 1 Note, 2 Loop, 3 Slices, 4 Beats, 5 None.
 // beatSize is 2^n beats, -2..1. loopSize is loops, 1..8. sliceSize is 2^n slices, -1..2.
 // groups is 11 toggles in bt::ChaosGroup order: pan, slices, randomize, effects (global), effects on/off,
 // effects (private), beat repeat on/off, beat repeat positions, beat repeat params, chaos value, chaos time.

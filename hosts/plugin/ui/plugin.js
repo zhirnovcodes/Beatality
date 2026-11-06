@@ -756,7 +756,7 @@ function followHost(live) {
 
 // The CHAOS side panels. The page only shows the values and sends edits.
 // Triggers in bt::ChaosTrigger order. Loop, Slices and Beats each have a size slider; only the chosen one shows.
-const chaosTriggerNames = ['RAND BTN', 'NOTE', 'LOOP', 'SLICES', 'BEAT']
+const chaosTriggerNames = ['RAND BTN', 'NOTE', 'LOOP', 'SLICES', 'BEAT', 'NONE']
 // Trigger number: the size slider's input id, state key, setter, caption.
 // Beats size is 2^n beats, slices size is 2^n slices.
 const chaosSizes = {

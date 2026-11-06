@@ -2,9 +2,10 @@
 
 namespace bt {
 
-// What fires a chaos roll. The Randomize button fires one in every mode.
+// What fires a chaos roll. The Randomize button fires one in every mode but None.
 // Note fires on each note-on. Loop, Slices, and Beats fire each time that many have played since the note started.
-enum class ChaosTrigger { Button, Note, Loop, Slices, Beats };
+// None never rolls: the Randomize button only writes a new sequence.
+enum class ChaosTrigger { Button, Note, Loop, Slices, Beats, None };
 
 // The knob groups a roll can change. Each one is on or off as a whole.
 // EffectsGlobal is the global power, the global chance, and the effect time. EffectsPrivate is each effect's power and chance.
