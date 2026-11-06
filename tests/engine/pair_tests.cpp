@@ -271,12 +271,15 @@ void testPlayAndStopReturnToTheStart() {
     std::vector<float> openR(kRun);
     engine.render(open.data(), openR.data(), kRun);
 
+    // The release keeps the slice playing under a 10 ms gate fall.
+    constexpr int kRelease = bt::SliceEngine::kReleaseMs * kRate / 1000;
     engine.stop();
-    std::vector<float> tail(kFade + 20);
-    std::vector<float> tailR(kFade + 20);
-    engine.render(tail.data(), tailR.data(), kFade + 20);
+    std::vector<float> tail(kRelease + 20);
+    std::vector<float> tailR(kRelease + 20);
+    engine.render(tail.data(), tailR.data(), kRelease + 20);
     CHECK(near(tail[0], samples[kRun]));
-    CHECK(tail[kFade] == 0.0f);
+    CHECK(near(tail[kRelease / 2], samples[kRun + kRelease / 2] * 0.5f));
+    CHECK(tail[kRelease] == 0.0f);
 
     engine.play();
     std::vector<float> again(kFade);

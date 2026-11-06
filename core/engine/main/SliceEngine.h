@@ -41,10 +41,16 @@ public:
     static constexpr int kMaxTracks = SampleBank::kCapacity;
     static constexpr int kAttackMinMs = 2;
     static constexpr int kAttackMaxMs = 16;
+    // The fall of the note gate after stop().
+    static constexpr int kReleaseMs = 10;
 
     SliceEngine(double sampleRate, std::uint64_t seed);
 
     void play();
+    // play() with the clock started at a project beat instead of 0, in this engine's tempo.
+    // The slot under that beat arrives with the usual attack.
+    void play(double beat);
+    // Starts the release. The voices, beat repeat, and clock keep going under the gate; the transport stops at silence.
     void stop();
     void randomize();
     void append(const SampleBuffer& buffer);
@@ -111,6 +117,9 @@ private:
     SampleBuffer playingBuffer_{};
     SampleBuffer outgoingBuffer_{};
     int playingSlot_ = -1;
+    // The note gate on the mix. It rises over the attack from where a release left it, and falls over kReleaseMs.
+    Curve gate_{};
+    int gateAt_ = 0;
 
     std::uint32_t pending_ = 0;
     bool pendingHeld_ = false;

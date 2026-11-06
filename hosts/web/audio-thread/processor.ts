@@ -22,6 +22,7 @@ interface Core {
     bt_set_attack: (engine: number, ms: number) => void
     bt_set_global_power: (engine: number, power: number) => void
     bt_set_effects_enabled: (engine: number, on: number) => void
+    bt_set_retrig: (engine: number, on: number) => void
     bt_set_global_beat_range: (engine: number, min: number, max: number) => void
     bt_set_global_chance: (engine: number, chance: number) => void
     bt_set_reverb_power: (engine: number, power: number) => void
@@ -154,6 +155,11 @@ interface GlobalPowerMessage {
 
 interface EffectsEnabledMessage {
     type: 'effectsEnabled'
+    on: boolean
+}
+
+interface RetrigMessage {
+    type: 'retrig'
     on: boolean
 }
 
@@ -348,6 +354,7 @@ type HostMessage =
     | AttackMessage
     | GlobalPowerMessage
     | EffectsEnabledMessage
+    | RetrigMessage
     | GlobalBeatRangeMessage
     | GlobalChanceMessage
     | ReverbPowerMessage
@@ -578,6 +585,8 @@ class BeatalityProcessor extends AudioWorkletProcessor {
         } else if (message.type === 'globalPower') {
             this.core!.bt_set_global_power(this.engine, message.power)
             this.postSnapshot(0)
+        } else if (message.type === 'retrig') {
+            this.core!.bt_set_retrig(this.engine, message.on ? 1 : 0)
         } else if (message.type === 'effectsEnabled') {
             this.core!.bt_set_effects_enabled(this.engine, message.on ? 1 : 0)
             this.postSnapshot(0)

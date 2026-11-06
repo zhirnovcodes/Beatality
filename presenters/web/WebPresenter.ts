@@ -98,6 +98,7 @@ export class WebPresenter {
             setAttack: (ms) => void this.perform(() => this.client.setAttack(ms)),
             setGlobalPower: (power) => void this.perform(() => this.client.setGlobalPower(power)),
             setEffectsEnabled: (on) => void this.perform(() => this.client.setEffectsEnabled(on)),
+            setRetrig: (on) => void this.perform(() => this.client.setRetrig(on)),
             setGlobalBeatRange: (min, max) => void this.perform(() => this.client.setGlobalBeatRange(min, max)),
             setGlobalChance: (chance) => void this.perform(() => this.client.setGlobalChance(chance)),
             setReverbPower: (power) => void this.perform(() => this.client.setReverbPower(power)),

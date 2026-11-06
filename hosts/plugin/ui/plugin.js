@@ -3,6 +3,7 @@
 const state = {
     bpm: 120,
     bpmSync: false,
+    retrig: true,
     loopBeats: 8,
     sliceExp: 0,
     attackMs: 2,
@@ -685,6 +686,10 @@ function followHost(live) {
         paintMasterPan()
     }
 
+    if (live.retrig != null && Boolean(live.retrig) !== state.retrig) {
+        state.retrig = Boolean(live.retrig)
+        paintRetrig()
+    }
     if (live.effectsEnabled != null && Boolean(live.effectsEnabled) !== state.effectsEnabled) {
         state.effectsEnabled = Boolean(live.effectsEnabled)
         paintEffectsEnabled()
@@ -883,6 +888,10 @@ function applyBankSettings(bank) {
     if (bank.bpmSync != null) {
         state.bpmSync = Boolean(bank.bpmSync)
     }
+    if (bank.retrig != null) {
+        state.retrig = Boolean(bank.retrig)
+    }
+    paintRetrig()
     paintBpm()
     const loop = Number(bank.loop)
     const slices = Number(bank.slices)
@@ -1264,6 +1273,7 @@ function wire() {
     document.getElementById('bpm')?.addEventListener('input', commitBpm)
     document.getElementById('bpm')?.addEventListener('blur', paintBpm)
     document.getElementById('bpm-sync')?.addEventListener('click', onBpmSync)
+    document.getElementById('retrig')?.addEventListener('click', onRetrig)
 
     document.getElementById('loop')?.addEventListener('input', onLoop)
     document.getElementById('slice')?.addEventListener('input', onSlice)
@@ -1425,6 +1435,20 @@ function paintBpm() {
         }
     })
     document.getElementById('bpm-sync')?.setAttribute('aria-pressed', state.bpmSync ? 'true' : 'false')
+}
+
+function paintRetrig() {
+    const button = document.getElementById('retrig')
+    if (button) {
+        button.setAttribute('aria-pressed', state.retrig ? 'true' : 'false')
+        button.textContent = state.retrig ? 'RETRIG ON' : 'RETRIG OFF'
+    }
+}
+
+function onRetrig() {
+    state.retrig = !state.retrig
+    paintRetrig()
+    void native('setRetrig', state.retrig)
 }
 
 function onBpmSync() {

@@ -54,6 +54,8 @@ public:
     void setSlice(int exponent);
     void setAttack(int ms);
     void setEffectsEnabled(bool on);
+    // On, every first note starts the loop at 0. Off, it starts where the project playhead is.
+    void setRetrig(bool on);
     void setGlobalPower(double power);
     // 2^exponent beats, -4..1. min is not above max.
     void setGlobalBeatRange(int min, int max);
@@ -111,6 +113,7 @@ public:
 
     double bpm() const { return savedBpm; }
     bool bpmSync() const { return savedBpmSync; }
+    bool retrig() const { return retrigParam->get(); }
     // Loop, slices, and the output are host parameters. The host's value is the stored one.
     int loopBeats() const { return loopParam->get(); }
     int sliceExponent() const { return sliceParam->get(); }
@@ -233,6 +236,7 @@ private:
     juce::AudioParameterInt* chaosSliceSizeParam = nullptr;
     // In bt::ChaosGroup order.
     juce::AudioParameterBool* chaosGroupParams[bt::ChaosSettings::kGroups]{};
+    juce::AudioParameterBool* retrigParam = nullptr;
     std::unique_ptr<Impl> impl;
     juce::StringArray names;
     std::vector<TrackPicture> pictures;

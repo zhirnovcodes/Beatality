@@ -149,6 +149,11 @@ export class EngineClient {
         this.node?.port.postMessage({ type: 'effectsEnabled', on })
     }
 
+    async setRetrig(on: boolean): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'retrig', on })
+    }
+
     async setGlobalBeatRange(min: number, max: number): Promise<void> {
         await this.start()
         this.node?.port.postMessage({ type: 'globalBeatRange', min, max })

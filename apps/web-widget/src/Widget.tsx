@@ -836,6 +836,10 @@ export function Widget({
                 </section>
             </div>
             <p className="widget-error">{model.error}</p>
+            {/* Plain placeholder until the toggle has a design. */}
+            <button type="button" aria-pressed={model.retrig} onClick={() => model.setRetrig(!model.retrig)}>
+                {model.retrig ? 'RETRIG ON' : 'RETRIG OFF'}
+            </button>
         </>
     )
 }

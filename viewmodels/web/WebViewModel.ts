@@ -88,6 +88,8 @@ export interface ViewActions {
     setAttack: (ms: number) => void
     setGlobalPower: (power: number) => void
     setEffectsEnabled: (on: boolean) => void
+    // Off, the first note starts the loop where the project playhead is.
+    setRetrig: (on: boolean) => void
     setGlobalBeatRange: (min: number, max: number) => void
     setGlobalChance: (chance: number) => void
     setReverbPower: (power: number) => void
@@ -191,6 +193,7 @@ export class WebViewModel {
     sliceExp = 0
     attackMs = 2
     effectsEnabled = true
+    retrig = true
     globalPower = 1
     globalBeatMinExp = -3
     globalBeatMaxExp = -1
@@ -404,6 +407,15 @@ export class WebViewModel {
         this.globalPower = power
         this.notify()
         this.actions?.setGlobalPower(power)
+    }
+
+    setRetrig(on: boolean) {
+        if (on === this.retrig) {
+            return
+        }
+        this.retrig = on
+        this.notify()
+        this.actions?.setRetrig(on)
     }
 
     setEffectsEnabled(on: boolean) {

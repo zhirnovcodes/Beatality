@@ -19,17 +19,26 @@ struct Instance {
     bt::SliceEngine engine;
     bt::SliceSnapshot snapshot;
     bt::NoteGate gate;
+    double sampleRate;
+    // Off, the first note starts the loop where the project playhead is instead of at 0.
+    bool retrig = true;
+    // The project playhead, in beats. bt_render moves it at the engine's tempo. It never stops.
+    double projectBeat = 0;
     float velocity = 1.0f;
     // The engine changed its own knobs (a chaos roll) since bt_controls_changed last answered.
     bool controlsChanged = false;
 
-    Instance(double sampleRate, std::uint64_t seed) : engine(sampleRate, seed) {}
+    Instance(double rate, std::uint64_t seed) : engine(rate, seed), sampleRate(rate) {}
 };
 
 void applyGate(Instance& instance, bt::Gate signal) {
     if (signal == bt::Gate::Start) {
         if (instance.engine.count() > 0) {
-            instance.engine.play();
+            if (instance.retrig) {
+                instance.engine.play();
+            } else {
+                instance.engine.play(instance.projectBeat);
+            }
         }
         return;
     }
@@ -264,6 +273,14 @@ BT_EXPORT void bt_set_effects_enabled(Instance* instance, int on) {
     bt::Controls controls = instance->engine.controls();
     controls.effects.enabled = on != 0;
     instance->engine.apply(controls);
+}
+
+// on is 0 or 1.
+BT_EXPORT void bt_set_retrig(Instance* instance, int on) {
+    if (instance == nullptr) {
+        return;
+    }
+    instance->retrig = on != 0;
 }
 
 // 2^exponent beats, -4..1. min is not above max.
@@ -503,6 +520,7 @@ BT_EXPORT void bt_render(Instance* instance, float* left, float* right, int fram
     }
     const bt::Controls before = instance->engine.controls();
     instance->engine.render(left, right, frames);
+    instance->projectBeat += static_cast<double>(frames) * instance->engine.controls().play.bpm / (60.0 * instance->sampleRate);
     instance->controlsChanged = instance->controlsChanged || instance->engine.controls() != before;
     const float velocity = instance->velocity;
     if (velocity == 1.0f) {

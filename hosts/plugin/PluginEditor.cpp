@@ -362,6 +362,12 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
             }
             completion(true);
         })
+        .withNativeFunction("setRetrig", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            if (!args.isEmpty()) {
+                processor.setRetrig(static_cast<bool>(args[0]));
+            }
+            completion(true);
+        })
         .withNativeFunction("setRepeatEnabled", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
             if (!args.isEmpty()) {
                 processor.setRepeatEnabled(static_cast<bool>(args[0]));
@@ -510,7 +516,8 @@ void Editor::pushLive() {
     key << playhead << '|' << playTrack << '|' << playSlot << '|' << (canAppend ? 1 : 0) << '|' << error << '|' << loop << '|'
         << slices << '|' << volume << '|' << panMin << '|' << panMax << '|' << (processor.effectsEnabled() ? 1 : 0) << '|'
         << processor.globalBeatMin() << '|' << processor.globalBeatMax() << '|' << (repeat.enabled ? 1 : 0) << '|' << repeat.sizeMin << '|'
-        << repeat.sizeMax << '|' << repeat.length << '|' << repeat.chance << '|' << repeat.mix << '|' << processor.attackMs();
+        << repeat.sizeMax << '|' << repeat.length << '|' << repeat.chance << '|' << repeat.mix << '|' << processor.attackMs() << '|'
+        << (processor.retrig() ? 1 : 0);
     for (const bool on : repeat.positions) {
         key << (on ? '1' : '0');
     }
@@ -540,6 +547,7 @@ void Editor::pushLive() {
     object->setProperty("panMin", panMin);
     object->setProperty("panMax", panMax);
     object->setProperty("effectsEnabled", processor.effectsEnabled());
+    object->setProperty("retrig", processor.retrig());
     object->setProperty("globalPower", processor.globalPower());
     object->setProperty("globalBeatMin", processor.globalBeatMin());
     object->setProperty("globalBeatMax", processor.globalBeatMax());
@@ -653,6 +661,7 @@ void Editor::pushBank() {
     object->setProperty("slices", processor.sliceExponent());
     object->setProperty("attack", processor.attackMs());
     object->setProperty("effectsEnabled", processor.effectsEnabled());
+    object->setProperty("retrig", processor.retrig());
     object->setProperty("globalPower", processor.globalPower());
     object->setProperty("globalBeatMin", processor.globalBeatMin());
     object->setProperty("globalBeatMax", processor.globalBeatMax());

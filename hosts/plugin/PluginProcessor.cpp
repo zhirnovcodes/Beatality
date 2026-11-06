@@ -466,6 +466,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout parameterLayout() {
         layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{kChaosGroupIds[group], 1}, kChaosGroupNames[group],
                                                               chaos.groups[group]));
     }
+    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"retrig", 1}, "Retrig", true));
     return layout;
 }
 
@@ -904,11 +905,16 @@ struct Processor::Impl {
         queue.drain([this](CommandQueue::Slot slot) { applySlot(slot); });
     }
 
-    void startPlayhead() {
+    // at is the note's frame in the block.
+    void startPlayhead(int at) {
         if (engine == nullptr || engine->count() == 0) {
             return;
         }
-        engine->play();
+        if (!retrig && blockBeat >= 0.0 && hostBpm > 0.0) {
+            engine->play(blockBeat + static_cast<double>(at) * hostBpm / (60.0 * rate));
+        } else {
+            engine->play();
+        }
         remember();
     }
 
@@ -920,9 +926,9 @@ struct Processor::Impl {
         remember();
     }
 
-    void applyGate(bt::Gate signal) {
+    void applyGate(bt::Gate signal, int at) {
         if (signal == bt::Gate::Start) {
-            startPlayhead();
+            startPlayhead(at);
             return;
         }
         if (signal == bt::Gate::Stop) {
@@ -930,18 +936,18 @@ struct Processor::Impl {
         }
     }
 
-    void handleMidi(const juce::MidiMessage& message) {
+    void handleMidi(const juce::MidiMessage& message, int at) {
         if (message.isAllNotesOff() || message.isAllSoundOff()) {
-            applyGate(gate.allOff());
+            applyGate(gate.allOff(), at);
             return;
         }
         if (message.isNoteOn()) {
-            applyGate(gate.noteOn());
+            applyGate(gate.noteOn(), at);
             engine->noteOn();
             return;
         }
         if (message.isNoteOff()) {
-            applyGate(gate.noteOff());
+            applyGate(gate.noteOff(), at);
         }
     }
 
@@ -1060,6 +1066,9 @@ struct Processor::Impl {
     double ownBpm = 120;
     double hostBpm = 0;
     bool bpmSync = false;
+    // The retrig parameter, and the host's beat at the start of this block: -1 while the host is stopped or has none.
+    bool retrig = true;
+    double blockBeat = -1;
     // The host parameter values read on the last block. They start at the parameters' defaults.
     bt::Controls lastParams;
     // Knobs the engine changed by itself, for the message thread to write into the host parameters.
@@ -1110,6 +1119,7 @@ Processor::Processor()
       chaosBeatSizeParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("chaosBeatSize"))),
       chaosLoopSizeParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("chaosLoopSize"))),
       chaosSliceSizeParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("chaosSliceSize"))),
+      retrigParam(dynamic_cast<juce::AudioParameterBool*>(params.getParameter("retrig"))),
       impl(std::make_unique<Impl>(view, slot, head)) {
     seenPanMin = panMinParam->get();
     seenPanMax = panMaxParam->get();
@@ -1193,14 +1203,20 @@ void Processor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&
     controls.chaos = chaos();
     impl->readParams(controls);
     double hostBpm = 0.0;
+    double blockBeat = -1.0;
     if (juce::AudioPlayHead* playHead = getPlayHead()) {
         if (const auto info = playHead->getPosition()) {
             if (const auto tempo = info->getBpm()) {
                 hostBpm = *tempo;
             }
+            if (const auto ppq = info->getPpqPosition(); ppq && info->getIsPlaying() && std::isfinite(*ppq) && *ppq >= 0.0) {
+                blockBeat = *ppq;
+            }
         }
     }
     impl->followHost(hostBpm > 0.0 && std::isfinite(hostBpm) ? hostBpm : 0.0);
+    impl->retrig = retrigParam->get();
+    impl->blockBeat = blockBeat;
 
     const bt::Controls rendered = impl->engine->controls();
     int position = 0;
@@ -1210,7 +1226,7 @@ void Processor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&
             impl->render(buffer, position, at - position);
         }
         position = at;
-        impl->handleMidi(metadata.getMessage());
+        impl->handleMidi(metadata.getMessage(), at);
     }
     if (position < buffer.getNumSamples()) {
         impl->render(buffer, position, buffer.getNumSamples() - position);
@@ -1430,6 +1446,10 @@ void Processor::setBpmSync(bool on) {
     slot.kind = CommandQueue::Slot::Kind::BpmSync;
     slot.flag = on;
     impl->queue.push(slot);
+}
+
+void Processor::setRetrig(bool on) {
+    setFromWindow(*retrigParam, on ? 1.0f : 0.0f);
 }
 
 void Processor::setLoop(int beats) {

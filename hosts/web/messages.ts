@@ -77,6 +77,12 @@ export interface EffectsEnabledMessage {
     on: boolean
 }
 
+// Off, the first note starts the loop where the project playhead is.
+export interface RetrigMessage {
+    type: 'retrig'
+    on: boolean
+}
+
 export interface GlobalBeatRangeMessage {
     type: 'globalBeatRange'
     min: number
@@ -275,6 +281,7 @@ export type HostMessage =
     | AttackMessage
     | GlobalPowerMessage
     | EffectsEnabledMessage
+    | RetrigMessage
     | GlobalBeatRangeMessage
     | GlobalChanceMessage
     | ReverbPowerMessage

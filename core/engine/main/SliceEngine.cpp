@@ -1,5 +1,6 @@
 #include "SliceEngine.h"
 
+#include <cmath>
 #include <utility>
 
 namespace bt {
@@ -45,37 +46,54 @@ void movePlayingOut(SlicePlayer& playing, SlicePlayer& outgoing, Clock& playingC
 
 SliceEngine::SliceEngine(double sampleRate, std::uint64_t seed)
     : settings_{sampleRate, 120.0}, playing_(sampleRate, seed), outgoing_(sampleRate, seed + 1), rng_(seed),
-      repeatRng_(seed + 2), chaos_(seed + 3), beatRepeat_(sampleRate) {}
+      repeatRng_(seed + 2), chaos_(seed + 3), beatRepeat_(sampleRate) {
+    gate_.stop(0);
+}
 
-void SliceEngine::play() {
+void SliceEngine::play() { play(0.0); }
+
+void SliceEngine::play(double beat) {
     if (sequence_.empty()) {
         sequence_.generate(grid_.slotCount(), bank_.count(), rng_, controls_.effects);
         repeatSequence_.generate(repeatRng_);
     }
     beatRepeat_.clean();
+    // A note inside the release rises from the gain the release reached. From silence the slice's own attack is the rise.
+    const float left = gate_.fadingOut() ? gate_.y(gateAt_) : 1.0f;
+    const int rise = playingClock_.fadeFrames(settings_, grid_, controls_.play.attackMs);
+    gate_ = Curve();
+    gate_.setLength(rise);
+    gateAt_ = left > 0.0f && left < 1.0f ? static_cast<int>(std::lround(left * rise)) : rise;
+    const std::int64_t frame = std::llround(beat * settings_.framesPerBeat());
     if (playing_.isPlaying()) {
         movePlayingOut(playing_, outgoing_, playingClock_, outgoingClock_, playingSlot_, playingBuffer_, outgoingBuffer_);
-        playingClock_.seek(0);
-        if (!sequence_.empty() && bank_.count() > 0) {
-            const int track = sequence_.indexAt(0, bank_.count());
+        playingClock_.seek(frame);
+        const int slot = playingClock_.arrivingSlot(settings_, grid_, controls_.play.attackMs);
+        if (slot >= 0 && !sequence_.empty() && bank_.count() > 0) {
+            const int track = sequence_.indexAt(slot, bank_.count());
             playingBuffer_ = bank_.at(track);
-            playing_.setSlice(bank_.play(track), bank_.warp(track), 0, sequence_.effectAt(0), sequence_.rollAt(0), sequence_.panRollAt(0), sequence_.beatRollAt(0));
-            playingSlot_ = 0;
+            playing_.setSlice(bank_.play(track), bank_.warp(track), slot, sequence_.effectAt(slot), sequence_.rollAt(slot), sequence_.panRollAt(slot), sequence_.beatRollAt(slot));
+            playingSlot_ = slot;
         } else {
             playingSlot_ = -1;
         }
     } else {
-        playingClock_.seek(0);
+        playingClock_.seek(frame);
         playingSlot_ = -1;
     }
     playing_.setRunning(true);
 }
 
 void SliceEngine::stop() {
-    if (playing_.running()) {
-        playing_.stop();
+    if (!playing_.running() || gate_.fadingOut()) {
+        return;
     }
-    playing_.setRunning(false);
+    const float now = gate_.y(gateAt_);
+    const int release = static_cast<int>(std::llround(kReleaseMs * 0.001 * settings_.sampleRate));
+    gate_ = Curve();
+    gate_.setLength(release);
+    gateAt_ = static_cast<int>(std::lround(now * release));
+    gate_.stop(gateAt_);
 }
 
 void SliceEngine::randomize() {
@@ -397,8 +415,18 @@ void SliceEngine::render(float* left, float* right, int frames) {
         if (playing_.isPlaying()) {
             mixed = beatRepeat_.render(mixed, settings_, playingClock_, grid_, controls_.repeat, repeatSequence_);
         }
-        left[i] = mixed.l;
-        right[i] = mixed.r;
+        const float gate = gate_.y(gateAt_);
+        if (gate_.fadingOut() ? gate > 0.0f : gate < 1.0f) {
+            ++gateAt_;
+        }
+        // The release reached silence. Both voices are already inaudible, so they end here.
+        if (gate_.fadingOut() && !(gate > 0.0f) && playing_.running()) {
+            playing_.drop();
+            outgoing_.drop();
+            playingSlot_ = -1;
+        }
+        left[i] = mixed.l * gate;
+        right[i] = mixed.r * gate;
         if (playing_.isPlaying()) {
             playingClock_.tick();
         }

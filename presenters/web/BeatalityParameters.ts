@@ -77,6 +77,11 @@ export class BeatalityParameters {
                 write: (pan) => model.setOutputPanMax(pan),
             },
             {
+                info: { id: 'retrig', label: 'Retrig', kind: 'boolean', min: 0, max: 1 },
+                read: () => (model.retrig ? 1 : 0),
+                write: (on) => model.setRetrig(on > 0.5),
+            },
+            {
                 info: { id: 'effectsOn', label: 'Effects on', kind: 'boolean', min: 0, max: 1 },
                 read: () => (model.effectsEnabled ? 1 : 0),
                 write: (on) => model.setEffectsEnabled(on > 0.5),
