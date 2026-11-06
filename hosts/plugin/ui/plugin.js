@@ -114,7 +114,7 @@ function columns() {
 }
 
 function placeThumb(input) {
-    const slider = input.closest('.slider, .seek, .mix-slider, .fx-slider, .br-slider')
+    const slider = input.closest('.slider, .seek, .mix-slider, .fx-slider, .br-slider, .chaos-slider, .chaos-small')
     if (!(slider instanceof HTMLElement)) {
         return
     }
@@ -749,28 +749,42 @@ function followHost(live) {
     followChaos(live)
 }
 
-// The chaos column. Plain controls; the page only shows the values and sends edits.
+// The CHAOS side panels. The page only shows the values and sends edits.
+// Triggers in bt::ChaosTrigger order. Loop, Slices and Beats each have a size slider; only the chosen one shows.
+const chaosTriggerNames = ['RAND BTN', 'NOTE', 'LOOP', 'SLICES', 'BEAT']
+// Trigger number: the size slider's input id, state key, setter, caption.
 // Beats size is 2^n beats, slices size is 2^n slices.
+const chaosSizes = {
+    2: ['chaos-loop-size', 'chaosLoopSize', 'setChaosLoopSize', (value) => 'LOOPS (' + value + ')'],
+    3: ['chaos-slice-size', 'chaosSliceSize', 'setChaosSliceSize', (value) => 'SLICES (' + sliceLabel(value) + ')'],
+    4: ['chaos-beat-size', 'chaosBeatSize', 'setChaosBeatSize', (value) => 'BEATS (' + sliceLabel(value) + ')'],
+}
+
+function paintChaosRange(id, value) {
+    const input = document.getElementById(id)
+    if (input instanceof HTMLInputElement && !input.matches(':active')) {
+        input.value = String(value)
+        placeThumb(input)
+    }
+}
+
 function paintChaos() {
     const trigger = document.getElementById('chaos-trigger')
-    if (trigger instanceof HTMLSelectElement && document.activeElement !== trigger) {
-        trigger.value = String(state.chaosTrigger)
+    if (trigger) {
+        trigger.textContent = chaosTriggerNames[state.chaosTrigger] ?? ''
     }
-    const ranges = [
-        ['chaos-value', state.chaosValue, state.chaosValue.toFixed(2)],
-        ['chaos-beat-size', state.chaosBeatSize, sliceLabel(state.chaosBeatSize)],
-        ['chaos-loop-size', state.chaosLoopSize, String(state.chaosLoopSize)],
-        ['chaos-slice-size', state.chaosSliceSize, sliceLabel(state.chaosSliceSize)],
-    ]
-    for (const [id, value, text] of ranges) {
-        const input = document.getElementById(id)
-        if (input instanceof HTMLInputElement && !input.matches(':active')) {
-            input.value = String(value)
-        }
-        const output = document.getElementById(id + '-text')
-        if (output) {
-            output.textContent = text
-        }
+    paintChaosRange('chaos-value', state.chaosValue)
+    for (const [id, key] of Object.values(chaosSizes)) {
+        paintChaosRange(id, state[key])
+    }
+    document.querySelectorAll('.chaos-small').forEach((slider) => {
+        slider.classList.toggle('on', Number(slider.dataset.trigger) === state.chaosTrigger)
+    })
+    const size = chaosSizes[state.chaosTrigger]
+    const caption = document.getElementById('chaos-size-cap')
+    if (caption) {
+        caption.style.visibility = size ? 'visible' : 'hidden'
+        caption.textContent = size ? size[3](state[size[1]]) : ''
     }
     document.querySelectorAll('.chaos-group').forEach((box) => {
         if (box instanceof HTMLInputElement) {
@@ -798,20 +812,28 @@ function followChaos(live) {
     }
 }
 
+function stepChaosTrigger(step) {
+    const count = chaosTriggerNames.length
+    state.chaosTrigger = (state.chaosTrigger + step + count) % count
+    paintChaos()
+    void native('setChaosTrigger', state.chaosTrigger)
+}
+
 function wireChaos() {
-    document.getElementById('chaos-trigger')?.addEventListener('change', (event) => {
-        state.chaosTrigger = Number(event.currentTarget.value)
-        void native('setChaosTrigger', state.chaosTrigger)
+    // The CHAOS toggle only shows or hides the side panels.
+    const toggle = document.getElementById('chaos-toggle')
+    toggle?.addEventListener('click', () => {
+        const open = toggle.getAttribute('aria-pressed') !== 'true'
+        toggle.setAttribute('aria-pressed', String(open))
+        document.querySelector('.beatality-skin')?.classList.toggle('chaos-open', open)
     })
-    const ranges = [
-        ['chaos-value', 'chaosValue', 'setChaosValue'],
-        ['chaos-beat-size', 'chaosBeatSize', 'setChaosBeatSize'],
-        ['chaos-loop-size', 'chaosLoopSize', 'setChaosLoopSize'],
-        ['chaos-slice-size', 'chaosSliceSize', 'setChaosSliceSize'],
-    ]
+    document.getElementById('chaos-trigger-prev')?.addEventListener('click', () => stepChaosTrigger(-1))
+    document.getElementById('chaos-trigger-next')?.addEventListener('click', () => stepChaosTrigger(1))
+    const ranges = [['chaos-value', 'chaosValue', 'setChaosValue'], ...Object.values(chaosSizes)]
     for (const [id, key, name] of ranges) {
         document.getElementById(id)?.addEventListener('input', (event) => {
             const value = Number(event.currentTarget.value)
+            placeThumb(event.currentTarget)
             if (value === state[key]) {
                 return
             }

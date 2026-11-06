@@ -63,9 +63,9 @@ async function add(kind: Kind) {
 
     const frame = document.createElement('section')
     frame.className = 'rack-window'
-    // Side by side, three to a row. A Beatality window is 496px wide.
+    // Side by side, three to a row. A Beatality window is 832px wide with the CHAOS side room.
     const place = desk.childElementCount
-    frame.style.left = `${24 + (place % 3) * 536}px`
+    frame.style.left = `${24 + (place % 3) * 872}px`
     frame.style.top = `${24 + Math.floor(place / 3) * 80}px`
     frame.style.zIndex = String(nextZ++)
     const bar = document.createElement('header')

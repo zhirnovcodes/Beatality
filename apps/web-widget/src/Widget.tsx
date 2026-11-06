@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'preact/hooks'
-import { chaosGroupNames, chaosTriggers, type WebViewModel } from '../../../viewmodels/web/WebViewModel'
+import type { WebViewModel } from '../../../viewmodels/web/WebViewModel'
 import './ui/skin/skin.css'
 import './widget.css'
 
@@ -19,6 +19,8 @@ export function Widget({
     const [, setTick] = useState(0)
     const [loadingPack, setLoadingPack] = useState(false)
     const [bankOpen, setBankOpen] = useState(false)
+    // The CHAOS toggle only shows or hides the side panels.
+    const [chaosOpen, setChaosOpen] = useState(false)
     const [bankIndex, setBankIndex] = useState(0)
     const [selection, setSelection] = useState<readonly number[]>([])
     const [dropping, setDropping] = useState(false)
@@ -58,7 +60,7 @@ export function Widget({
         if (!root) {
             return
         }
-        root.querySelectorAll<HTMLElement>('.slider, .seek, .mix-slider, .fx-slider, .br-slider').forEach((slider) => {
+        root.querySelectorAll<HTMLElement>('.slider, .seek, .mix-slider, .fx-slider, .br-slider, .chaos-slider, .chaos-small').forEach((slider) => {
             const input = slider.querySelector('input[type="range"]')
             if (input instanceof HTMLInputElement) {
                 placeThumb(input)
@@ -210,7 +212,11 @@ export function Widget({
 
     return (
         <>
-            <div className={bankOpen ? 'beatality-skin picking-bank' : 'beatality-skin'} ref={skin}>
+            <div
+                className={['beatality-skin', bankOpen ? 'picking-bank' : '', chaosOpen ? 'chaos-open' : ''].filter(Boolean).join(' ')}
+                ref={skin}
+            >
+                <ChaosSides model={model} />
                 <section className="part top" aria-label="Main controls">
                     <div className="window" />
                     <div className="content">
@@ -394,6 +400,14 @@ export function Widget({
                             onClick={() => model.randomize()}
                         >
                             Randomize
+                        </button>
+                        <button
+                            type="button"
+                            className="chaos-toggle"
+                            aria-pressed={chaosOpen}
+                            onClick={() => setChaosOpen(!chaosOpen)}
+                        >
+                            CHAOS
                         </button>
                     </div>
                 </section>
@@ -822,7 +836,6 @@ export function Widget({
                 </section>
             </div>
             <p className="widget-error">{model.error}</p>
-            <ChaosPart model={model} />
         </>
     )
 }
@@ -832,84 +845,164 @@ function powerLabel(exponent: number): string {
     return exponent >= 0 ? String(2 ** exponent) : `1/${2 ** -exponent}`
 }
 
-// Chaos. Plain controls under the skin; not styled to match it.
-function ChaosPart({ model }: { model: WebViewModel }) {
-    const number = (event: Event) => Number((event.currentTarget as HTMLInputElement | HTMLSelectElement).value)
+// Trigger names in bt::ChaosTrigger order.
+const chaosTriggerNames = ['RAND BTN', 'NOTE', 'LOOP', 'SLICES', 'BEAT']
+
+// One toggle row: the caption, then its box. group is the bt::ChaosGroup number.
+function ChaosToggle({ model, name, group }: { model: WebViewModel; name: string; group: number }) {
     return (
-        <section className="chaos" aria-label="Chaos">
-            <h2>Chaos</h2>
-            <label>
-                Trigger{' '}
-                <select value={String(model.chaosTrigger)} onChange={(event) => model.setChaosTrigger(number(event))}>
-                    {chaosTriggers.map((name, index) => (
-                        <option key={name} value={String(index)}>
-                            {name}
-                        </option>
-                    ))}
-                </select>
-            </label>
-            <label>
-                Value {model.chaosValue.toFixed(2)}
-                <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={model.chaosValue}
-                    data-param="chaosValue"
-                    onInput={(event) => model.setChaosValue(number(event))}
-                />
-            </label>
-            <label>
-                Beats size {powerLabel(model.chaosBeatSize)}
-                <input
-                    type="range"
-                    min="-2"
-                    max="1"
-                    step="1"
-                    value={model.chaosBeatSize}
-                    data-param="chaosBeatSize"
-                    onInput={(event) => model.setChaosBeatSize(number(event))}
-                />
-            </label>
-            <label>
-                Loop size {model.chaosLoopSize}
-                <input
-                    type="range"
-                    min="1"
-                    max="8"
-                    step="1"
-                    value={model.chaosLoopSize}
-                    data-param="chaosLoopSize"
-                    onInput={(event) => model.setChaosLoopSize(number(event))}
-                />
-            </label>
-            <label>
-                Slices size {powerLabel(model.chaosSliceSize)}
-                <input
-                    type="range"
-                    min="-1"
-                    max="2"
-                    step="1"
-                    value={model.chaosSliceSize}
-                    data-param="chaosSliceSize"
-                    onInput={(event) => model.setChaosSliceSize(number(event))}
-                />
-            </label>
-            <fieldset>
-                <legend>Chaos controls</legend>
-                {chaosGroupNames.map((name, group) => (
-                    <label key={name}>
+        <label className="chaos-tog">
+            {name}
+            <input
+                type="checkbox"
+                checked={model.chaosGroups[group]}
+                onChange={(event) => model.setChaosGroup(group, (event.currentTarget as HTMLInputElement).checked)}
+            />
+        </label>
+    )
+}
+
+interface ChaosSize {
+    trigger: number
+    min: number
+    max: number
+    value: number
+    param: string
+    label: string
+    caption: string
+    set: (value: number) => void
+}
+
+// The CHAOS side panels, tucked behind the top part. Loop, Slices and Beats each have a size slider; only the one for
+// the chosen trigger shows. Beats size is 2^n beats, slices size is 2^n slices.
+function ChaosSides({ model }: { model: WebViewModel }) {
+    const trigger = model.chaosTrigger
+    const count = chaosTriggerNames.length
+    const onRange = (apply: (value: number) => void) => (event: Event) => {
+        const input = event.currentTarget as HTMLInputElement
+        apply(input.valueAsNumber)
+        placeThumb(input)
+    }
+    const sizes: ChaosSize[] = [
+        {
+            trigger: 2,
+            min: 1,
+            max: 8,
+            value: model.chaosLoopSize,
+            param: 'chaosLoopSize',
+            label: 'Loops',
+            caption: `LOOPS (${model.chaosLoopSize})`,
+            set: (value) => model.setChaosLoopSize(value),
+        },
+        {
+            trigger: 3,
+            min: -1,
+            max: 2,
+            value: model.chaosSliceSize,
+            param: 'chaosSliceSize',
+            label: 'Slices',
+            caption: `SLICES (${powerLabel(model.chaosSliceSize)})`,
+            set: (value) => model.setChaosSliceSize(value),
+        },
+        {
+            trigger: 4,
+            min: -2,
+            max: 1,
+            value: model.chaosBeatSize,
+            param: 'chaosBeatSize',
+            label: 'Beats',
+            caption: `BEATS (${powerLabel(model.chaosBeatSize)})`,
+            set: (value) => model.setChaosBeatSize(value),
+        },
+    ]
+    const chosen = sizes.find((size) => size.trigger === trigger)
+    return (
+        <>
+            <aside className="chaos-side left" aria-label="Chaos">
+                <div className="window" />
+                <div className="content">
+                    <div className="chaos-title" aria-hidden="true" />
+                    <div className="chaos-slider">
+                        <div className="track" />
+                        <div className="fill" />
+                        <div className="star" />
                         <input
-                            type="checkbox"
-                            checked={model.chaosGroups[group]}
-                            onChange={(event) => model.setChaosGroup(group, (event.currentTarget as HTMLInputElement).checked)}
-                        />{' '}
-                        {name}
-                    </label>
-                ))}
-            </fieldset>
-        </section>
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={model.chaosValue}
+                            data-param="chaosValue"
+                            aria-label="Chaos value"
+                            onInput={onRange((value) => model.setChaosValue(value))}
+                        />
+                    </div>
+                    <span className="chaos-cap trigger">TRIGGER</span>
+                    <button
+                        type="button"
+                        className="chaos-arrow prev"
+                        aria-label="Previous trigger"
+                        onClick={() => model.setChaosTrigger((trigger + count - 1) % count)}
+                    />
+                    <output className="chaos-trigger">{chaosTriggerNames[trigger] ?? ''}</output>
+                    <button
+                        type="button"
+                        className="chaos-arrow next"
+                        aria-label="Next trigger"
+                        onClick={() => model.setChaosTrigger((trigger + 1) % count)}
+                    />
+                    <span className="chaos-cap amount" style={{ visibility: chosen ? 'visible' : 'hidden' }}>
+                        {chosen?.caption ?? ''}
+                    </span>
+                    {sizes.map((size) => (
+                        <div key={size.param} className={size === chosen ? 'chaos-small on' : 'chaos-small'}>
+                            <div className="track" />
+                            <div className="thumb" />
+                            <input
+                                type="range"
+                                min={size.min}
+                                max={size.max}
+                                step="1"
+                                value={size.value}
+                                data-param={size.param}
+                                aria-label={size.label}
+                                onInput={onRange(size.set)}
+                            />
+                        </div>
+                    ))}
+                </div>
+                <div className="case" />
+            </aside>
+            <aside className="chaos-side right" aria-label="Chaos toggles">
+                <div className="window" />
+                <div className="content">
+                    <div className="chaos-group-box" style={{ left: '26px', top: '16px' }}>
+                        <span className="chaos-cap">PLAY</span>
+                        <ChaosToggle model={model} name="PAN" group={0} />
+                        <ChaosToggle model={model} name="SLICES" group={1} />
+                        <ChaosToggle model={model} name="RANDOMIZE" group={2} />
+                    </div>
+                    <div className="chaos-group-box" style={{ left: '26px', top: '78px' }}>
+                        <span className="chaos-cap">BEAT REPEAT</span>
+                        <ChaosToggle model={model} name="ON/OFF" group={6} />
+                        <ChaosToggle model={model} name="POSITIONS" group={7} />
+                        <ChaosToggle model={model} name="PARAMS" group={8} />
+                    </div>
+                    <div className="chaos-group-box" style={{ left: '120px', top: '16px' }}>
+                        <span className="chaos-cap">EFFECTS</span>
+                        <ChaosToggle model={model} name="ON/OFF" group={4} />
+                        <ChaosToggle model={model} name="GLOBAL" group={3} />
+                        <ChaosToggle model={model} name="PER-EFFECT" group={5} />
+                    </div>
+                    <div className="chaos-group-box" style={{ left: '120px', top: '78px' }}>
+                        <span className="chaos-cap">CHAOS</span>
+                        <ChaosToggle model={model} name="VALUE" group={9} />
+                        <ChaosToggle model={model} name="TIME" group={10} />
+                    </div>
+                </div>
+                <div className="case" />
+            </aside>
+        </>
     )
 }
 
@@ -1133,7 +1226,7 @@ function snapTo(value: number, min: number, max: number, target: number): number
 }
 
 function placeThumb(input: HTMLInputElement) {
-    const slider = input.closest('.slider, .seek, .mix-slider, .fx-slider, .br-slider')
+    const slider = input.closest('.slider, .seek, .mix-slider, .fx-slider, .br-slider, .chaos-slider, .chaos-small')
     if (!(slider instanceof HTMLElement)) {
         return
     }

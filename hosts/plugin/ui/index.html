@@ -5,24 +5,14 @@
 <title>Beatality</title>
 <link rel="stylesheet" href="/ui/skin/skin.css">
 <style>
-  html, body { margin: 0; width: 716px; height: 800px; overflow: hidden; background: #2a2c30; }
+  html, body { margin: 0; width: 832px; height: 800px; overflow: hidden; background: #2a2c30; }
   #error {
     width: 480px;
-    height: 21px; margin: 0; padding: 0 8px;
+    height: 21px; margin: 0 0 0 130px; padding: 0 8px;
     color: #ff8d8d; font: 12px/21px system-ui, sans-serif;
     text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .beatality-skin .sample-grid .row > .spectrum { overflow: hidden; }
-  /* Chaos: plain controls in a column right of the skin. */
-  #chaos {
-    position: absolute; left: 496px; top: 0; width: 220px; height: 800px; box-sizing: border-box; padding: 8px;
-    color: #ddd; font: 12px system-ui, sans-serif; overflow-y: auto;
-  }
-  #chaos h2 { font-size: 14px; margin: 0 0 8px; }
-  #chaos label { display: block; margin: 6px 0; }
-  #chaos input[type="range"], #chaos select { display: block; width: 100%; box-sizing: border-box; }
-  #chaos fieldset { margin: 8px 0; }
-  #chaos fieldset label { margin: 2px 0; }
   .beatality-skin .sample-grid .row > .spectrum canvas {
     position: absolute; left: 0; top: 0; width: 424px; height: 28px; pointer-events: none;
   }
@@ -30,6 +20,51 @@
 </head>
 <body>
 <div class="beatality-skin">
+  <!-- CHAOS side panels, shown while the CHAOS toggle is on. data-trigger and data-group are bt::ChaosTrigger and
+       bt::ChaosGroup numbers. -->
+  <aside class="chaos-side left" id="chaos-left" aria-label="Chaos">
+    <div class="window"></div>
+    <div class="content">
+      <div class="chaos-title" aria-hidden="true"></div>
+      <div class="chaos-slider">
+        <div class="track"></div><div class="fill"></div><div class="star"></div>
+        <input type="range" id="chaos-value" min="0" max="1" step="0.01" value="0" aria-label="Chaos value">
+      </div>
+      <span class="chaos-cap trigger">TRIGGER</span>
+      <button type="button" class="chaos-arrow prev" id="chaos-trigger-prev" aria-label="Previous trigger"></button>
+      <output class="chaos-trigger" id="chaos-trigger">RAND BTN</output>
+      <button type="button" class="chaos-arrow next" id="chaos-trigger-next" aria-label="Next trigger"></button>
+      <span class="chaos-cap amount" id="chaos-size-cap"></span>
+      <div class="chaos-small" data-trigger="2"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="chaos-loop-size" min="1" max="8" step="1" value="1" aria-label="Loops"></div>
+      <div class="chaos-small" data-trigger="3"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="chaos-slice-size" min="-1" max="2" step="1" value="0" aria-label="Slices"></div>
+      <div class="chaos-small" data-trigger="4"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="chaos-beat-size" min="-2" max="1" step="1" value="0" aria-label="Beats"></div>
+    </div>
+    <div class="case"></div>
+  </aside>
+  <aside class="chaos-side right" id="chaos-right" aria-label="Chaos toggles">
+    <div class="window"></div>
+    <div class="content">
+      <div class="chaos-group-box" style="left: 26px; top: 16px"><span class="chaos-cap">PLAY</span>
+        <label class="chaos-tog">PAN<input type="checkbox" class="chaos-group" data-group="0"></label>
+        <label class="chaos-tog">SLICES<input type="checkbox" class="chaos-group" data-group="1"></label>
+        <label class="chaos-tog">RANDOMIZE<input type="checkbox" class="chaos-group" data-group="2"></label></div>
+      <div class="chaos-group-box" style="left: 26px; top: 78px"><span class="chaos-cap">BEAT REPEAT</span>
+        <label class="chaos-tog">ON/OFF<input type="checkbox" class="chaos-group" data-group="6"></label>
+        <label class="chaos-tog">POSITIONS<input type="checkbox" class="chaos-group" data-group="7"></label>
+        <label class="chaos-tog">PARAMS<input type="checkbox" class="chaos-group" data-group="8"></label></div>
+      <div class="chaos-group-box" style="left: 120px; top: 16px"><span class="chaos-cap">EFFECTS</span>
+        <label class="chaos-tog">ON/OFF<input type="checkbox" class="chaos-group" data-group="4"></label>
+        <label class="chaos-tog">GLOBAL<input type="checkbox" class="chaos-group" data-group="3"></label>
+        <label class="chaos-tog">PER-EFFECT<input type="checkbox" class="chaos-group" data-group="5"></label></div>
+      <div class="chaos-group-box" style="left: 120px; top: 78px"><span class="chaos-cap">CHAOS</span>
+        <label class="chaos-tog">VALUE<input type="checkbox" class="chaos-group" data-group="9"></label>
+        <label class="chaos-tog">TIME<input type="checkbox" class="chaos-group" data-group="10"></label></div>
+    </div>
+    <div class="case"></div>
+  </aside>
   <section class="part top" aria-label="Main controls">
     <div class="window"></div>
     <div class="content">
@@ -80,6 +115,8 @@
     <div class="case"></div>
     <div class="controls">
       <button type="button" class="randomize" id="randomize">Randomize</button>
+      <!-- Shows the CHAOS side panels. -->
+      <button type="button" class="chaos-toggle" id="chaos-toggle" aria-pressed="false">CHAOS</button>
     </div>
   </section>
   <section class="part effects" aria-label="Effects">
@@ -246,40 +283,6 @@
   </section>
 </div>
 <p id="error"></p>
-<section id="chaos" aria-label="Chaos">
-  <h2>Chaos</h2>
-  <label>Trigger
-    <select id="chaos-trigger">
-      <option value="0">Randomize button</option>
-      <option value="1">Note</option>
-      <option value="2">Loop</option>
-      <option value="3">Slices</option>
-      <option value="4">Beats</option>
-    </select>
-  </label>
-  <label>Value <output id="chaos-value-text">0.00</output>
-    <input type="range" id="chaos-value" min="0" max="1" step="0.01" value="0"></label>
-  <label>Beats size <output id="chaos-beat-size-text">1</output>
-    <input type="range" id="chaos-beat-size" min="-2" max="1" step="1" value="0"></label>
-  <label>Loop size <output id="chaos-loop-size-text">1</output>
-    <input type="range" id="chaos-loop-size" min="1" max="8" step="1" value="1"></label>
-  <label>Slices size <output id="chaos-slice-size-text">1</output>
-    <input type="range" id="chaos-slice-size" min="-1" max="2" step="1" value="0"></label>
-  <fieldset>
-    <legend>Chaos controls</legend>
-    <label><input type="checkbox" class="chaos-group" data-group="0"> Pan</label>
-    <label><input type="checkbox" class="chaos-group" data-group="1"> Slices</label>
-    <label><input type="checkbox" class="chaos-group" data-group="2"> Randomize</label>
-    <label><input type="checkbox" class="chaos-group" data-group="3"> Effects (global)</label>
-    <label><input type="checkbox" class="chaos-group" data-group="4"> Effects on/off</label>
-    <label><input type="checkbox" class="chaos-group" data-group="5"> Effects (private)</label>
-    <label><input type="checkbox" class="chaos-group" data-group="6"> Beat repeat on/off</label>
-    <label><input type="checkbox" class="chaos-group" data-group="7"> Beat repeat positions</label>
-    <label><input type="checkbox" class="chaos-group" data-group="8"> Beat repeat params</label>
-    <label><input type="checkbox" class="chaos-group" data-group="9"> Chaos value</label>
-    <label><input type="checkbox" class="chaos-group" data-group="10"> Chaos time</label>
-  </fieldset>
-</section>
 <script src="/plugin.js"></script>
 </body>
 </html>

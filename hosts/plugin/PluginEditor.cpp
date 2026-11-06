@@ -88,7 +88,7 @@ Editor::Editor(Processor& processorIn) : juce::AudioProcessorEditor(processorIn)
         addAndMakeVisible(missing);
     }
     // The skin is 779 tall. The error line under it adds 21. The chaos column is 220 wide, right of the skin.
-    setSize(716, 800);
+    setSize(832, 800);
 }
 
 Editor::~Editor() {
