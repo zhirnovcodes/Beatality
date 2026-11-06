@@ -124,14 +124,12 @@ else()
                 hosts/plugin/PluginEditor.cpp
         )
         target_include_directories(Beatality PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hosts/common)
-        juce_add_binary_data(BeatalityBank
-            SOURCES
-                apps/web-widget/public/packs/banks.json
-                apps/web-widget/public/packs/demo.beatality
-                apps/web-widget/public/packs/demo/178381__snapper4298__115bpm-boom-zap-breakbeat.wav
-                apps/web-widget/public/packs/demo/685110__snapper4298__115bpm_let-the-bass-kick-loop_808.wav
-                apps/web-widget/public/packs/demo/797799__snapper4298__break-beat-115-bpm.wav
-        )
+        # The preset library the web page saves into. Resources are found by file name, so samples sit in one flat folder.
+        file(GLOB BEATALITY_PACK_FILES CONFIGURE_DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/apps/web-widget/public/packs/banks.json"
+            "${CMAKE_CURRENT_SOURCE_DIR}/apps/web-widget/public/packs/*.beatality"
+            "${CMAKE_CURRENT_SOURCE_DIR}/apps/web-widget/public/packs/samples/*")
+        juce_add_binary_data(BeatalityBank SOURCES ${BEATALITY_PACK_FILES})
         file(GLOB BEATALITY_SHAPE_PNGS CONFIGURE_DEPENDS
             "${CMAKE_CURRENT_SOURCE_DIR}/apps/web-widget/src/ui/shapes/*.png")
         juce_add_binary_data(BeatalitySkin

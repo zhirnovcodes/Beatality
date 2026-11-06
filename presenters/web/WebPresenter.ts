@@ -389,6 +389,11 @@ export class WebPresenter {
             if ((item.getAttribute('data-missing') === '1') !== tracks[index].missing) {
                 return false
             }
+            // A reload of the same names brings new audio. Its strip is not in the row yet.
+            const data = this.rowAt(index)
+            if (data && data.spectrum.parentElement !== item) {
+                return false
+            }
         }
         return true
     }

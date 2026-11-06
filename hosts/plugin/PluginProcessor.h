@@ -37,8 +37,9 @@ public:
     const juce::String getProgramName(int) override { return {}; }
     void changeProgramName(int, const juce::String&) override {}
 
-    void getStateInformation(juce::MemoryBlock&) override {}
-    void setStateInformation(const void*, int) override {}
+    // The pack text: controls, sequence, and sample addresses.
+    void getStateInformation(juce::MemoryBlock& dest) override;
+    void setStateInformation(const void* data, int size) override;
 
     bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
 

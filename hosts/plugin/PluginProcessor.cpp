@@ -1982,6 +1982,27 @@ bool Processor::loadPackText(const juce::String& text) {
     setFromWindow(*volumeParam, static_cast<float>(decoded->volume));
     setFromWindow(*panMinParam, static_cast<float>(decoded->panMin));
     setFromWindow(*panMaxParam, static_cast<float>(decoded->panMax));
+    setBpmSync(decoded->bpmSync);
+    setRetrig(decoded->retrig);
+    setEffectsSettings(decoded->effects);
+    const bt::BeatRepeatSettings& repeat = decoded->repeat;
+    setRepeatEnabled(repeat.enabled);
+    setRepeatSizeRange(repeat.sizeMin, repeat.sizeMax);
+    setRepeatLength(repeat.length);
+    setRepeatChance(repeat.chance);
+    setRepeatMix(repeat.mix);
+    for (int i = 0; i < bt::RepeatSequence::kPositions; ++i) {
+        setRepeatPosition(i, repeat.positions[i]);
+    }
+    const bt::ChaosSettings& chaosSettings = decoded->chaos;
+    setChaosTrigger(static_cast<int>(chaosSettings.trigger));
+    setChaosValue(chaosSettings.value);
+    setChaosBeatSize(chaosSettings.beatSize);
+    setChaosLoopSize(chaosSettings.loopSize);
+    setChaosSliceSize(chaosSettings.sliceSize);
+    for (int group = 0; group < bt::ChaosSettings::kGroups; ++group) {
+        setChaosGroup(group, chaosSettings.groups[group]);
+    }
     impl->storeSequence(decoded->slots, decoded->savedCount);
     error.clear();
     return true;
@@ -1997,6 +2018,29 @@ juce::String Processor::packText() {
     pack.volume = outputVolume();
     pack.panMin = outputPanMin();
     pack.panMax = outputPanMax();
+    pack.bpmSync = savedBpmSync;
+    pack.retrig = retrig();
+    pack.effects.enabled = effectsEnabled();
+    pack.effects.globalPower = globalPower();
+    pack.effects.globalChance = globalChance();
+    pack.effects.beatMin = globalBeatMin();
+    pack.effects.beatMax = globalBeatMax();
+    pack.effects.delayPower = delayPower();
+    pack.effects.delayChance = delayChance();
+    pack.effects.reverbPower = reverbPower();
+    pack.effects.reverbChance = reverbChance();
+    pack.effects.reversePower = reversePower();
+    pack.effects.reverseChance = reverseChance();
+    pack.effects.filterPower = filterPower();
+    pack.effects.filterChance = filterChance();
+    pack.effects.flangerPower = flangerPower();
+    pack.effects.flangerChance = flangerChance();
+    pack.effects.trancePower = trancePower();
+    pack.effects.tranceChance = tranceChance();
+    pack.effects.shiftPower = shiftPower();
+    pack.effects.shiftChance = shiftChance();
+    pack.repeat = beatRepeat();
+    pack.chaos = chaos();
     impl->copySequence(pack.slots, pack.savedCount);
     const int count = std::min(names.size(), static_cast<int>(pictures.size()));
     pack.tracks.reserve(static_cast<std::size_t>(count));
@@ -2111,6 +2155,20 @@ bt::ChaosSettings Processor::chaos() const {
         chaos.groups[group] = chaosGroupParams[group]->get();
     }
     return chaos;
+}
+
+// The project keeps the same text a Save writes.
+void Processor::getStateInformation(juce::MemoryBlock& dest) {
+    const juce::String text = packText();
+    dest.replaceAll(text.toRawUTF8(), text.getNumBytesAsUTF8());
+}
+
+// A project saved before the plugin kept state has none. It opens on the defaults.
+void Processor::setStateInformation(const void* data, int size) {
+    if (size <= 0) {
+        return;
+    }
+    loadPackText(juce::String::fromUTF8(static_cast<const char*>(data), size));
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {

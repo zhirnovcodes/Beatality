@@ -40,6 +40,154 @@ bool isNumber(const juce::var& value) {
     return value.isDouble() || value.isInt();
 }
 
+// In bt::ChaosTrigger order.
+const char* const kChaosTriggerNames[] = {"button", "note", "loop", "slices", "beats"};
+
+double number(juce::DynamicObject& object, const char* key, double fallback, double low, double high) {
+    const juce::var value = object.getProperty(key);
+    if (!isNumber(value) || !std::isfinite(static_cast<double>(value))) {
+        return fallback;
+    }
+    return clamp(static_cast<double>(value), low, high);
+}
+
+int whole(juce::DynamicObject& object, const char* key, int fallback, int low, int high) {
+    return static_cast<int>(std::round(number(object, key, fallback, low, high)));
+}
+
+bool flag(juce::DynamicObject& object, const char* key, bool fallback) {
+    const juce::var value = object.getProperty(key);
+    return value.isBool() ? static_cast<bool>(value) : fallback;
+}
+
+// Up to count bools from a list. A missing list leaves them.
+void flags(const juce::var& value, bool* out, int count) {
+    auto* list = value.getArray();
+    if (list == nullptr) {
+        return;
+    }
+    for (int i = 0; i < count && i < list->size(); ++i) {
+        const juce::var& item = list->getReference(i);
+        out[i] = item.isBool() && static_cast<bool>(item);
+    }
+}
+
+juce::var flagList(const bool* values, int count) {
+    juce::Array<juce::var> list;
+    for (int i = 0; i < count; ++i) {
+        list.add(values[i]);
+    }
+    return list;
+}
+
+// A missing object leaves the defaults.
+void decodeEffects(const juce::var& value, bt::Effects& effects) {
+    auto* object = value.getDynamicObject();
+    if (object == nullptr) {
+        return;
+    }
+    effects.enabled = flag(*object, "enabled", effects.enabled);
+    effects.globalPower = number(*object, "globalPower", effects.globalPower, 0, 1);
+    effects.globalChance = number(*object, "globalChance", effects.globalChance, 0, 1);
+    effects.beatMin = whole(*object, "beatMin", effects.beatMin, bt::Effects::kBeatMin, bt::Effects::kBeatMax);
+    effects.beatMax = whole(*object, "beatMax", effects.beatMax, effects.beatMin, bt::Effects::kBeatMax);
+    effects.delayPower = number(*object, "delayPower", effects.delayPower, 0, 1);
+    effects.delayChance = number(*object, "delayChance", effects.delayChance, 0, 1);
+    effects.reverbPower = number(*object, "reverbPower", effects.reverbPower, 0, 1);
+    effects.reverbChance = number(*object, "reverbChance", effects.reverbChance, 0, 1);
+    effects.reversePower = number(*object, "reversePower", effects.reversePower, 0, 1);
+    effects.reverseChance = number(*object, "reverseChance", effects.reverseChance, 0, 1);
+    effects.filterPower = number(*object, "filterPower", effects.filterPower, 0, 1);
+    effects.filterChance = number(*object, "filterChance", effects.filterChance, 0, 1);
+    effects.flangerPower = number(*object, "flangerPower", effects.flangerPower, 0, 1);
+    effects.flangerChance = number(*object, "flangerChance", effects.flangerChance, 0, 1);
+    effects.trancePower = number(*object, "trancePower", effects.trancePower, 0, 1);
+    effects.tranceChance = number(*object, "tranceChance", effects.tranceChance, 0, 1);
+    effects.shiftPower = number(*object, "shiftPower", effects.shiftPower, 0, 1);
+    effects.shiftChance = number(*object, "shiftChance", effects.shiftChance, 0, 1);
+}
+
+void decodeRepeat(const juce::var& value, bt::BeatRepeatSettings& repeat) {
+    auto* object = value.getDynamicObject();
+    if (object == nullptr) {
+        return;
+    }
+    using Settings = bt::BeatRepeatSettings;
+    repeat.enabled = flag(*object, "enabled", repeat.enabled);
+    repeat.sizeMin = whole(*object, "sizeMin", repeat.sizeMin, Settings::kSizeMin, Settings::kSizeMax);
+    repeat.sizeMax = whole(*object, "sizeMax", repeat.sizeMax, repeat.sizeMin, Settings::kSizeMax);
+    repeat.length = whole(*object, "length", repeat.length, Settings::kLengthMin, Settings::kLengthMax);
+    repeat.chance = number(*object, "chance", repeat.chance, Settings::kChanceMin, Settings::kChanceMax);
+    repeat.mix = number(*object, "mix", repeat.mix, Settings::kMixMin, Settings::kMixMax);
+    flags(object->getProperty("positions"), repeat.positions, bt::RepeatSequence::kPositions);
+}
+
+void decodeChaos(const juce::var& value, bt::ChaosSettings& chaos) {
+    auto* object = value.getDynamicObject();
+    if (object == nullptr) {
+        return;
+    }
+    using Settings = bt::ChaosSettings;
+    const juce::String trigger = object->getProperty("trigger").toString();
+    for (int i = 0; i <= static_cast<int>(bt::ChaosTrigger::Beats); ++i) {
+        if (trigger == kChaosTriggerNames[i]) {
+            chaos.trigger = static_cast<bt::ChaosTrigger>(i);
+        }
+    }
+    chaos.value = number(*object, "value", chaos.value, 0, 1);
+    chaos.beatSize = whole(*object, "beatSize", chaos.beatSize, Settings::kBeatSizeMin, Settings::kBeatSizeMax);
+    chaos.loopSize = whole(*object, "loopSize", chaos.loopSize, Settings::kLoopSizeMin, Settings::kLoopSizeMax);
+    chaos.sliceSize = whole(*object, "sliceSize", chaos.sliceSize, Settings::kSliceSizeMin, Settings::kSliceSizeMax);
+    flags(object->getProperty("groups"), chaos.groups, Settings::kGroups);
+}
+
+juce::var encodeEffects(const bt::Effects& effects) {
+    auto* object = new juce::DynamicObject();
+    object->setProperty("enabled", effects.enabled);
+    object->setProperty("globalPower", effects.globalPower);
+    object->setProperty("globalChance", effects.globalChance);
+    object->setProperty("beatMin", effects.beatMin);
+    object->setProperty("beatMax", effects.beatMax);
+    object->setProperty("delayPower", effects.delayPower);
+    object->setProperty("delayChance", effects.delayChance);
+    object->setProperty("reverbPower", effects.reverbPower);
+    object->setProperty("reverbChance", effects.reverbChance);
+    object->setProperty("reversePower", effects.reversePower);
+    object->setProperty("reverseChance", effects.reverseChance);
+    object->setProperty("filterPower", effects.filterPower);
+    object->setProperty("filterChance", effects.filterChance);
+    object->setProperty("flangerPower", effects.flangerPower);
+    object->setProperty("flangerChance", effects.flangerChance);
+    object->setProperty("trancePower", effects.trancePower);
+    object->setProperty("tranceChance", effects.tranceChance);
+    object->setProperty("shiftPower", effects.shiftPower);
+    object->setProperty("shiftChance", effects.shiftChance);
+    return juce::var(object);
+}
+
+juce::var encodeRepeat(const bt::BeatRepeatSettings& repeat) {
+    auto* object = new juce::DynamicObject();
+    object->setProperty("enabled", repeat.enabled);
+    object->setProperty("sizeMin", repeat.sizeMin);
+    object->setProperty("sizeMax", repeat.sizeMax);
+    object->setProperty("length", repeat.length);
+    object->setProperty("chance", repeat.chance);
+    object->setProperty("mix", repeat.mix);
+    object->setProperty("positions", flagList(repeat.positions, bt::RepeatSequence::kPositions));
+    return juce::var(object);
+}
+
+juce::var encodeChaos(const bt::ChaosSettings& chaos) {
+    auto* object = new juce::DynamicObject();
+    object->setProperty("trigger", kChaosTriggerNames[static_cast<int>(chaos.trigger)]);
+    object->setProperty("value", chaos.value);
+    object->setProperty("beatSize", chaos.beatSize);
+    object->setProperty("loopSize", chaos.loopSize);
+    object->setProperty("sliceSize", chaos.sliceSize);
+    object->setProperty("groups", flagList(chaos.groups, bt::ChaosSettings::kGroups));
+    return juce::var(object);
+}
+
 int fitSlice(int exponent, int loopBeats) {
     while (std::ldexp(1.0, exponent) > loopBeats) {
         --exponent;
@@ -144,6 +292,11 @@ std::optional<PackDocument> decodePack(const juce::String& text) {
     const double panMax = object->hasProperty("panMax") ? static_cast<double>(object->getProperty("panMax")) : pan;
     pack.panMin = clamp(panMin, -1.0, 1.0);
     pack.panMax = clamp(panMax, pack.panMin, 1.0);
+    pack.bpmSync = flag(*object, "bpmSync", pack.bpmSync);
+    pack.retrig = flag(*object, "retrig", pack.retrig);
+    decodeEffects(object->getProperty("effects"), pack.effects);
+    decodeRepeat(object->getProperty("repeat"), pack.repeat);
+    decodeChaos(object->getProperty("chaos"), pack.chaos);
     pack.savedCount = savedCount;
     pack.slots.reserve(static_cast<std::size_t>(slots->size()));
     for (const juce::var& slot : *slots) {
@@ -184,6 +337,11 @@ juce::String encodePack(const PackDocument& pack) {
     object->setProperty("volume", pack.volume);
     object->setProperty("panMin", pack.panMin);
     object->setProperty("panMax", pack.panMax);
+    object->setProperty("bpmSync", pack.bpmSync);
+    object->setProperty("retrig", pack.retrig);
+    object->setProperty("effects", encodeEffects(pack.effects));
+    object->setProperty("repeat", encodeRepeat(pack.repeat));
+    object->setProperty("chaos", encodeChaos(pack.chaos));
 
     juce::Array<juce::var> slots;
     for (std::uint16_t slot : pack.slots) {

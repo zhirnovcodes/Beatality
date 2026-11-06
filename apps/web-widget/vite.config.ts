@@ -57,8 +57,143 @@ function processorScript(): Plugin {
     }
 }
 
+const packsDir = fileURLToPath(new URL('./public/packs', import.meta.url))
+const samplesDir = path.join(packsDir, 'samples')
+const banksPath = path.join(packsDir, 'banks.json')
+
+// A bare file name: no folders, no leading dot.
+function safeName(name: string | null): string | null {
+    if (!name || name !== path.basename(name) || name.startsWith('.') || /[\\/:*?"<>|]/.test(name)) {
+        return null
+    }
+    return name
+}
+
+function readBody(req: import('node:http').IncomingMessage): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+        const chunks: Buffer[] = []
+        req.on('data', (chunk: Buffer) => chunks.push(chunk))
+        req.on('end', () => resolve(Buffer.concat(chunks)))
+        req.on('error', reject)
+    })
+}
+
+function readBanks(): { name: string; file: string }[] {
+    return JSON.parse(fs.readFileSync(banksPath, 'utf8'))
+}
+
+function writeBanks(banks: { name: string; file: string }[]) {
+    fs.writeFileSync(banksPath, JSON.stringify(banks, null, 2) + '\n')
+}
+
+// The internal sample ids a pack refers to.
+function packSamples(file: string): string[] {
+    try {
+        const doc = JSON.parse(fs.readFileSync(path.join(packsDir, file), 'utf8'))
+        return (doc.tracks ?? []).filter((track: any) => track?.source?.type === 'internal').map((track: any) => String(track.source.id))
+    } catch {
+        return []
+    }
+}
+
+// Stores the bytes under name, or under the first name-N that is free or already holds the same bytes.
+function storeSample(name: string, bytes: Buffer): string {
+    const ext = path.extname(name)
+    const stem = name.slice(0, name.length - ext.length)
+    for (let n = 1; ; n++) {
+        const id = n === 1 ? name : `${stem}-${n}${ext}`
+        const target = path.join(samplesDir, id)
+        if (!fs.existsSync(target)) {
+            fs.writeFileSync(target, bytes)
+            return id
+        }
+        if (fs.readFileSync(target).equals(bytes)) {
+            return id
+        }
+    }
+}
+
+// Localhost only: the dev page saves and deletes presets in public/packs. A build has no such routes.
+// POST /__presets/sample?name=<file>  raw bytes  -> { id }
+// POST /__presets/pack?name=<preset>  pack JSON  -> { file }
+// DELETE /__presets/pack?file=<file>             -> { ok }
+function presetLibrary(): Plugin {
+    return {
+        name: 'beatality-preset-library',
+        apply: 'serve',
+        configureServer(server) {
+            server.middlewares.use(async (req, res, next) => {
+                const url = new URL(req.url ?? '/', 'http://localhost')
+                if (!url.pathname.startsWith('/__presets/')) {
+                    next()
+                    return
+                }
+                const reply = (status: number, body: unknown) => {
+                    res.statusCode = status
+                    res.setHeader('Content-Type', 'application/json')
+                    res.end(JSON.stringify(body))
+                }
+                try {
+                    if (req.method === 'POST' && url.pathname === '/__presets/sample') {
+                        const name = safeName(url.searchParams.get('name'))
+                        if (!name) {
+                            reply(400, { error: 'bad sample name' })
+                            return
+                        }
+                        fs.mkdirSync(samplesDir, { recursive: true })
+                        reply(200, { id: storeSample(name, await readBody(req)) })
+                        return
+                    }
+                    if (req.method === 'POST' && url.pathname === '/__presets/pack') {
+                        const name = (url.searchParams.get('name') ?? '').trim()
+                        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+                        if (!slug) {
+                            reply(400, { error: 'bad preset name' })
+                            return
+                        }
+                        const doc = JSON.parse((await readBody(req)).toString('utf8'))
+                        if (doc?.format !== 'beatality.pack' || doc.version !== 1) {
+                            reply(400, { error: 'not a pack' })
+                            return
+                        }
+                        const file = slug + '.beatality'
+                        doc.name = name
+                        fs.writeFileSync(path.join(packsDir, file), JSON.stringify(doc, null, 2) + '\n')
+                        const banks = readBanks().filter((bank) => bank.file !== file)
+                        banks.push({ name, file })
+                        writeBanks(banks)
+                        reply(200, { file })
+                        return
+                    }
+                    if (req.method === 'DELETE' && url.pathname === '/__presets/pack') {
+                        const file = safeName(url.searchParams.get('file'))
+                        if (!file || !file.endsWith('.beatality')) {
+                            reply(400, { error: 'bad preset file' })
+                            return
+                        }
+                        const banks = readBanks().filter((bank) => bank.file !== file)
+                        // Only this pack's samples, and only the ones no other pack uses.
+                        const used = new Set(banks.flatMap((bank) => packSamples(bank.file)))
+                        const orphans = packSamples(file).filter((id) => !used.has(id) && safeName(id))
+                        fs.rmSync(path.join(packsDir, file), { force: true })
+                        writeBanks(banks)
+                        for (const id of orphans) {
+                            fs.rmSync(path.join(samplesDir, id), { force: true })
+                        }
+                        reply(200, { ok: true, removedSamples: orphans })
+                        return
+                    }
+                    reply(404, { error: 'unknown route' })
+                } catch (error) {
+                    reply(500, { error: String(error) })
+                }
+            })
+        },
+    }
+}
+
 export default defineConfig({
-    plugins: [processorScript()],
+    plugins: [processorScript(), presetLibrary()],
     // localhost on this machine is IPv6-only unless the host is set, so a
     // browser that opens 127.0.0.1 is refused. Listen on every loopback.
     server: { host: true, port: 5173, fs: { allow: [repoRoot] } },

@@ -1,0 +1,149 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "Lobotomy perc preset - 115 BPM",
+  "bpm": 120,
+  "loop": 16,
+  "slices": 0,
+  "attack": 2,
+  "volume": 1,
+  "panMin": -0.29,
+  "panMax": 0.35,
+  "bpmSync": true,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 1,
+    "globalChance": 0,
+    "beatMin": -3,
+    "beatMax": -1,
+    "delayPower": 1,
+    "delayChance": 0,
+    "reverbPower": 1,
+    "reverbChance": 0,
+    "reversePower": 1,
+    "reverseChance": 0,
+    "filterPower": 1,
+    "filterChance": 0,
+    "flangerPower": 1,
+    "flangerChance": 0,
+    "trancePower": 1,
+    "tranceChance": 0,
+    "shiftPower": 1,
+    "shiftChance": 0
+  },
+  "repeat": {
+    "enabled": true,
+    "sizeMin": -3,
+    "sizeMax": 0,
+    "length": 0,
+    "chance": 0,
+    "mix": 1,
+    "positions": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "chaos": {
+    "trigger": "button",
+    "value": 0,
+    "beatSize": 0,
+    "loopSize": 1,
+    "sliceSize": 0,
+    "groups": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "lobotomy perc 115 5.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "lobotomy perc 115 4.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "lobotomy perc 115 3.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "lobotomy perc 115 2.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "lobotomy perc 115 1.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0
+    }
+  ]
+}

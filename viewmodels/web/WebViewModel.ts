@@ -1,3 +1,5 @@
+import { chaosTriggerNames, type PackDocument } from '../../hosts/web/pack'
+
 export interface TrackRow {
     name: string
     missing: boolean
@@ -824,6 +826,49 @@ export class WebViewModel {
         }
         this.chaosSliceSize = exponent
         this.sendChaos()
+    }
+
+    // The pack knobs the install message does not carry: sync, retrig, effects, beat repeat, and chaos.
+    // Each one goes through its setter, which sends it to the engine.
+    applyPack(doc: PackDocument) {
+        this.setBpmSync(doc.bpmSync)
+        this.setRetrig(doc.retrig)
+        const effects = doc.effects
+        this.setEffectsEnabled(effects.enabled)
+        this.setGlobalPower(effects.globalPower)
+        this.setGlobalChance(effects.globalChance)
+        // Min first pushes max up past it; max then pulls min down. Either order ends on the pack's range.
+        this.setGlobalBeatMin(effects.beatMin)
+        this.setGlobalBeatMax(effects.beatMax)
+        this.setDelayPower(effects.delayPower)
+        this.setDelayChance(effects.delayChance)
+        this.setReverbPower(effects.reverbPower)
+        this.setReverbChance(effects.reverbChance)
+        this.setReversePower(effects.reversePower)
+        this.setReverseChance(effects.reverseChance)
+        this.setFilterPower(effects.filterPower)
+        this.setFilterChance(effects.filterChance)
+        this.setFlangerPower(effects.flangerPower)
+        this.setFlangerChance(effects.flangerChance)
+        this.setTrancePower(effects.trancePower)
+        this.setTranceChance(effects.tranceChance)
+        this.setShiftPower(effects.shiftPower)
+        this.setShiftChance(effects.shiftChance)
+        const repeat = doc.repeat
+        this.setRepeatEnabled(repeat.enabled)
+        this.setRepeatSizeMin(repeat.sizeMin)
+        this.setRepeatSizeMax(repeat.sizeMax)
+        this.setRepeatLength(repeat.length)
+        this.setRepeatChance(repeat.chance)
+        this.setRepeatMix(repeat.mix)
+        repeat.positions.forEach((on, index) => this.setRepeatPosition(index, on))
+        const chaos = doc.chaos
+        this.setChaosTrigger(chaosTriggerNames.indexOf(chaos.trigger))
+        this.setChaosValue(chaos.value)
+        this.setChaosBeatSize(chaos.beatSize)
+        this.setChaosLoopSize(chaos.loopSize)
+        this.setChaosSliceSize(chaos.sliceSize)
+        chaos.groups.forEach((on, index) => this.setChaosGroup(index, on))
     }
 
     // What a chaos roll set on the engine. Shown, not sent back.

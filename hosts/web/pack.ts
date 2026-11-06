@@ -39,8 +39,96 @@ export interface PackDocument {
     // Each slice's pan roll is scaled onto panMin..panMax. Older packs have one pan, read as both.
     panMin: number
     panMax: number
+    // Packs without these read as the engine defaults, sync off, and retrig on.
+    bpmSync: boolean
+    retrig: boolean
+    effects: PackEffects
+    repeat: PackRepeat
+    chaos: PackChaos
     sequence: { savedCount: number; slots: number[] }
     tracks: PackTrack[]
+}
+
+// bt::Effects. beatMin and beatMax are exponents, -4..1.
+export interface PackEffects {
+    enabled: boolean
+    globalPower: number
+    globalChance: number
+    beatMin: number
+    beatMax: number
+    delayPower: number
+    delayChance: number
+    reverbPower: number
+    reverbChance: number
+    reversePower: number
+    reverseChance: number
+    filterPower: number
+    filterChance: number
+    flangerPower: number
+    flangerChance: number
+    trancePower: number
+    tranceChance: number
+    shiftPower: number
+    shiftChance: number
+}
+
+// bt::BeatRepeatSettings. sizeMin and sizeMax are -5..1, length is -4..1. positions are the 8 loop parts.
+export interface PackRepeat {
+    enabled: boolean
+    sizeMin: number
+    sizeMax: number
+    length: number
+    chance: number
+    mix: number
+    positions: boolean[]
+}
+
+// bt::ChaosSettings. trigger is a bt::ChaosTrigger name. groups are in bt::ChaosGroup order.
+export const chaosTriggerNames = ['button', 'note', 'loop', 'slices', 'beats'] as const
+export type ChaosTriggerName = (typeof chaosTriggerNames)[number]
+
+export interface PackChaos {
+    trigger: ChaosTriggerName
+    value: number
+    beatSize: number
+    loopSize: number
+    sliceSize: number
+    groups: boolean[]
+}
+
+const repeatPositions = 8
+const chaosGroups = 11
+
+export function defaultEffects(): PackEffects {
+    return {
+        enabled: true,
+        globalPower: 1,
+        globalChance: 0,
+        beatMin: -3,
+        beatMax: -1,
+        delayPower: 1,
+        delayChance: 0,
+        reverbPower: 1,
+        reverbChance: 0,
+        reversePower: 1,
+        reverseChance: 0,
+        filterPower: 1,
+        filterChance: 0,
+        flangerPower: 1,
+        flangerChance: 0,
+        trancePower: 1,
+        tranceChance: 0,
+        shiftPower: 1,
+        shiftChance: 0,
+    }
+}
+
+export function defaultRepeat(): PackRepeat {
+    return { enabled: false, sizeMin: 0, sizeMax: 0, length: 0, chance: 0, mix: 1, positions: Array(repeatPositions).fill(false) }
+}
+
+export function defaultChaos(): PackChaos {
+    return { trigger: 'button', value: 0, beatSize: 0, loopSize: 1, sliceSize: 0, groups: Array(chaosGroups).fill(false) }
 }
 
 export interface FactoryBank {
@@ -153,9 +241,109 @@ export function decodePack(text: string): PackDocument | null {
         volume: clamp(volume, 0, 1.2),
         panMin: fittedPanMin,
         panMax: clamp(panMax, fittedPanMin, 1),
+        bpmSync: typeof record.bpmSync === 'boolean' ? record.bpmSync : false,
+        retrig: typeof record.retrig === 'boolean' ? record.retrig : true,
+        effects: decodeEffects(record.effects),
+        repeat: decodeRepeat(record.repeat),
+        chaos: decodeChaos(record.chaos),
         sequence,
         tracks,
     }
+}
+
+// The same text the plugin writes.
+export function encodePack(doc: PackDocument): string {
+    return JSON.stringify(doc, null, 2)
+}
+
+function objectOf(value: unknown): Record<string, unknown> | null {
+    return typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null
+}
+
+// A missing or broken field keeps its fallback.
+function numberIn(record: Record<string, unknown>, key: string, fallback: number, min: number, max: number): number {
+    const value = finite(record[key])
+    return value === null ? fallback : clamp(value, min, max)
+}
+
+function wholeIn(record: Record<string, unknown>, key: string, fallback: number, min: number, max: number): number {
+    return Math.round(numberIn(record, key, fallback, min, max))
+}
+
+function flagIn(record: Record<string, unknown>, key: string, fallback: boolean): boolean {
+    const value = record[key]
+    return typeof value === 'boolean' ? value : fallback
+}
+
+function flagList(value: unknown, fallback: boolean[]): boolean[] {
+    if (!Array.isArray(value)) {
+        return fallback
+    }
+    return fallback.map((_, i) => value[i] === true)
+}
+
+function decodeEffects(value: unknown): PackEffects {
+    const effects = defaultEffects()
+    const record = objectOf(value)
+    if (!record) {
+        return effects
+    }
+    effects.enabled = flagIn(record, 'enabled', effects.enabled)
+    effects.beatMin = wholeIn(record, 'beatMin', effects.beatMin, -4, 1)
+    effects.beatMax = wholeIn(record, 'beatMax', effects.beatMax, effects.beatMin, 1)
+    const units = [
+        'globalPower',
+        'globalChance',
+        'delayPower',
+        'delayChance',
+        'reverbPower',
+        'reverbChance',
+        'reversePower',
+        'reverseChance',
+        'filterPower',
+        'filterChance',
+        'flangerPower',
+        'flangerChance',
+        'trancePower',
+        'tranceChance',
+        'shiftPower',
+        'shiftChance',
+    ] as const
+    for (const key of units) {
+        effects[key] = numberIn(record, key, effects[key], 0, 1)
+    }
+    return effects
+}
+
+function decodeRepeat(value: unknown): PackRepeat {
+    const repeat = defaultRepeat()
+    const record = objectOf(value)
+    if (!record) {
+        return repeat
+    }
+    repeat.enabled = flagIn(record, 'enabled', repeat.enabled)
+    repeat.sizeMin = wholeIn(record, 'sizeMin', repeat.sizeMin, -5, 1)
+    repeat.sizeMax = wholeIn(record, 'sizeMax', repeat.sizeMax, repeat.sizeMin, 1)
+    repeat.length = wholeIn(record, 'length', repeat.length, -4, 1)
+    repeat.chance = numberIn(record, 'chance', repeat.chance, 0, 1)
+    repeat.mix = numberIn(record, 'mix', repeat.mix, 0, 1)
+    repeat.positions = flagList(record.positions, repeat.positions)
+    return repeat
+}
+
+function decodeChaos(value: unknown): PackChaos {
+    const chaos = defaultChaos()
+    const record = objectOf(value)
+    if (!record) {
+        return chaos
+    }
+    chaos.trigger = chaosTriggerNames.find((name) => name === record.trigger) ?? chaos.trigger
+    chaos.value = numberIn(record, 'value', chaos.value, 0, 1)
+    chaos.beatSize = wholeIn(record, 'beatSize', chaos.beatSize, -2, 1)
+    chaos.loopSize = wholeIn(record, 'loopSize', chaos.loopSize, 1, 8)
+    chaos.sliceSize = wholeIn(record, 'sliceSize', chaos.sliceSize, -1, 2)
+    chaos.groups = flagList(record.groups, chaos.groups)
+    return chaos
 }
 
 function decodeSequence(value: unknown): { savedCount: number; slots: number[] } | null {

@@ -1,3 +1,6 @@
 [
-  { "name": "Demo", "file": "demo.beatality" }
+  {
+    "name": "Lobotomy perc preset - 115 BPM",
+    "file": "lobotomy-perc-preset-115-bpm.beatality"
+  }
 ]

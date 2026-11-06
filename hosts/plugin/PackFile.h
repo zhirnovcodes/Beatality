@@ -1,5 +1,9 @@
 #pragma once
 
+#include "BeatRepeatSettings.h"
+#include "ChaosSettings.h"
+#include "Effects.h"
+
 #include <juce_core/juce_core.h>
 
 #include <cstdint>
@@ -33,6 +37,12 @@ struct PackDocument {
     // Each slice's pan roll is scaled onto panMin..panMax. Older packs have one pan, read as both.
     double panMin = 0;
     double panMax = 0;
+    // Packs without these read as the engine defaults, sync off, and retrig on.
+    bool bpmSync = false;
+    bool retrig = true;
+    bt::Effects effects;
+    bt::BeatRepeatSettings repeat;
+    bt::ChaosSettings chaos;
     int savedCount = 0;
     std::vector<std::uint16_t> slots;
     std::vector<PackTrack> tracks;

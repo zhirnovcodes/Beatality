@@ -1,7 +1,7 @@
 import { render } from 'preact'
 import { EngineClient } from '../../../hosts/web/client/EngineClient'
 import { MidiStatus } from '../../../hosts/web/messages'
-import { decodeBanks, decodePack } from '../../../hosts/web/pack'
+import { chaosTriggerNames, decodeBanks, decodePack, type PackDocument, type PackTrack } from '../../../hosts/web/pack'
 import { sourceDragType, type PluginEvent, type PluginFactory, type PluginInstance } from '../../../hosts/web/plugin'
 import { BeatalityParameters } from '../../../presenters/web/BeatalityParameters'
 import { WebPresenter } from '../../../presenters/web/WebPresenter'
@@ -25,10 +25,19 @@ function gateOf(bytes: readonly [number, number, number]): { status: number; not
     return null
 }
 
-export const beatality: PluginFactory = {
+// Beatality only, for the localhost test page. Not part of the plugin interface.
+export interface BeatalityDev {
+    // The current state as a pack with no sequence, and each track's original file. null when missing.
+    // Each track's source id is its file name; the page swaps in the id the library stored it under.
+    preset(name: string): { doc: PackDocument; files: (File | null)[] }
+    // Re-reads /packs/banks.json into the bank picker.
+    reloadBanks(): Promise<void>
+}
+
+export const beatality = {
     name: 'Beatality',
 
-    async create(context: AudioContext, container: HTMLElement): Promise<PluginInstance> {
+    async create(context: AudioContext, container: HTMLElement): Promise<PluginInstance & BeatalityDev> {
         const model = new WebViewModel()
         const client = new EngineClient({
             context,
@@ -64,14 +73,17 @@ export const beatality: PluginFactory = {
                 outputPanMin: doc.panMin,
                 outputPanMax: doc.panMax,
             })
+            // Sync first: it decides the tempo the install sends.
+            model.setBpmSync(doc.bpmSync)
             // The pack's tempo is the widget's own. While synced the engine keeps the project's.
             await client.loadDocument({ ...doc, bpm: model.engineBpm }, async (id) => {
-                const sample = await fetch('/packs/demo/' + encodeURIComponent(id))
+                const sample = await fetch('/packs/samples/' + encodeURIComponent(id))
                 if (!sample.ok) {
                     return null
                 }
                 return new File([await sample.arrayBuffer()], id)
             })
+            model.applyPack(doc)
         }
 
         const grid = document.createElement('div')
@@ -80,14 +92,83 @@ export const beatality: PluginFactory = {
         grid.setAttribute('aria-label', 'Samples')
         const presenter = new WebPresenter(model, client, grid, loadFactory)
 
-        void fetch('/packs/banks.json')
-            .then(async (response) => {
-                if (!response.ok) {
-                    return
-                }
+        const reloadBanks = async (): Promise<void> => {
+            const response = await fetch('/packs/banks.json', { cache: 'no-store' })
+            if (response.ok) {
                 model.setFactoryBanks(decodeBanks(await response.json()))
-            })
-            .catch(() => {})
+            }
+        }
+        void reloadBanks().catch(() => {})
+
+        const preset = (name: string): { doc: PackDocument; files: (File | null)[] } => {
+            const tracks: PackTrack[] = []
+            const files: (File | null)[] = []
+            for (let index = 0; index < client.registry.count; index++) {
+                const play = client.registry.playAt(index)
+                const file = client.registry.fileAt(index)
+                if (!play) {
+                    continue
+                }
+                tracks.push({ source: { type: 'internal', id: file?.name ?? 'missing' }, ...play })
+                files.push(file)
+            }
+            const doc: PackDocument = {
+                format: 'beatality.pack',
+                version: 1,
+                name,
+                bpm: model.bpm,
+                loop: model.loopBeats,
+                slices: model.sliceExp,
+                attack: model.attackMs,
+                volume: model.outputVolume,
+                panMin: model.outputPanMin,
+                panMax: model.outputPanMax,
+                bpmSync: model.bpmSync,
+                retrig: model.retrig,
+                effects: {
+                    enabled: model.effectsEnabled,
+                    globalPower: model.globalPower,
+                    globalChance: model.globalChance,
+                    beatMin: model.globalBeatMinExp,
+                    beatMax: model.globalBeatMaxExp,
+                    delayPower: model.delayPower,
+                    delayChance: model.delayChance,
+                    reverbPower: model.reverbPower,
+                    reverbChance: model.reverbChance,
+                    reversePower: model.reversePower,
+                    reverseChance: model.reverseChance,
+                    filterPower: model.filterPower,
+                    filterChance: model.filterChance,
+                    flangerPower: model.flangerPower,
+                    flangerChance: model.flangerChance,
+                    trancePower: model.trancePower,
+                    tranceChance: model.tranceChance,
+                    shiftPower: model.shiftPower,
+                    shiftChance: model.shiftChance,
+                },
+                repeat: {
+                    enabled: model.repeatEnabled,
+                    sizeMin: model.repeatSizeMinExp,
+                    sizeMax: model.repeatSizeMaxExp,
+                    length: model.repeatLengthExp,
+                    chance: model.repeatChance,
+                    mix: model.repeatMix,
+                    positions: [...model.repeatPositions],
+                },
+                chaos: {
+                    trigger: chaosTriggerNames[model.chaosTrigger] ?? 'button',
+                    value: model.chaosValue,
+                    beatSize: model.chaosBeatSize,
+                    loopSize: model.chaosLoopSize,
+                    sliceSize: model.chaosSliceSize,
+                    groups: [...model.chaosGroups],
+                },
+                // No sequence: a fresh one is rolled on load.
+                sequence: { savedCount: 0, slots: [] },
+                tracks,
+            }
+            return { doc, files }
+        }
 
         render(
             <Widget
@@ -150,6 +231,8 @@ export const beatality: PluginFactory = {
         return {
             audioInput: null,
             audioOutput: client.output,
+            preset,
+            reloadBanks,
             parameters: () => parameters.info(),
             parameter: (id) => parameters.value(id),
             // Applied when they arrive. time is not used yet.
@@ -176,4 +259,4 @@ export const beatality: PluginFactory = {
             },
         }
     },
-}
+} satisfies PluginFactory

@@ -323,6 +323,7 @@ export class EngineClient {
                 const empty = new Float32Array(0)
                 tracks.push({
                     name,
+                    file: null,
                     missing: true,
                     play,
                     frames: 0,
@@ -337,6 +338,7 @@ export class EngineClient {
             const channels = channelCopies(planar, audio.length)
             tracks.push({
                 name: file?.name || name,
+                file,
                 missing: false,
                 play,
                 frames: audio.length,
@@ -372,6 +374,7 @@ export class EngineClient {
                 { samples: track.left, right: track.right, sampleRate: track.sampleRate },
                 track.missing,
                 track.play,
+                track.file,
             )
             if (id === null) {
                 break
@@ -520,6 +523,7 @@ export class EngineClient {
             const channels = channelCopies(planar, audio.length)
             decoded.push({
                 name: file.name,
+                file,
                 frames: audio.length,
                 planar,
                 left: channels.left,
@@ -539,6 +543,7 @@ export class EngineClient {
                 { samples: item.left, right: item.right, sampleRate: item.sampleRate },
                 false,
                 play,
+                item.file,
             )
             if (id === null || !this.node) {
                 break
@@ -585,6 +590,8 @@ export class EngineClient {
 
 export interface PackInstallTrack {
     name: string
+    // The file it was decoded from. Null when missing.
+    file: File | null
     missing: boolean
     play: SampleSettings
     frames: number
@@ -609,6 +616,7 @@ export interface PackInstall {
 
 interface DecodedTrack {
     name: string
+    file: File
     frames: number
     planar: Float32Array
     left: Float32Array

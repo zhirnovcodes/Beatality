@@ -25,6 +25,8 @@ export class TrackRegistry {
     private waves: TrackWave[] = []
     private missing: boolean[] = []
     private plays: SampleSettings[] = []
+    // The file each track was decoded from, kept so a preset can be saved. Null when missing.
+    private files: (File | null)[] = []
     private nextId = 1
 
     get count(): number {
@@ -51,6 +53,10 @@ export class TrackRegistry {
         return this.plays[index] ?? null
     }
 
+    fileAt(index: number): File | null {
+        return this.files[index] ?? null
+    }
+
     setPlay(index: number, play: SampleSettings): void {
         if (this.plays[index]) {
             this.plays[index] = play
@@ -58,7 +64,7 @@ export class TrackRegistry {
     }
 
     // Null when the list is full. Ids start at 1 and are never reused.
-    add(name: string, wave: TrackWave, missing = false, play: SampleSettings = TrackRegistry.defaultPlay): number | null {
+    add(name: string, wave: TrackWave, missing = false, play: SampleSettings = TrackRegistry.defaultPlay, file: File | null = null): number | null {
         if (this.names.length >= TrackRegistry.capacity) {
             return null
         }
@@ -66,6 +72,7 @@ export class TrackRegistry {
         this.waves.push(wave)
         this.missing.push(missing)
         this.plays.push(play)
+        this.files.push(file)
         return this.nextId++
     }
 
@@ -74,6 +81,7 @@ export class TrackRegistry {
         this.waves.splice(index, 1)
         this.missing.splice(index, 1)
         this.plays.splice(index, 1)
+        this.files.splice(index, 1)
     }
 
     clear(): void {
@@ -81,5 +89,6 @@ export class TrackRegistry {
         this.waves = []
         this.missing = []
         this.plays = []
+        this.files = []
     }
 }

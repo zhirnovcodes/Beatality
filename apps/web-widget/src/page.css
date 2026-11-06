@@ -51,3 +51,47 @@ body {
     cursor: default;
     opacity: 0.45;
 }
+
+/* Localhost only: the preset library row. */
+.page-presets {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    width: 496px;
+    font: 14px/1 system-ui, sans-serif;
+}
+
+.page-presets input,
+.page-presets select,
+.page-presets button {
+    font: 14px/1 system-ui, sans-serif;
+    padding: 5px 8px;
+}
+
+.page-presets .preset-name {
+    width: 140px;
+}
+
+.page-presets .preset-list {
+    min-width: 120px;
+}
+
+.page-presets button {
+    background: #e8e8e8;
+    color: #111;
+    border: 1px solid #111;
+    cursor: pointer;
+}
+
+.page-presets button:disabled {
+    cursor: default;
+    opacity: 0.45;
+}
+
+.page-presets .preset-status {
+    flex-basis: 100%;
+    font-size: 13px;
+    color: #aaa;
+    min-height: 1em;
+}
