@@ -313,7 +313,7 @@ AppendPayload* payloadFromReader(juce::AudioFormatReader& reader, double rate, s
 class CommandQueue {
 public:
     struct Slot {
-        enum class Kind { Randomize, Remove, Append, Clear, Bpm, BpmSync, Attack, RepeatPosition, Track, Warp, Pack };
+        enum class Kind { Randomize, Chaos, Remove, Append, Clear, Bpm, BpmSync, Attack, RepeatPosition, Track, Warp, Pack };
         Kind kind = Kind::Randomize;
         AppendPayload* append = nullptr;
         PackPayload* pack = nullptr;
@@ -408,6 +408,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout parameterLayout() {
     layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"loop", 1}, "Loop", bt::SliceGrid::kMinLoop, bt::SliceGrid::kMaxLoop, 8));
     layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"slice", 1}, "Slices", bt::SliceGrid::kExpMin, bt::SliceGrid::kExpMax, 0));
     layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"randomize", 1}, "Randomize", false));
+    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"chaos", 1}, "Chaos", false));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"volume", 1}, "Volume", juce::NormalisableRange<float>(0.0f, kVolumeMax), 1.0f));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"panMin", 1}, "Pan minimum", juce::NormalisableRange<float>(-1.0f, 1.0f), 0.0f));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"panMax", 1}, "Pan maximum", juce::NormalisableRange<float>(-1.0f, 1.0f), 0.0f));
@@ -453,7 +454,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout parameterLayout() {
 
     const bt::ChaosSettings chaos;
     layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{"chaosTrigger", 1}, "Chaos trigger",
-                                                            juce::StringArray{"Randomize button", "Note", "Loop", "Slices", "Beats", "None"},
+                                                            juce::StringArray{"Note", "Loop", "Slices", "Beats", "None"},
                                                             static_cast<int>(chaos.trigger)));
     unit("chaosValue", "Chaos value", chaos.value);
     layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"chaosBeatSize", 1}, "Chaos beat size", bt::ChaosSettings::kBeatSizeMin,
@@ -624,11 +625,18 @@ struct Processor::Impl {
         if (engine == nullptr) {
             return;
         }
-        // The Button trigger mode also rolls chaos on Randomize.
-        const bt::Controls before = engine->controls();
         if (engine->count() > 0) {
             engine->randomize();
         }
+        remember();
+    }
+
+    // The CHAOS button: one chaos roll in every trigger mode.
+    void applyChaos() {
+        if (engine == nullptr) {
+            return;
+        }
+        const bt::Controls before = engine->controls();
         engine->triggerChaos();
         if (engine->controls() != before) {
             sendControls();
@@ -789,6 +797,9 @@ struct Processor::Impl {
         switch (slot.kind) {
         case CommandQueue::Slot::Kind::Randomize:
             applyRandomize();
+            break;
+        case CommandQueue::Slot::Kind::Chaos:
+            applyChaos();
             break;
         case CommandQueue::Slot::Kind::Remove:
             applyRemove(slot.index);
@@ -1131,12 +1142,14 @@ Processor::Processor()
         chaosGroupParams[group] = dynamic_cast<juce::AudioParameterBool*>(params.getParameter(kChaosGroupIds[group]));
     }
     params.addParameterListener("randomize", this);
+    params.addParameterListener("chaos", this);
     params.addParameterListener("shuffle", this);
     startTimerHz(30);
 }
 
 Processor::~Processor() {
     params.removeParameterListener("randomize", this);
+    params.removeParameterListener("chaos", this);
     params.removeParameterListener("shuffle", this);
     stopTimer();
     impl->engine.reset();
@@ -1364,6 +1377,12 @@ void Processor::randomizeTracks() {
     }
     CommandQueue::Slot slot;
     slot.kind = CommandQueue::Slot::Kind::Randomize;
+    impl->queue.push(slot);
+}
+
+void Processor::fireChaos() {
+    CommandQueue::Slot slot;
+    slot.kind = CommandQueue::Slot::Kind::Chaos;
     impl->queue.push(slot);
 }
 
@@ -1706,6 +1725,10 @@ void Processor::parameterChanged(const juce::String& id, float value) {
         CommandQueue::Slot slot;
         slot.kind = CommandQueue::Slot::Kind::Randomize;
         impl->queue.push(slot);
+        return;
+    }
+    if (id == "chaos") {
+        fireChaos();
         return;
     }
     if (id == "shuffle") {

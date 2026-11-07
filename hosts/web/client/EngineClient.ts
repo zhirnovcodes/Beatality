@@ -109,6 +109,12 @@ export class EngineClient {
         this.node?.port.postMessage({ type: 'randomize' })
     }
 
+    // The CHAOS button: one chaos roll in every trigger mode.
+    async fireChaos(): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'fireChaos' })
+    }
+
     async removeAt(index: number): Promise<void> {
         await this.start()
         if (index < 0 || index >= this.registry.count) {

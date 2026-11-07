@@ -48,6 +48,8 @@ public:
     void removeTrack(int index);
     void removeFirstTrack();
     void randomizeTracks();
+    // The CHAOS button: one chaos roll in every trigger mode.
+    void fireChaos();
     void setBpm(double bpm);
     // On, the engine plays the host's tempo. Off, or with no host tempo, it plays bpm().
     void setBpmSync(bool on);

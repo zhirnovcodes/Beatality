@@ -40,7 +40,7 @@ const state = {
     outputVolume: 1,
     outputPanMin: 0,
     outputPanMax: 0,
-    chaosTrigger: 0,
+    chaosTrigger: 4,
     chaosValue: 0,
     chaosBeatSize: 0,
     chaosLoopSize: 1,
@@ -756,13 +756,13 @@ function followHost(live) {
 
 // The CHAOS side panels. The page only shows the values and sends edits.
 // Triggers in bt::ChaosTrigger order. Loop, Slices and Beats each have a size slider; only the chosen one shows.
-const chaosTriggerNames = ['RAND BTN', 'NOTE', 'LOOP', 'SLICES', 'BEAT', 'NONE']
+const chaosTriggerNames = ['NOTE', 'LOOP', 'SLICES', 'BEAT', 'NONE']
 // Trigger number: the size slider's input id, state key, setter, caption.
 // Beats size is 2^n beats, slices size is 2^n slices.
 const chaosSizes = {
-    2: ['chaos-loop-size', 'chaosLoopSize', 'setChaosLoopSize', (value) => 'LOOPS (' + value + ')'],
-    3: ['chaos-slice-size', 'chaosSliceSize', 'setChaosSliceSize', (value) => 'SLICES (' + sliceLabel(value) + ')'],
-    4: ['chaos-beat-size', 'chaosBeatSize', 'setChaosBeatSize', (value) => 'BEATS (' + sliceLabel(value) + ')'],
+    1: ['chaos-loop-size', 'chaosLoopSize', 'setChaosLoopSize', (value) => 'LOOPS (' + value + ')'],
+    2: ['chaos-slice-size', 'chaosSliceSize', 'setChaosSliceSize', (value) => 'SLICES (' + sliceLabel(value) + ')'],
+    3: ['chaos-beat-size', 'chaosBeatSize', 'setChaosBeatSize', (value) => 'BEATS (' + sliceLabel(value) + ')'],
 }
 
 function paintChaosRange(id, value) {
@@ -1415,6 +1415,10 @@ function wire() {
     // Always enabled. With no samples the processor does nothing.
     document.getElementById('randomize')?.addEventListener('click', () => {
         void native('randomize')
+    })
+    // The CHAOS button: one chaos roll in every trigger mode.
+    document.getElementById('chaos-main')?.addEventListener('click', () => {
+        void native('chaos')
     })
 
     attachSampleScroll()

@@ -117,14 +117,14 @@
       </div>
       <span class="chaos-cap trigger">TRIGGER</span>
       <button type="button" class="chaos-arrow prev" id="chaos-trigger-prev" aria-label="Previous trigger"></button>
-      <output class="chaos-trigger" id="chaos-trigger">RAND BTN</output>
+      <output class="chaos-trigger" id="chaos-trigger">NONE</output>
       <button type="button" class="chaos-arrow next" id="chaos-trigger-next" aria-label="Next trigger"></button>
       <span class="chaos-cap amount" id="chaos-size-cap"></span>
-      <div class="chaos-small" data-trigger="2"><div class="track"></div><div class="thumb"></div>
+      <div class="chaos-small" data-trigger="1"><div class="track"></div><div class="thumb"></div>
         <input type="range" id="chaos-loop-size" min="1" max="8" step="1" value="1" aria-label="Loops"></div>
-      <div class="chaos-small" data-trigger="3"><div class="track"></div><div class="thumb"></div>
+      <div class="chaos-small" data-trigger="2"><div class="track"></div><div class="thumb"></div>
         <input type="range" id="chaos-slice-size" min="-1" max="2" step="1" value="0" aria-label="Slices"></div>
-      <div class="chaos-small" data-trigger="4"><div class="track"></div><div class="thumb"></div>
+      <div class="chaos-small" data-trigger="3"><div class="track"></div><div class="thumb"></div>
         <input type="range" id="chaos-beat-size" min="-2" max="1" step="1" value="0" aria-label="Beats"></div>
       <div class="chaos-group-box g-chaos"><span class="chaos-cap">CHAOS</span>
         <label class="chaos-tog">VALUE<input type="checkbox" class="chaos-group" data-group="9"></label>
@@ -143,7 +143,7 @@
         <label class="chaos-tog">PARAMS<input type="checkbox" class="chaos-group" data-group="8"></label></div>
     </div>
     <div class="case"></div>
-    <button type="button" class="chaos-drawer-btn" id="side-chaos" aria-expanded="false" aria-controls="chaos-drawer-content">Chaos</button>
+    <button type="button" class="chaos-drawer-btn" id="side-chaos" aria-expanded="false" aria-controls="chaos-drawer-content">Chaos settings</button>
   </aside>
   <section class="part top" aria-label="Main controls">
     <div class="window"></div>
@@ -200,6 +200,7 @@
     <div class="case"></div>
     <div class="controls">
       <button type="button" class="randomize" id="randomize">Randomize sequence</button>
+      <button type="button" class="chaos-button" id="chaos-main">Chaos</button>
     </div>
   </section>
   <section class="part effects" aria-label="Effects">

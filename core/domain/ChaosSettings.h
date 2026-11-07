@@ -2,10 +2,10 @@
 
 namespace bt {
 
-// What fires a chaos roll. Button fires one when the Randomize button is pressed.
+// What fires a chaos roll on its own. The CHAOS button fires one in every mode.
 // Note fires on each note-on. Loop, Slices, and Beats fire each time that many have played since the note started.
-// None never rolls. In every mode but Button the Randomize button only writes a new sequence.
-enum class ChaosTrigger { Button, Note, Loop, Slices, Beats, None };
+// None never rolls on its own. The Randomize button only writes a new sequence.
+enum class ChaosTrigger { Note, Loop, Slices, Beats, None };
 
 // The knob groups a roll can change. Each one is on or off as a whole.
 // EffectsGlobal is the global power, the global chance, and the effect time. EffectsPrivate is each effect's power and chance.
@@ -37,7 +37,7 @@ struct ChaosSettings {
     static constexpr int kSliceSizeMin = -1;
     static constexpr int kSliceSizeMax = 1;
 
-    ChaosTrigger trigger = ChaosTrigger::Button;
+    ChaosTrigger trigger = ChaosTrigger::None;
     double value = 0;
     bool groups[kGroups]{};
     int beatSize = 0;

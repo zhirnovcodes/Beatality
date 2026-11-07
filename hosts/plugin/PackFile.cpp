@@ -41,7 +41,7 @@ bool isNumber(const juce::var& value) {
 }
 
 // In bt::ChaosTrigger order.
-const char* const kChaosTriggerNames[] = {"button", "note", "loop", "slices", "beats", "none"};
+const char* const kChaosTriggerNames[] = {"note", "loop", "slices", "beats", "none"};
 
 double number(juce::DynamicObject& object, const char* key, double fallback, double low, double high) {
     const juce::var value = object.getProperty(key);

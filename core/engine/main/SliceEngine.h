@@ -62,7 +62,7 @@ public:
     void apply(const Controls& next);
     // The knobs as the engine plays them. sliceExp is the one the grid fitted to the loop.
     const Controls& controls() const { return controls_; }
-    // The Randomize button's chaos roll. Only the Button mode rolls, playing or stopped.
+    // The CHAOS button: one chaos roll in every trigger mode, playing or stopped.
     void triggerChaos();
     // A note-on. Chaos decides whether it rolls.
     void noteOn();

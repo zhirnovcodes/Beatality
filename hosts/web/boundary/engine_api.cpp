@@ -130,20 +130,24 @@ BT_EXPORT void bt_midi(Instance* instance, int status, int, double velocity) {
     }
 }
 
-// The Button chaos mode also rolls on Randomize.
 BT_EXPORT void bt_randomize(Instance* instance) {
+    if (instance == nullptr || instance->engine.count() == 0) {
+        return;
+    }
+    instance->engine.randomize();
+}
+
+// The CHAOS button: one chaos roll in every trigger mode.
+BT_EXPORT void bt_chaos(Instance* instance) {
     if (instance == nullptr) {
         return;
     }
     const bt::Controls before = instance->engine.controls();
-    if (instance->engine.count() > 0) {
-        instance->engine.randomize();
-    }
     instance->engine.triggerChaos();
     instance->controlsChanged = instance->controlsChanged || instance->engine.controls() != before;
 }
 
-// trigger is a bt::ChaosTrigger, 0..5. value is 0..1. beatSize is -2..1, loopSize 1..8, sliceSize -1..2.
+// trigger is a bt::ChaosTrigger, 0..4. value is 0..1. beatSize is -2..1, loopSize 1..8, sliceSize -1..2.
 // groups is a bit mask in bt::ChaosGroup order: bit 0 is Pan.
 BT_EXPORT void bt_set_chaos(Instance* instance, int trigger, double value, int beatSize, int loopSize, int sliceSize, int groups) {
     if (instance == nullptr || trigger < 0 || trigger > static_cast<int>(bt::ChaosTrigger::None)) {

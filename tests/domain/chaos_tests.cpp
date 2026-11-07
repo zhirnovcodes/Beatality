@@ -204,7 +204,7 @@ void testTickIsQuietWhenStoppedOrNotCounting() {
         rolled = rolled || stopped.tick(settings, grid, 1000, false, frame);
     }
     CHECK(!rolled);
-    for (const bt::ChaosTrigger trigger : {bt::ChaosTrigger::Button, bt::ChaosTrigger::Note, bt::ChaosTrigger::None}) {
+    for (const bt::ChaosTrigger trigger : {bt::ChaosTrigger::Note, bt::ChaosTrigger::None}) {
         settings.trigger = trigger;
         bt::Chaos chaos(1);
         for (int frame = 0; frame < 2000; ++frame) {
@@ -233,7 +233,7 @@ void testNoteRollsOnlyInNoteMode() {
     bt::ChaosSettings settings;
     settings.trigger = bt::ChaosTrigger::Note;
     CHECK(chaos.noteOn(settings));
-    for (const bt::ChaosTrigger trigger : {bt::ChaosTrigger::Button, bt::ChaosTrigger::Loop, bt::ChaosTrigger::Slices,
+    for (const bt::ChaosTrigger trigger : {bt::ChaosTrigger::Loop, bt::ChaosTrigger::Slices,
                                            bt::ChaosTrigger::Beats, bt::ChaosTrigger::None}) {
         settings.trigger = trigger;
         CHECK(!chaos.noteOn(settings));

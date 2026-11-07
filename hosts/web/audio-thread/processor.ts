@@ -14,6 +14,7 @@ interface Core {
     bt_install_sequence: (engine: number, slots: number, size: number, savedCount: number) => void
     bt_midi: (engine: number, status: number, note: number, velocity: number) => void
     bt_randomize: (engine: number) => void
+    bt_chaos: (engine: number) => void
     bt_remove: (engine: number, index: number) => void
     bt_clear: (engine: number) => void
     bt_set_bpm: (engine: number, bpm: number) => void
@@ -98,6 +99,10 @@ interface AppendMessage {
 
 interface RandomizeMessage {
     type: 'randomize'
+}
+
+interface FireChaosMessage {
+    type: 'fireChaos'
 }
 
 interface DisposeMessage {
@@ -345,6 +350,7 @@ type HostMessage =
     | InitMessage
     | AppendMessage
     | RandomizeMessage
+    | FireChaosMessage
     | MidiMessage
     | RemoveMessage
     | ClearMessage
@@ -556,6 +562,9 @@ class BeatalityProcessor extends AudioWorkletProcessor {
             this.append(message)
         } else if (message.type === 'randomize') {
             this.core!.bt_randomize(this.engine)
+            this.postSnapshot(0)
+        } else if (message.type === 'fireChaos') {
+            this.core!.bt_chaos(this.engine)
             this.postSnapshot(0)
         } else if (message.type === 'midi') {
             this.midi.push({

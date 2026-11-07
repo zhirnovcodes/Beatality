@@ -156,7 +156,7 @@ export const beatality = {
                     positions: [...model.repeatPositions],
                 },
                 chaos: {
-                    trigger: chaosTriggerNames[model.chaosTrigger] ?? 'button',
+                    trigger: chaosTriggerNames[model.chaosTrigger] ?? 'none',
                     value: model.chaosValue,
                     beatSize: model.chaosBeatSize,
                     loopSize: model.chaosLoopSize,

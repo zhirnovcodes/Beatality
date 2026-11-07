@@ -25,6 +25,11 @@ export interface RandomizeMessage {
     type: 'randomize'
 }
 
+// The CHAOS button: one chaos roll in every trigger mode.
+export interface FireChaosMessage {
+    type: 'fireChaos'
+}
+
 // The plugin was closed. The processor stops, so the browser can let it go.
 export interface DisposeMessage {
     type: 'dispose'
@@ -196,7 +201,7 @@ export interface RepeatMixMessage {
     mix: number
 }
 
-// The chaos knobs. trigger is 0 Randomize button, 1 Note, 2 Loop, 3 Slices, 4 Beats, 5 None.
+// The chaos knobs. trigger is 0 Note, 1 Loop, 2 Slices, 3 Beats, 4 None.
 // beatSize is 2^n beats, -2..1. loopSize is loops, 1..8. sliceSize is 2^n slices, -1..2.
 // groups is 11 toggles in bt::ChaosGroup order: pan, slices, randomize, effects (global), effects on/off,
 // effects (private), beat repeat on/off, beat repeat positions, beat repeat params, chaos value, chaos time.
@@ -272,6 +277,7 @@ export type HostMessage =
     | InitMessage
     | AppendMessage
     | RandomizeMessage
+    | FireChaosMessage
     | MidiMessage
     | RemoveMessage
     | ClearMessage

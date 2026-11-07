@@ -110,7 +110,7 @@
       <!-- TRIGGER selector and the matching value slider (BEATS / LOOPS / SLICES, or none) -->
       <span class="chaos-cap trigger">TRIGGER</span>
       <button type="button" class="chaos-arrow prev" id="chaos-trigger-prev" aria-label="Previous trigger"></button>
-      <output class="chaos-trigger" id="chaos-trigger" data-value="button">RAND BTN</output>
+      <output class="chaos-trigger" id="chaos-trigger" data-value="none">NONE</output>
       <button type="button" class="chaos-arrow next" id="chaos-trigger-next" aria-label="Next trigger"></button>
       <!-- under TRIGGER: the trigger's size, caption with its value + slider (BEATS 1/4 .. 2, LOOPS 1 .. 8, SLICES 1/2 .. 4);
            only for those three triggers -->
@@ -139,7 +139,7 @@
         <label class="chaos-tog">PARAMS<input type="checkbox" id="chaos-br-params"></label></div>
     </div>
     <div class="case"></div>
-    <button type="button" class="chaos-drawer-btn" id="side-chaos" aria-expanded="false" aria-controls="chaos-drawer-content">Chaos</button>
+    <button type="button" class="chaos-drawer-btn" id="side-chaos" aria-expanded="false" aria-controls="chaos-drawer-content">Chaos settings</button>
   </aside>
   <section class="part top" aria-label="Main controls">
     <div class="window"></div>
@@ -200,6 +200,7 @@
     <div class="case"></div>
     <div class="controls">
       <button type="button" class="randomize" id="randomize">Randomize sequence</button>
+      <button type="button" class="chaos-button" id="chaos-main">Chaos</button>
       <!-- Stashed in entry 103 (removed from the glass, kept for their state): #chaos-toggle holds chaos mode, which the CHAOS drawer follows.
            three toggles on the glass, lower right: CHAOS and EFFECTS in a row, BEAT REPEAT under them (black pixel buttons, dotted edge, lit when on):
            CHAOS: chaos mode on / off (off by default; its controls are in the side panels).

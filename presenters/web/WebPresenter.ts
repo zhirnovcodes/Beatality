@@ -92,6 +92,7 @@ export class WebPresenter {
             remove: (index) => void this.perform(() => this.remove(index)),
             clear: () => void this.perform(() => this.clear()),
             randomize: () => void this.perform(() => this.randomize()),
+            chaos: () => void this.perform(() => this.client.fireChaos()),
             setBpm: (bpm) => void this.perform(() => this.client.setBpm(bpm)),
             setLoop: (beats) => void this.perform(() => this.client.setLoop(beats)),
             setSlice: (exponent) => void this.perform(() => this.client.setSlice(exponent)),

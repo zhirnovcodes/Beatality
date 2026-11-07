@@ -501,6 +501,9 @@ export function Widget({
                         >
                             Randomize sequence
                         </button>
+                        <button type="button" className="chaos-button" onClick={() => model.chaos()}>
+                            Chaos
+                        </button>
                     </div>
                 </section>
                 <section className="part effects" aria-label="Effects">
@@ -868,7 +871,7 @@ function powerLabel(exponent: number): string {
 }
 
 // Trigger names in bt::ChaosTrigger order.
-const chaosTriggerNames = ['RAND BTN', 'NOTE', 'LOOP', 'SLICES', 'BEAT', 'NONE']
+const chaosTriggerNames = ['NOTE', 'LOOP', 'SLICES', 'BEAT', 'NONE']
 
 // One toggle row: the caption, then its box. group is the bt::ChaosGroup number.
 function ChaosToggle({ model, name, group }: { model: WebViewModel; name: string; group: number }) {
@@ -895,7 +898,7 @@ interface ChaosSize {
     set: (value: number) => void
 }
 
-// The CHAOS drawer, out of the top part's right edge. Its button only slides it out or back. Loop, Slices and Beats each
+// The CHAOS drawer, out of the top part's right edge. Its CHAOS SETTINGS button only slides it out or back. Loop, Slices and Beats each
 // have a size slider; only the one for the chosen trigger shows. Beats size is 2^n beats, slices size is 2^n slices.
 function ChaosSides({ model }: { model: WebViewModel }) {
     const [open, setOpen] = useState(false)
@@ -909,7 +912,7 @@ function ChaosSides({ model }: { model: WebViewModel }) {
     }
     const sizes: ChaosSize[] = [
         {
-            trigger: 2,
+            trigger: 1,
             min: 1,
             max: 8,
             value: model.chaosLoopSize,
@@ -919,7 +922,7 @@ function ChaosSides({ model }: { model: WebViewModel }) {
             set: (value) => model.setChaosLoopSize(value),
         },
         {
-            trigger: 3,
+            trigger: 2,
             min: -1,
             max: 2,
             value: model.chaosSliceSize,
@@ -929,7 +932,7 @@ function ChaosSides({ model }: { model: WebViewModel }) {
             set: (value) => model.setChaosSliceSize(value),
         },
         {
-            trigger: 4,
+            trigger: 3,
             min: -2,
             max: 1,
             value: model.chaosBeatSize,
@@ -1025,7 +1028,7 @@ function ChaosSides({ model }: { model: WebViewModel }) {
                 aria-controls={contentId}
                 onClick={() => setOpen(!open)}
             >
-                Chaos
+                Chaos settings
             </button>
         </aside>
     )

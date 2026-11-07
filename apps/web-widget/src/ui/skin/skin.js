@@ -381,7 +381,7 @@
 /* CHAOS:
    - #chaos-toggle (aria-pressed, off by default): chaos mode on / off. Fires "change".
    - Side panels: #chaos-amount 0..1 (star slider, no caption).
-   - TRIGGER (#chaos-trigger, data-value): button (RAND BTN), note, loop, slices, beat; the arrows step through them (wrapping).
+   - TRIGGER (#chaos-trigger, data-value): note, loop, slices, beat, none; the arrows step through them (wrapping).
      Its size slider shows only for loop / slices / beat, and the caption under TRIGGER shows its name and value:
      BEATS (1/4 .. 2) #chaos-beats, LOOPS (1 .. 8) #chaos-loops, SLICES (1/2 .. 4) #chaos-slices.
    - 11 toggles (checkboxes): #chaos-play-* (pan, slices, randomize), #chaos-br-* (power, positions, params),
@@ -394,7 +394,7 @@
     toggle.dispatchEvent(new Event("change", { bubbles: true }));
   });
 
-  const TRIG = [["button", "RAND BTN"], ["note", "NOTE"], ["loop", "LOOP"], ["slices", "SLICES"], ["beat", "BEAT"]];
+  const TRIG = [["note", "NOTE"], ["loop", "LOOP"], ["slices", "SLICES"], ["beat", "BEAT"], ["none", "NONE"]];
   const VAL = {
     beat: { el: "chaos-beats", name: "BEATS", fmt: (v) => ["1/4", "1/2", "1", "2"][v] },
     loop: { el: "chaos-loops", name: "LOOPS", fmt: (v) => String(v) },

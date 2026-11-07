@@ -285,11 +285,7 @@ void SliceEngine::apply(const Controls& next) {
     }
 }
 
-void SliceEngine::triggerChaos() {
-    if (controls_.chaos.trigger == ChaosTrigger::Button) {
-        rollChaos();
-    }
-}
+void SliceEngine::triggerChaos() { rollChaos(); }
 
 void SliceEngine::noteOn() {
     if (chaos_.noteOn(controls_.chaos)) {

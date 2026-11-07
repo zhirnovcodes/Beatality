@@ -220,6 +220,10 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
             processor.randomizeTracks();
             completion(true);
         })
+        .withNativeFunction("chaos", [this](const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            processor.fireChaos();
+            completion(true);
+        })
         .withNativeFunction("shuffle", [this](const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
             processor.shuffleEffects();
             completion(true);

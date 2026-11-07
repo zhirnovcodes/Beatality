@@ -10,7 +10,7 @@ export interface FactoryBank {
     file: string
 }
 
-// The chaos knobs. trigger is 0 Randomize button, 1 Note, 2 Loop, 3 Slices, 4 Beats, 5 None.
+// The chaos knobs. trigger is 0 Note, 1 Loop, 2 Slices, 3 Beats, 4 None.
 // beatSize is 2^n beats, -2..1. loopSize is loops, 1..8. sliceSize is 2^n slices, -1..2.
 // groups is one toggle per chaosGroupNames entry, in that order.
 export interface ChaosState {
@@ -60,7 +60,7 @@ export interface RolledControls {
     chaosSliceSize: number
 }
 
-export const chaosTriggers = ['Randomize button', 'Note', 'Loop', 'Slices', 'Beats', 'None']
+export const chaosTriggers = ['Note', 'Loop', 'Slices', 'Beats', 'None']
 export const chaosGroupNames = [
     'Pan',
     'Slices',
@@ -84,6 +84,8 @@ export interface ViewActions {
     remove: (index: number) => void
     clear: () => void
     randomize: () => void
+    // The CHAOS button: one chaos roll in every trigger mode.
+    chaos: () => void
     setBpm: (bpm: number) => void
     setLoop: (beats: number) => void
     setSlice: (exponent: number) => void
@@ -224,7 +226,7 @@ export class WebViewModel {
     outputVolume = 1
     outputPanMin = 0
     outputPanMax = 0
-    chaosTrigger = 0
+    chaosTrigger = 4
     chaosValue = 0
     chaosBeatSize = 0
     chaosLoopSize = 1
@@ -317,6 +319,10 @@ export class WebViewModel {
 
     randomize() {
         this.actions?.randomize()
+    }
+
+    chaos() {
+        this.actions?.chaos()
     }
 
     // The tempo the engine plays.
