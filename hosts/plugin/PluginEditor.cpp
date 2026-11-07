@@ -87,8 +87,8 @@ Editor::Editor(Processor& processorIn) : juce::AudioProcessorEditor(processorIn)
         missing.setColour(juce::Label::textColourId, juce::Colours::white);
         addAndMakeVisible(missing);
     }
-    // The skin is 779 tall. The error line under it adds 21. The chaos column is 220 wide, right of the skin.
-    setSize(832, 800);
+    // The skin is 496 x 638; the error line floats over its bottom. The open drawers reach x 746, right of the skin.
+    setSize(746, 638);
 }
 
 Editor::~Editor() {

@@ -12,7 +12,8 @@ namespace {
 constexpr ChaosRange kPanMin{0, 0, -1, 0};
 constexpr ChaosRange kPanMax{0, 0, 0, 1};
 constexpr ChaosRange kSlice{-1, 0, SliceGrid::kExpMin, SliceGrid::kExpMax};
-constexpr ChaosRange kPower{0, 0.75, 0.25, 1};
+// Powers reach past the max at chaos 1 and are clamped to it, so about a quarter of full-chaos rolls land on full power.
+constexpr ChaosRange kPower{0, 0.75, 0.25, 1.33};
 constexpr ChaosRange kChance{0, 0.35, 0, 1};
 constexpr ChaosRange kEffectTime{-2, 0, Effects::kBeatMin, Effects::kBeatMax};
 constexpr ChaosRange kRepeatSize{-2, -1, BeatRepeatSettings::kSizeMin, BeatRepeatSettings::kSizeMax};
@@ -67,7 +68,7 @@ ChaosRoll rollChaos(Controls& controls, Rng& rng) {
     }
     Effects& fx = controls.effects;
     if (chaos.on(ChaosGroup::EffectsGlobal)) {
-        fx.globalPower = chaosValue(kPower, value, rng.nextFloat());
+        fx.globalPower = std::min(chaosValue(kPower, value, rng.nextFloat()), Effects::kPowerMax);
         fx.globalChance = chaosValue(kChance, value, rng.nextFloat());
         const auto [beatMin, beatMax] = stepPair(kEffectTime, value, rng);
         fx.beatMin = beatMin;
@@ -82,7 +83,7 @@ ChaosRoll rollChaos(Controls& controls, Rng& rng) {
         double* const chances[] = {&fx.delayChance, &fx.reverbChance, &fx.reverseChance, &fx.filterChance,
                                    &fx.flangerChance, &fx.tranceChance, &fx.shiftChance};
         for (int i = 0; i < 7; ++i) {
-            *powers[i] = chaosValue(kPower, value, rng.nextFloat());
+            *powers[i] = std::min(chaosValue(kPower, value, rng.nextFloat()), Effects::kPowerMax);
             const double chance = chaosValue(kChance, value, rng.nextFloat());
             roll.regenerateEffects = roll.regenerateEffects || chance != *chances[i];
             *chances[i] = chance;

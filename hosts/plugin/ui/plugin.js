@@ -825,13 +825,16 @@ function stepChaosTrigger(step) {
 }
 
 function wireChaos() {
-    // The CHAOS toggle only shows or hides the side panels.
-    const toggle = document.getElementById('chaos-toggle')
-    toggle?.addEventListener('click', () => {
-        const open = toggle.getAttribute('aria-pressed') !== 'true'
-        toggle.setAttribute('aria-pressed', String(open))
-        document.querySelector('.beatality-skin')?.classList.toggle('chaos-open', open)
-    })
+    // Each drawer's button only slides it out or back: CHAOS, BEAT REPEAT, SAMPLE SETTINGS.
+    for (const [drawerId, buttonId] of [['chaos-drawer', 'side-chaos'], ['br-drawer', 'side-beatrepeat'], ['ss-drawer', 'side-samples']]) {
+        const drawer = document.getElementById(drawerId)
+        const button = document.getElementById(buttonId)
+        button?.addEventListener('click', () => {
+            const open = !drawer?.classList.contains('open')
+            drawer?.classList.toggle('open', open)
+            button.setAttribute('aria-expanded', String(open))
+        })
+    }
     document.getElementById('chaos-trigger-prev')?.addEventListener('click', () => stepChaosTrigger(-1))
     document.getElementById('chaos-trigger-next')?.addEventListener('click', () => stepChaosTrigger(1))
     const ranges = [['chaos-value', 'chaosValue', 'setChaosValue'], ...Object.values(chaosSizes)]
@@ -1441,7 +1444,6 @@ function paintRetrig() {
     const button = document.getElementById('retrig')
     if (button) {
         button.setAttribute('aria-pressed', state.retrig ? 'true' : 'false')
-        button.textContent = state.retrig ? 'RETRIG ON' : 'RETRIG OFF'
     }
 }
 
@@ -1809,6 +1811,10 @@ function paintBeatRepeat() {
         min.setAttribute('aria-valuetext', sliceLabel(state.repeatSizeMin) + ' beat')
         max.setAttribute('aria-valuetext', sliceLabel(state.repeatSizeMax) + ' beat')
     }
+    const sizeValue = document.getElementById('br-size-value')
+    if (sizeValue) {
+        sizeValue.textContent = '[' + sliceLabel(state.repeatSizeMin) + ',' + sliceLabel(state.repeatSizeMax) + ']'
+    }
     const length = state.repeatLength - repeatLengthBase
     setRange('br-length', length)
     const lengthInput = document.getElementById('br-length')
@@ -1818,7 +1824,6 @@ function paintBeatRepeat() {
     const value = document.getElementById('br-length-value')
     if (value) {
         value.textContent = sliceLabel(state.repeatLength)
-        value.dataset.i = String(length)
     }
     setRange('br-chance', state.repeatChance)
     setRange('br-mix', state.repeatMix)

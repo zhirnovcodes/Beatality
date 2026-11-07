@@ -11,6 +11,136 @@
 </head>
 <body>
 <div class="beatality-skin">
+  <!-- SAMPLE SETTINGS drawer (entry 102): slides out beside the samples part; the SAMPLE SETTINGS button is its right end.
+       260 x 160 (x 0..10 under the samples part). The selected sample's controls (were under the sample list, stashed in entry 92).
+       VOL / PAN, ST. / start time, LEN. / LOOP, then WARPING: TYPE (none, beat, pitch) / BPM, SIZE (1/32 .. 2). Closed by default. -->
+  <aside class="ss-drawer" id="ss-drawer" aria-label="Sample settings">
+    <div class="window"></div>
+    <div class="content" id="ss-drawer-content">
+    <fieldset class="sample-panel" id="selected-sample">
+      <span class="name vol">VOL</span>
+      <div class="slider vol"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
+        <input type="range" id="volume" min="0" max="1.2" step="0.01" value="1" aria-label="Volume" data-snap="1"></div>
+      <span class="name pan">PAN</span>
+      <div class="slider pan"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
+        <input type="range" id="pan" min="-1" max="1" step="0.01" value="0" aria-label="Pan" data-snap="0"></div>
+
+      <span class="name start">ST.</span>
+      <div class="slider start"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="start" min="0" max="1" step="0.001" value="0" aria-label="Start"></div>
+      <span class="name length">LEN.</span>
+      <div class="slider length"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="length" min="0" max="1" step="0.001" value="1" aria-label="Length"></div>
+
+      <input type="text" class="field time" id="start-time" value="0.00" inputmode="decimal" spellcheck="false" aria-label="Start (seconds)" data-max="10">
+      <span class="name loop">LOOP</span>
+      <input type="checkbox" class="toggle" id="track-loop" aria-label="Loop">
+
+      <span class="name bpm">BPM</span>
+      <input type="text" class="field bpm" id="track-bpm" value="100.0" inputmode="decimal" spellcheck="false" aria-label="Sample BPM" data-min="20" data-max="999">
+
+      <span class="name warping">WARPING</span>
+      <span class="name warp">TYPE</span>
+      <button type="button" class="warp-btn prev" id="warp-prev" aria-label="Previous warp mode"></button>
+      <output class="warp-value" id="track-warp" data-value="none" aria-label="Warp">NONE</output>
+      <button type="button" class="warp-btn next" id="warp-next" aria-label="Next warp mode"></button>
+
+      <span class="name beat">SIZE <b class="value"></b></span>
+      <div class="slider beat"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="track-beat" min="0" max="6" step="1" value="3" aria-label="Beat"></div>
+    </fieldset>
+    </div>
+    <div class="case"></div>
+    <button type="button" class="ss-drawer-btn" id="side-samples" aria-expanded="false" aria-controls="ss-drawer-content">Sample settings</button>
+  </aside>
+
+  <!-- BEAT REPEAT drawer (entry 97): slides out beside the effects part; the BEAT REPEAT button is its right end.
+       260 x 172 (x 0..10 under the effects part). Closed by default; click the button to slide it out / in. -->
+  <aside class="br-drawer" id="br-drawer" aria-label="Beat repeat">
+    <div class="window"></div>
+    <div class="content" id="br-drawer-content">
+      <!-- on the screen: SIZE (min / max, 1/32 .. 2, index 0..6) over MIX (0..1) | LEN (length, 1/16 .. 2, index 0..5, value in its caption) over % (chance, 0..1) -->
+      <span class="br-name size">SIZE <output id="br-size-value" for="br-size-min br-size-max" aria-hidden="true">[1/8,1/2]</output></span>
+      <div class="br-range" id="br-size">
+        <div class="track lit"></div><div class="track dark"></div><div class="pin min"></div><div class="pin max"></div>
+        <input type="range" class="min" id="br-size-min" min="0" max="6" step="1" value="2" aria-label="Size minimum">
+        <input type="range" class="max" id="br-size-max" min="0" max="6" step="1" value="4" aria-label="Size maximum">
+      </div>
+      <span class="br-name mix">MIX</span>
+      <div class="br-slider long mix"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="br-mix" min="0" max="1" step="0.01" value="1" aria-label="Mix"></div>
+
+      <span class="br-name length">LEN <output id="br-length-value" for="br-length" aria-hidden="true"></output></span>
+      <div class="br-slider short length"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="br-length" min="0" max="5" step="1" value="2" aria-label="Length"></div>
+      <span class="br-name chance">%</span>
+      <div class="br-slider short chance"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="br-chance" min="0" max="1" step="0.01" value="0.5" aria-label="Chance"></div>
+    </div>
+    <div class="case"></div>
+    <div class="controls">
+      <!-- LOOP PARTS: ON and 8 numbered SNES-style buttons on the metal surface, over the case (entry 99) -->
+      <button type="button" class="br-power" id="br-power" aria-pressed="false" aria-label="Beat repeat on">ON</button>
+      <div class="br-parts" role="group" aria-label="Loop parts">
+        <input type="checkbox" class="br-part" id="br-pos-1" style="left: 53px; --n: url('../shapes/br_part_1.png'); --n-on: url('../shapes/br_part_1_on.png'); --n-down: url('../shapes/br_part_1_pressed.png')" aria-label="Loop part 1" checked>
+        <input type="checkbox" class="br-part" id="br-pos-2" style="left: 75px; --n: url('../shapes/br_part_2.png'); --n-on: url('../shapes/br_part_2_on.png'); --n-down: url('../shapes/br_part_2_pressed.png')" aria-label="Loop part 2">
+        <input type="checkbox" class="br-part" id="br-pos-3" style="left: 97px; --n: url('../shapes/br_part_3.png'); --n-on: url('../shapes/br_part_3_on.png'); --n-down: url('../shapes/br_part_3_pressed.png')" aria-label="Loop part 3">
+        <input type="checkbox" class="br-part" id="br-pos-4" style="left: 119px; --n: url('../shapes/br_part_4.png'); --n-on: url('../shapes/br_part_4_on.png'); --n-down: url('../shapes/br_part_4_pressed.png')" aria-label="Loop part 4" checked>
+        <input type="checkbox" class="br-part" id="br-pos-5" style="left: 141px; --n: url('../shapes/br_part_5.png'); --n-on: url('../shapes/br_part_5_on.png'); --n-down: url('../shapes/br_part_5_pressed.png')" aria-label="Loop part 5">
+        <input type="checkbox" class="br-part" id="br-pos-6" style="left: 163px; --n: url('../shapes/br_part_6.png'); --n-on: url('../shapes/br_part_6_on.png'); --n-down: url('../shapes/br_part_6_pressed.png')" aria-label="Loop part 6" checked>
+        <input type="checkbox" class="br-part" id="br-pos-7" style="left: 185px; --n: url('../shapes/br_part_7.png'); --n-on: url('../shapes/br_part_7_on.png'); --n-down: url('../shapes/br_part_7_pressed.png')" aria-label="Loop part 7">
+        <input type="checkbox" class="br-part" id="br-pos-8" style="left: 207px; --n: url('../shapes/br_part_8.png'); --n-on: url('../shapes/br_part_8_on.png'); --n-down: url('../shapes/br_part_8_pressed.png')" aria-label="Loop part 8">
+      </div>
+    </div>
+    <button type="button" class="br-drawer-btn" id="side-beatrepeat" aria-expanded="false" aria-controls="br-drawer-content">Beat repeat</button>
+  </aside>
+
+  <!-- CHAOS drawer (entry 94): slides out of the top part's right edge; the CHAOS button is its right end.
+       Closed: only the button shows. Click the button to slide it out / in. 260 x 190 (x 0..10 under the top part). -->
+  <aside class="chaos-drawer" id="chaos-drawer" aria-label="Chaos">
+    <div class="window"></div>
+    <div class="content" id="chaos-drawer-content">
+      <!-- left column: title, star slider, TRIGGER and its value slider; CHAOS group at the bottom -->
+      <div class="chaos-title" aria-hidden="true"></div>
+      <!-- chaos amount: star slider (no caption), as wide as the TRIGGER caption -->
+      <div class="chaos-slider" id="chaos-amount-slider">
+        <div class="track"></div><div class="fill"></div><div class="star"></div>
+        <input type="range" id="chaos-amount" min="0" max="1" step="0.01" value="0.3" aria-label="Chaos amount">
+      </div>
+      <!-- TRIGGER selector and the matching value slider (BEATS / LOOPS / SLICES, or none) -->
+      <span class="chaos-cap trigger">TRIGGER</span>
+      <button type="button" class="chaos-arrow prev" id="chaos-trigger-prev" aria-label="Previous trigger"></button>
+      <output class="chaos-trigger" id="chaos-trigger" data-value="button">RAND BTN</output>
+      <button type="button" class="chaos-arrow next" id="chaos-trigger-next" aria-label="Next trigger"></button>
+      <!-- under TRIGGER: the trigger's size, caption with its value + slider (BEATS 1/4 .. 2, LOOPS 1 .. 8, SLICES 1/2 .. 4);
+           only for those three triggers -->
+      <span class="chaos-cap amount" id="chaos-amount-cap">BEATS (1/4)</span>
+      <div class="chaos-small" data-trigger="beat"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="chaos-beats" min="0" max="3" step="1" value="0" aria-label="Beats size"></div>
+      <div class="chaos-small" data-trigger="loop"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="chaos-loops" min="1" max="8" step="1" value="1" aria-label="Loop count"></div>
+      <div class="chaos-small" data-trigger="slices"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="chaos-slices" min="0" max="4" step="1" value="0" aria-label="Slices count"></div>
+      <div class="chaos-group-box g-chaos"><span class="chaos-cap">CHAOS</span>
+        <label class="chaos-tog">VALUE<input type="checkbox" id="chaos-value"></label>
+        <label class="chaos-tog">TIME<input type="checkbox" id="chaos-time"></label></div>
+      <!-- right column: PLAY, EFFECTS, BEAT REPEAT -->
+      <div class="chaos-group-box g-play"><span class="chaos-cap">PLAY</span>
+        <label class="chaos-tog">PAN<input type="checkbox" id="chaos-play-pan"></label>
+        <label class="chaos-tog">SLICES<input type="checkbox" id="chaos-play-slices"></label>
+        <label class="chaos-tog">SEQUENCE<input type="checkbox" id="chaos-play-randomize"></label></div>
+      <div class="chaos-group-box g-fx"><span class="chaos-cap">EFFECTS</span>
+        <label class="chaos-tog">ON/OFF<input type="checkbox" id="chaos-fx-power"></label>
+        <label class="chaos-tog">GLOBAL<input type="checkbox" id="chaos-fx-global"></label>
+        <label class="chaos-tog">PER-EFFECT<input type="checkbox" id="chaos-fx-each"></label></div>
+      <div class="chaos-group-box g-br"><span class="chaos-cap">BEAT REPEAT</span>
+        <label class="chaos-tog">ON/OFF<input type="checkbox" id="chaos-br-power"></label>
+        <label class="chaos-tog">POSITIONS<input type="checkbox" id="chaos-br-positions"></label>
+        <label class="chaos-tog">PARAMS<input type="checkbox" id="chaos-br-params"></label></div>
+    </div>
+    <div class="case"></div>
+    <button type="button" class="chaos-drawer-btn" id="side-chaos" aria-expanded="false" aria-controls="chaos-drawer-content">Chaos</button>
+  </aside>
   <section class="part top" aria-label="Main controls">
     <div class="window"></div>
     <div class="content">
@@ -22,19 +152,22 @@
       </div>
       <button type="button" class="bpm-btn plus" aria-label="BPM up">+</button>
       <button type="button" class="bpm-btn minus" aria-label="BPM down">-</button>
+      <!-- SYNC (on / off): chrome button like BPM + / -, same size, "SYN" on it, at the left end of the BPM caption bar -->
+      <button type="button" class="bpm-sync" id="bpm-sync" aria-pressed="false" aria-label="Sync">SYNC</button>
 
-      <!-- master volume and pan -->
+      <!-- master volume caption (stays when the CHAOS panel is open) -->
       <span class="mix-caption volume">VOLUME</span>
+      <!-- RETRIG (on / off): the same chrome button as SYN, "RTRG" on it, at the left end of the VOLUME caption bar -->
+      <button type="button" class="retrig" id="retrig" aria-pressed="false" aria-label="Retrigger">RTRG</button>
+      <!-- MainSliders: LOOP / SLICES / ATTACK, volume and pan sliders -->
+      <div class="main-sliders" id="main-sliders">
       <div class="mix-slider volume"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
         <input type="range" id="master-volume" min="0" max="1.2" step="0.01" value="1" data-snap="1" aria-label="Volume"></div>
       <span class="mix-caption pan">PAN</span>
-      <div class="mix-slider pan"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
-        <input type="range" id="master-pan" min="-1" max="1" step="0.01" value="0" data-snap="0" aria-label="Pan"></div>
-
-      <!-- playhead position (read-only): dotted band + bevelled head, 0..1; set #playhead.value and fire "input" to move it -->
-      <div class="seek" role="meter" aria-label="Playhead position" aria-valuemin="0" aria-valuemax="1">
-        <div class="band"></div><div class="head"></div>
-        <input type="range" id="playhead" min="0" max="1" step="0.001" value="0" disabled tabindex="-1" aria-label="Playhead position">
+      <div class="mix-range pan" id="master-pan">
+        <div class="track lit"></div><div class="track dark"></div><div class="snap"></div><div class="pin min"></div><div class="pin max"></div>
+        <input type="range" class="min" id="master-pan-min" min="-1" max="1" step="0.01" value="-0.5" aria-label="Pan minimum">
+        <input type="range" class="max" id="master-pan-max" min="-1" max="1" step="0.01" value="0.5" aria-label="Pan maximum">
       </div>
 
       <!-- Loop / Slice / Attack: one caption bar, three sliders under it; values filled in by skin.js -->
@@ -55,11 +188,74 @@
         <div class="track"></div><div class="ticks dim"></div><div class="ticks lit"></div><div class="thumb"></div>
         <input type="range" id="attack" min="2" max="16" step="1" value="2" aria-label="Attack (ms)">
       </div>
+      </div>
+
+      <!-- playhead position (read-only): dotted band + bevelled head, 0..1; set #playhead.value and fire "input" to move it -->
+      <div class="seek" role="meter" aria-label="Playhead position" aria-valuemin="0" aria-valuemax="1">
+        <div class="band"></div><div class="head"></div>
+        <input type="range" id="playhead" min="0" max="1" step="0.001" value="0" disabled tabindex="-1" aria-label="Playhead position">
+      </div>
+
     </div>
     <div class="case"></div>
     <div class="controls">
-      <button type="button" class="randomize" id="randomize">Randomize</button>
+      <button type="button" class="randomize" id="randomize">Randomize sequence</button>
+      <!-- Stashed in entry 103 (removed from the glass, kept for their state): #chaos-toggle holds chaos mode, which the CHAOS drawer follows.
+           three toggles on the glass, lower right: CHAOS and EFFECTS in a row, BEAT REPEAT under them (black pixel buttons, dotted edge, lit when on):
+           CHAOS: chaos mode on / off (off by default; its controls are in the side panels).
+           EFFECTS: the effects on / off, the same state as EFFECTS ON / OFF (#fx-enable) in the effects part.
+           BEAT REPEAT: beat repeat on / off, the same state as ON (#br-power) in the beat repeat part. -->
+      <div class="top-toggles is-stashed">
+        <div class="row">
+          <button type="button" class="top-toggle chaos-toggle" id="chaos-toggle" aria-pressed="false">CHAOS</button>
+          <button type="button" class="top-toggle" id="effects-toggle" aria-pressed="true" data-for="fx-enable">EFFECTS</button>
+        </div>
+        <button type="button" class="top-toggle" id="beatrepeat-toggle" aria-pressed="false" data-for="br-power">BEAT REPEAT</button>
+      </div>
     </div>
+  </section>
+  <section class="part effects" aria-label="Effects">
+    <div class="window"></div>
+    <div class="content">
+      <!-- Effects, in the reference's order: caption boxes on black above the sliders; sliders in groups.
+           GLOBAL: power + chance %. TIME: min / max (split handle), clock only in its box, snaps to 1/16 .. 2 (index 0..5), scale boxes beside it.
+           Then one group per effect: its power slider and its chance % slider. EFFECTS ON / OFF and SHUFFLE at the top of the screen. -->
+      <!-- top of the screen: EFFECTS ON / OFF (two states) on the left, SHUFFLE (sets every slider at random) on the right -->
+      <button type="button" class="fx-btn fx-enable" id="fx-enable" aria-pressed="true">EFFECTS ON</button>
+      <button type="button" class="fx-btn fx-shuffle" id="fx-shuffle">SHUFFLE</button>
+      <div class="fx-caps" aria-hidden="true">
+        <div class="fx-cap" style="left: 31px; width: 44px"><span class="name">GLOBAL</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+        <div class="fx-cap time" style="left: 79px; width: 26px"><span class="clock"></span></div>
+        <div class="fx-cap" style="left: 132px; width: 44px"><span class="name">DELAY</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+        <div class="fx-cap" style="left: 180px; width: 44px"><span class="name">REVERB</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+        <div class="fx-cap" style="left: 228px; width: 44px"><span class="name">REVERSE</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+        <div class="fx-cap" style="left: 276px; width: 44px"><span class="name">FILTER</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+        <div class="fx-cap" style="left: 324px; width: 44px"><span class="name">FLANGER</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+        <div class="fx-cap" style="left: 372px; width: 44px"><span class="name">TRANCE</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+        <div class="fx-cap" style="left: 420px; width: 44px"><span class="name">SHIFT</span><span class="sub" style="left: 13px">PWR</span><span class="sub" style="left: 31px">%</span></div>
+      </div>
+      <div class="fx-sliders">
+        <div class="fx-slider" style="left: 32px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-power" min="0" max="1" step="0.01" value="1" aria-label="Global power"></div>
+        <div class="fx-slider" style="left: 50px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-chance" min="0" max="100" step="1" value="50" aria-label="Global chance (%)"></div>
+        <div class="fx-slider time" style="left: 80px"><div class="track"></div><div class="fill"></div><div class="thumb max"></div><div class="thumb min"></div><input type="range" class="min" id="fx-time-min" min="0" max="5" step="1" value="1" aria-label="Effect time minimum"><input type="range" class="max" id="fx-time-max" min="0" max="5" step="1" value="3" aria-label="Effect time maximum"></div>
+        <div class="fx-slider" style="left: 133px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-delay-power" min="0" max="1" step="0.01" value="0" aria-label="Delay power"></div>
+        <div class="fx-slider" style="left: 151px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-delay-chance" min="0" max="100" step="1" value="0" aria-label="Delay chance (%)"></div>
+        <div class="fx-slider" style="left: 181px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-reverb-power" min="0" max="1" step="0.01" value="0" aria-label="Reverb power"></div>
+        <div class="fx-slider" style="left: 199px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-reverb-chance" min="0" max="100" step="1" value="0" aria-label="Reverb chance (%)"></div>
+        <div class="fx-slider" style="left: 229px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-reverse-power" min="0" max="1" step="0.01" value="0" aria-label="Reverse power"></div>
+        <div class="fx-slider" style="left: 247px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-reverse-chance" min="0" max="100" step="1" value="0" aria-label="Reverse chance (%)"></div>
+        <div class="fx-slider" style="left: 277px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-filter-power" min="0" max="1" step="0.01" value="0" aria-label="Filter power"></div>
+        <div class="fx-slider" style="left: 295px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-filter-chance" min="0" max="100" step="1" value="0" aria-label="Filter chance (%)"></div>
+        <div class="fx-slider" style="left: 325px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-flanger-power" min="0" max="1" step="0.01" value="0" aria-label="Flanger power"></div>
+        <div class="fx-slider" style="left: 343px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-flanger-chance" min="0" max="100" step="1" value="0" aria-label="Flanger chance (%)"></div>
+        <div class="fx-slider" style="left: 373px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-trance-power" min="0" max="1" step="0.01" value="0" aria-label="Trance power"></div>
+        <div class="fx-slider" style="left: 391px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-trance-chance" min="0" max="100" step="1" value="0" aria-label="Trance chance (%)"></div>
+        <div class="fx-slider" style="left: 421px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-shift-power" min="0" max="1" step="0.01" value="0" aria-label="Shift power"></div>
+        <div class="fx-slider" style="left: 439px"><div class="track"></div><div class="fill"></div><div class="thumb"></div><input type="range" id="fx-shift-chance" min="0" max="100" step="1" value="0" aria-label="Shift chance (%)"></div>
+        <ol class="fx-scale" aria-hidden="true" style="left: 102px"><li>2</li><li>1</li><li>1/2</li><li>1/4</li><li>1/8</li><li>1/16</li></ol>
+      </div>
+    </div>
+    <div class="case"></div>
   </section>
   <section class="part bottom" aria-label="Samples">
     <div class="window"></div>
@@ -69,6 +265,11 @@
         <div class="scroll-content">
           <!-- sample buffer grid: rows built by skin.js (demo: 16 rows, Loop 4 beats, Slices 1 → 4 columns) -->
           <div class="sample-grid" id="sample-grid" role="listbox" aria-label="Samples" data-rows="16"></div>
+          <!-- bank picker (LOAD): header + list; lines filled in by skin.js (demo: 10 banks) -->
+          <div class="bank-view" id="bank-view">
+            <div class="header">SELECT BANK</div>
+            <ol class="bank-list" id="bank-list" role="listbox" aria-label="Banks"></ol>
+          </div>
         </div>
       </div>
     </div>
@@ -87,30 +288,16 @@
       <button type="button" class="round-btn load" id="load-bank">Load</button>
       <button type="button" class="round-btn save" id="save">Save</button>
 
-      <!-- selected sample: one convex screen -->
-      <fieldset class="sample-panel" id="selected-sample">
-        <div class="col c1">
-          <span class="name top">VOLUME</span>
-          <div class="slider top"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
-            <input type="range" id="volume" min="0" max="1.2" step="0.01" value="1" aria-label="Volume" data-snap="1"></div>
-          <span class="name bottom">PAN</span>
-          <div class="slider bottom"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
-            <input type="range" id="pan" min="-1" max="1" step="0.01" value="0" aria-label="Pan" data-snap="0"></div>
-        </div>
-        <div class="col c2">
-          <span class="name top">START</span>
-          <div class="slider top"><div class="track"></div><div class="thumb"></div>
-            <input type="range" id="start" min="0" max="1" step="0.001" value="0" aria-label="Start"></div>
-          <span class="name bottom">LENGTH</span>
-          <div class="slider bottom"><div class="track"></div><div class="thumb"></div>
-            <input type="range" id="length" min="0" max="1" step="0.001" value="1" aria-label="Length"></div>
-        </div>
-        <div class="col c3">
-          <div class="time"><input type="text" id="start-time" value="0.00" inputmode="decimal" spellcheck="false" aria-label="Start (seconds)" data-max="10"><span class="unit">SEC</span></div>
-          <span class="name loop">LOOP</span>
-          <input type="checkbox" class="toggle" id="track-loop" aria-label="Loop">
-        </div>
-      </fieldset>
+      <!-- bank picker buttons (LOAD) -->
+      <div class="bank-panel" id="bank-panel">
+        <button type="button" class="bank-btn" id="bank-select">SELECT</button>
+        <button type="button" class="bank-btn" id="bank-load-file">LOAD FILE</button>
+        <button type="button" class="bank-btn close" id="bank-close" aria-label="Close">X</button>
+      </div>
+
+      <!-- selected sample's file name, on the short panel right of the buttons (the bank picker buttons take its place) -->
+      <div class="track-name" id="track-name" title="file name.wav">file name.wav</div>
+
     </div>
   </section>
 </div>

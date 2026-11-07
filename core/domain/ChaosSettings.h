@@ -35,7 +35,7 @@ struct ChaosSettings {
     static constexpr int kLoopSizeMin = 1;
     static constexpr int kLoopSizeMax = 8;
     static constexpr int kSliceSizeMin = -1;
-    static constexpr int kSliceSizeMax = 2;
+    static constexpr int kSliceSizeMax = 1;
 
     ChaosTrigger trigger = ChaosTrigger::Button;
     double value = 0;

@@ -19,8 +19,9 @@ export function Widget({
     const [, setTick] = useState(0)
     const [loadingPack, setLoadingPack] = useState(false)
     const [bankOpen, setBankOpen] = useState(false)
-    // The CHAOS toggle only shows or hides the side panels.
-    const [chaosOpen, setChaosOpen] = useState(false)
+    // The SAMPLE SETTINGS drawer's button only slides it out or back.
+    const [settingsOpen, setSettingsOpen] = useState(false)
+    const settingsId = useId()
     const [bankIndex, setBankIndex] = useState(0)
     const [selection, setSelection] = useState<readonly number[]>([])
     const [dropping, setDropping] = useState(false)
@@ -213,9 +214,95 @@ export function Widget({
     return (
         <>
             <div
-                className={['beatality-skin', bankOpen ? 'picking-bank' : '', chaosOpen ? 'chaos-open' : ''].filter(Boolean).join(' ')}
+                className={bankOpen ? 'beatality-skin picking-bank' : 'beatality-skin'}
                 ref={skin}
             >
+                <aside className={settingsOpen ? 'ss-drawer open' : 'ss-drawer'} aria-label="Sample settings">
+                    <div className="window" />
+                    <div className="content" id={settingsId}>
+                        {/* The selected sample's controls: VOL / PAN, ST. / start time, LEN. / LOOP,
+                            then WARPING: TYPE (none, beat, pitch) / BPM, SIZE (1/32 .. 2) */}
+                        <fieldset className="sample-panel" disabled={selection.length === 0} ref={onPanel}>
+                            <span className="name vol">VOL</span>
+                            <div className="slider vol">
+                                <div className="track" />
+                                <div className="snap" />
+                                <div className="thumb" />
+                                <input type="range" min={0} max={1.2} step={0.01} defaultValue={1} aria-label="Volume" data-snap="1" />
+                            </div>
+                            <span className="name pan">PAN</span>
+                            <div className="slider pan">
+                                <div className="track" />
+                                <div className="snap" />
+                                <div className="thumb" />
+                                <input type="range" min={-1} max={1} step={0.01} defaultValue={0} aria-label="Pan" data-snap="0" />
+                            </div>
+
+                            <span className="name start">ST.</span>
+                            <div className="slider start">
+                                <div className="track" />
+                                <div className="thumb" />
+                                <input type="range" min={0} max={1} step={0.001} defaultValue={0} aria-label="Start" />
+                            </div>
+                            <span className="name length">LEN.</span>
+                            <div className="slider length">
+                                <div className="track" />
+                                <div className="thumb" />
+                                <input type="range" min={0} max={1} step={0.001} defaultValue={1} aria-label="Length" />
+                            </div>
+
+                            <input
+                                type="text"
+                                className="field time"
+                                defaultValue="0.00"
+                                inputMode="decimal"
+                                spellcheck={false}
+                                aria-label="Start (seconds)"
+                                data-max="0"
+                            />
+                            <span className="name loop">LOOP</span>
+                            <input type="checkbox" className="toggle" aria-label="Loop" />
+
+                            <span className="name bpm">BPM</span>
+                            <input
+                                type="text"
+                                className="field bpm"
+                                defaultValue="120.0"
+                                inputMode="decimal"
+                                spellcheck={false}
+                                aria-label="Sample BPM"
+                            />
+
+                            <span className="name warping">WARPING</span>
+                            <span className="name warp">TYPE</span>
+                            <button type="button" className="warp-btn prev" aria-label="Previous warp mode" />
+                            <output className="warp-value" data-value="none" aria-label="Warp">
+                                NONE
+                            </output>
+                            <button type="button" className="warp-btn next" aria-label="Next warp mode" />
+
+                            <span className="name beat">
+                                SIZE <b className="value" />
+                            </span>
+                            <div className="slider beat">
+                                <div className="track" />
+                                <div className="thumb" />
+                                <input type="range" min={0} max={6} step={1} defaultValue={3} aria-label="Beat" />
+                            </div>
+                        </fieldset>
+                    </div>
+                    <div className="case" />
+                    <button
+                        type="button"
+                        className="ss-drawer-btn"
+                        aria-expanded={settingsOpen}
+                        aria-controls={settingsId}
+                        onClick={() => setSettingsOpen(!settingsOpen)}
+                    >
+                        Sample settings
+                    </button>
+                </aside>
+                <BeatRepeatPart model={model} />
                 <ChaosSides model={model} />
                 <section className="part top" aria-label="Main controls">
                     <div className="window" />
@@ -266,55 +353,127 @@ export function Widget({
                         </button>
 
                         <span className="mix-caption volume">VOLUME</span>
-                        <div className="mix-slider volume">
-                            <div className="track" />
-                            <div className="snap" />
-                            <div className="thumb" />
-                            <input
-                                type="range"
-                                min={0}
-                                max={1.2}
-                                step={0.01}
-                                value={model.outputVolume}
-                                data-snap="1"
-                                aria-label="Volume"
-                                data-param="volume"
-                                onInput={onMasterVolume}
-                            />
-                        </div>
-                        <span className="mix-caption pan">PAN</span>
-                        {/* Each slice's pan roll is scaled onto MIN..MAX. */}
-                        <div
-                            className="mix-range pan"
-                            style={{ '--lo': String((model.outputPanMin + 1) / 2), '--hi': String((model.outputPanMax + 1) / 2) }}
+                        {/* On, a slice that starts on the slice already playing restarts it. */}
+                        <button
+                            type="button"
+                            className="retrig"
+                            aria-pressed={model.retrig}
+                            aria-label="Retrigger"
+                            onClick={() => model.setRetrig(!model.retrig)}
                         >
-                            <div className="track lit" />
-                            <div className="track dark" />
-                            <div className="snap" />
-                            <div className="pin min" />
-                            <div className="pin max" />
-                            <input
-                                type="range"
-                                className="min"
-                                min={-1}
-                                max={1}
-                                step={0.01}
-                                value={model.outputPanMin}
-                                aria-label="Pan minimum"
-                                data-param="panMin"
-                                onInput={onMasterPanMin}
-                            />
-                            <input
-                                type="range"
-                                className="max"
-                                min={-1}
-                                max={1}
-                                step={0.01}
-                                value={model.outputPanMax}
-                                aria-label="Pan maximum"
-                                data-param="panMax"
-                                onInput={onMasterPanMax}
-                            />
+                            RTRG
+                        </button>
+                        {/* Clicks between the sliders pass through to SYN, + / - and RTRG. */}
+                        <div className="main-sliders">
+                            <div className="mix-slider volume">
+                                <div className="track" />
+                                <div className="snap" />
+                                <div className="thumb" />
+                                <input
+                                    type="range"
+                                    min={0}
+                                    max={1.2}
+                                    step={0.01}
+                                    value={model.outputVolume}
+                                    data-snap="1"
+                                    aria-label="Volume"
+                                    data-param="volume"
+                                    onInput={onMasterVolume}
+                                />
+                            </div>
+                            <span className="mix-caption pan">PAN</span>
+                            {/* Each slice's pan roll is scaled onto MIN..MAX. */}
+                            <div
+                                className="mix-range pan"
+                                style={{ '--lo': String((model.outputPanMin + 1) / 2), '--hi': String((model.outputPanMax + 1) / 2) }}
+                            >
+                                <div className="track lit" />
+                                <div className="track dark" />
+                                <div className="snap" />
+                                <div className="pin min" />
+                                <div className="pin max" />
+                                <input
+                                    type="range"
+                                    className="min"
+                                    min={-1}
+                                    max={1}
+                                    step={0.01}
+                                    value={model.outputPanMin}
+                                    aria-label="Pan minimum"
+                                    data-param="panMin"
+                                    onInput={onMasterPanMin}
+                                />
+                                <input
+                                    type="range"
+                                    className="max"
+                                    min={-1}
+                                    max={1}
+                                    step={0.01}
+                                    value={model.outputPanMax}
+                                    aria-label="Pan maximum"
+                                    data-param="panMax"
+                                    onInput={onMasterPanMax}
+                                />
+                            </div>
+
+                            <div className="slider-captions" aria-hidden="true">
+                                <span data-for="loop">
+                                    LOOP: <b className="value">{model.loopBeats}</b>
+                                </span>
+                                <span data-for="slice">
+                                    SLICES: <b className="value">{sliceLabel}</b>
+                                </span>
+                                <span data-for="attack">
+                                    ATTACK: <b className="value">{model.attackMs}</b> <i className="unit">MS</i>
+                                </span>
+                            </div>
+                            <div className="slider loop">
+                                <div className="track" />
+                                <div className="ticks dim" />
+                                <div className="ticks lit" />
+                                <div className="thumb" />
+                                <input
+                                    type="range"
+                                    min={1}
+                                    max={32}
+                                    step={1}
+                                    value={model.loopBeats}
+                                    aria-label="Loop"
+                                    data-param="loop"
+                                    onInput={onLoop}
+                                />
+                            </div>
+                            <div className="slider slice">
+                                <div className="track" />
+                                <div className="ticks dim" />
+                                <div className="ticks lit" />
+                                <div className="thumb" />
+                                <input
+                                    type="range"
+                                    min={-4}
+                                    max={4}
+                                    step={1}
+                                    value={model.sliceExp}
+                                    aria-label="Slices"
+                                    data-param="slice"
+                                    onInput={onSlice}
+                                />
+                            </div>
+                            <div className="slider attack">
+                                <div className="track" />
+                                <div className="ticks dim" />
+                                <div className="ticks lit" />
+                                <div className="thumb" />
+                                <input
+                                    type="range"
+                                    min={2}
+                                    max={16}
+                                    step={1}
+                                    value={model.attackMs}
+                                    aria-label="Attack (ms)"
+                                    onInput={onAttack}
+                                />
+                            </div>
                         </div>
 
                         <div className="seek" role="meter" aria-label="Playhead position" aria-valuemin={0} aria-valuemax={1}>
@@ -331,65 +490,6 @@ export function Widget({
                                 aria-label="Playhead position"
                             />
                         </div>
-
-                        <div className="slider-captions" aria-hidden="true">
-                            <span data-for="loop">
-                                LOOP: <b className="value">{model.loopBeats}</b>
-                            </span>
-                            <span data-for="slice">
-                                SLICES: <b className="value">{sliceLabel}</b>
-                            </span>
-                            <span data-for="attack">
-                                ATTACK: <b className="value">{model.attackMs}</b> <i className="unit">MS</i>
-                            </span>
-                        </div>
-                        <div className="slider loop">
-                            <div className="track" />
-                            <div className="ticks dim" />
-                            <div className="ticks lit" />
-                            <div className="thumb" />
-                            <input
-                                type="range"
-                                min={1}
-                                max={32}
-                                step={1}
-                                value={model.loopBeats}
-                                aria-label="Loop"
-                                data-param="loop"
-                                onInput={onLoop}
-                            />
-                        </div>
-                        <div className="slider slice">
-                            <div className="track" />
-                            <div className="ticks dim" />
-                            <div className="ticks lit" />
-                            <div className="thumb" />
-                            <input
-                                type="range"
-                                min={-4}
-                                max={4}
-                                step={1}
-                                value={model.sliceExp}
-                                aria-label="Slices"
-                                data-param="slice"
-                                onInput={onSlice}
-                            />
-                        </div>
-                        <div className="slider attack">
-                            <div className="track" />
-                            <div className="ticks dim" />
-                            <div className="ticks lit" />
-                            <div className="thumb" />
-                            <input
-                                type="range"
-                                min={2}
-                                max={16}
-                                step={1}
-                                value={model.attackMs}
-                                aria-label="Attack (ms)"
-                                onInput={onAttack}
-                            />
-                        </div>
                     </div>
                     <div className="case" />
                     <div className="controls">
@@ -399,15 +499,7 @@ export function Widget({
                             data-param="randomize"
                             onClick={() => model.randomize()}
                         >
-                            Randomize
-                        </button>
-                        <button
-                            type="button"
-                            className="chaos-toggle"
-                            aria-pressed={chaosOpen}
-                            onClick={() => setChaosOpen(!chaosOpen)}
-                        >
-                            CHAOS
+                            Randomize sequence
                         </button>
                     </div>
                 </section>
@@ -649,7 +741,6 @@ export function Widget({
                     </div>
                     <div className="case" />
                 </section>
-                <BeatRepeatPart model={model} />
                 <section className="part bottom" aria-label="Samples">
                     <div className="window" />
                     <div className="content">
@@ -763,83 +854,10 @@ export function Widget({
                         <div className="track-name" title={chosenName}>
                             {chosenName}
                         </div>
-                        {/* Selected sample's controls, on the dark screen under the buttons:
-                            VOL / PAN | ST. (start) / LEN. (length) | start time / LOOP | BPM | WARP (none, beat, pitch) | BEAT (1/32 .. 2) */}
-                        <fieldset className="sample-panel" disabled={selection.length === 0} ref={onPanel}>
-                            <span className="name vol">VOL</span>
-                            <div className="slider vol">
-                                <div className="track" />
-                                <div className="snap" />
-                                <div className="thumb" />
-                                <input type="range" min={0} max={1.2} step={0.01} defaultValue={1} aria-label="Volume" data-snap="1" />
-                            </div>
-                            <span className="name pan">PAN</span>
-                            <div className="slider pan">
-                                <div className="track" />
-                                <div className="snap" />
-                                <div className="thumb" />
-                                <input type="range" min={-1} max={1} step={0.01} defaultValue={0} aria-label="Pan" data-snap="0" />
-                            </div>
-
-                            <span className="name start">ST.</span>
-                            <div className="slider start">
-                                <div className="track" />
-                                <div className="thumb" />
-                                <input type="range" min={0} max={1} step={0.001} defaultValue={0} aria-label="Start" />
-                            </div>
-                            <span className="name length">LEN.</span>
-                            <div className="slider length">
-                                <div className="track" />
-                                <div className="thumb" />
-                                <input type="range" min={0} max={1} step={0.001} defaultValue={1} aria-label="Length" />
-                            </div>
-
-                            <input
-                                type="text"
-                                className="field time"
-                                defaultValue="0.00"
-                                inputMode="decimal"
-                                spellcheck={false}
-                                aria-label="Start (seconds)"
-                                data-max="0"
-                            />
-                            <span className="name loop">LOOP</span>
-                            <input type="checkbox" className="toggle" aria-label="Loop" />
-
-                            <span className="name bpm">BPM</span>
-                            <input
-                                type="text"
-                                className="field bpm"
-                                defaultValue="120.0"
-                                inputMode="decimal"
-                                spellcheck={false}
-                                aria-label="Sample BPM"
-                            />
-
-                            <span className="name warp">WARP</span>
-                            <button type="button" className="warp-btn prev" aria-label="Previous warp mode" />
-                            <output className="warp-value" data-value="none" aria-label="Warp">
-                                NONE
-                            </output>
-                            <button type="button" className="warp-btn next" aria-label="Next warp mode" />
-
-                            <span className="name beat">
-                                BEAT <b className="value" />
-                            </span>
-                            <div className="slider beat">
-                                <div className="track" />
-                                <div className="thumb" />
-                                <input type="range" min={0} max={6} step={1} defaultValue={3} aria-label="Beat" />
-                            </div>
-                        </fieldset>
                     </div>
                 </section>
             </div>
             <p className="widget-error">{model.error}</p>
-            {/* Plain placeholder until the toggle has a design. */}
-            <button type="button" aria-pressed={model.retrig} onClick={() => model.setRetrig(!model.retrig)}>
-                {model.retrig ? 'RETRIG ON' : 'RETRIG OFF'}
-            </button>
         </>
     )
 }
@@ -877,9 +895,11 @@ interface ChaosSize {
     set: (value: number) => void
 }
 
-// The CHAOS side panels, tucked behind the top part. Loop, Slices and Beats each have a size slider; only the one for
-// the chosen trigger shows. Beats size is 2^n beats, slices size is 2^n slices.
+// The CHAOS drawer, out of the top part's right edge. Its button only slides it out or back. Loop, Slices and Beats each
+// have a size slider; only the one for the chosen trigger shows. Beats size is 2^n beats, slices size is 2^n slices.
 function ChaosSides({ model }: { model: WebViewModel }) {
+    const [open, setOpen] = useState(false)
+    const contentId = useId()
     const trigger = model.chaosTrigger
     const count = chaosTriggerNames.length
     const onRange = (apply: (value: number) => void) => (event: Event) => {
@@ -921,92 +941,93 @@ function ChaosSides({ model }: { model: WebViewModel }) {
     ]
     const chosen = sizes.find((size) => size.trigger === trigger)
     return (
-        <>
-            <aside className="chaos-side left" aria-label="Chaos">
-                <div className="window" />
-                <div className="content">
-                    <div className="chaos-title" aria-hidden="true" />
-                    <div className="chaos-slider">
+        <aside className={open ? 'chaos-drawer open' : 'chaos-drawer'} aria-label="Chaos">
+            <div className="window" />
+            <div className="content" id={contentId}>
+                <div className="chaos-title" aria-hidden="true" />
+                <div className="chaos-slider">
+                    <div className="track" />
+                    <div className="fill" />
+                    <div className="star" />
+                    <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={model.chaosValue}
+                        data-param="chaosValue"
+                        aria-label="Chaos value"
+                        onInput={onRange((value) => model.setChaosValue(value))}
+                    />
+                </div>
+                <span className="chaos-cap trigger">TRIGGER</span>
+                <button
+                    type="button"
+                    className="chaos-arrow prev"
+                    aria-label="Previous trigger"
+                    onClick={() => model.setChaosTrigger((trigger + count - 1) % count)}
+                />
+                <output className="chaos-trigger">{chaosTriggerNames[trigger] ?? ''}</output>
+                <button
+                    type="button"
+                    className="chaos-arrow next"
+                    aria-label="Next trigger"
+                    onClick={() => model.setChaosTrigger((trigger + 1) % count)}
+                />
+                <span className="chaos-cap amount" style={{ visibility: chosen ? 'visible' : 'hidden' }}>
+                    {chosen?.caption ?? ''}
+                </span>
+                {sizes.map((size) => (
+                    <div key={size.param} className={size === chosen ? 'chaos-small on' : 'chaos-small'}>
                         <div className="track" />
-                        <div className="fill" />
-                        <div className="star" />
+                        <div className="thumb" />
                         <input
                             type="range"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            value={model.chaosValue}
-                            data-param="chaosValue"
-                            aria-label="Chaos value"
-                            onInput={onRange((value) => model.setChaosValue(value))}
+                            min={size.min}
+                            max={size.max}
+                            step="1"
+                            value={size.value}
+                            data-param={size.param}
+                            aria-label={size.label}
+                            onInput={onRange(size.set)}
                         />
                     </div>
-                    <span className="chaos-cap trigger">TRIGGER</span>
-                    <button
-                        type="button"
-                        className="chaos-arrow prev"
-                        aria-label="Previous trigger"
-                        onClick={() => model.setChaosTrigger((trigger + count - 1) % count)}
-                    />
-                    <output className="chaos-trigger">{chaosTriggerNames[trigger] ?? ''}</output>
-                    <button
-                        type="button"
-                        className="chaos-arrow next"
-                        aria-label="Next trigger"
-                        onClick={() => model.setChaosTrigger((trigger + 1) % count)}
-                    />
-                    <span className="chaos-cap amount" style={{ visibility: chosen ? 'visible' : 'hidden' }}>
-                        {chosen?.caption ?? ''}
-                    </span>
-                    {sizes.map((size) => (
-                        <div key={size.param} className={size === chosen ? 'chaos-small on' : 'chaos-small'}>
-                            <div className="track" />
-                            <div className="thumb" />
-                            <input
-                                type="range"
-                                min={size.min}
-                                max={size.max}
-                                step="1"
-                                value={size.value}
-                                data-param={size.param}
-                                aria-label={size.label}
-                                onInput={onRange(size.set)}
-                            />
-                        </div>
-                    ))}
+                ))}
+                <div className="chaos-group-box g-chaos">
+                    <span className="chaos-cap">CHAOS</span>
+                    <ChaosToggle model={model} name="VALUE" group={9} />
+                    <ChaosToggle model={model} name="TIME" group={10} />
                 </div>
-                <div className="case" />
-            </aside>
-            <aside className="chaos-side right" aria-label="Chaos toggles">
-                <div className="window" />
-                <div className="content">
-                    <div className="chaos-group-box" style={{ left: '26px', top: '16px' }}>
-                        <span className="chaos-cap">PLAY</span>
-                        <ChaosToggle model={model} name="PAN" group={0} />
-                        <ChaosToggle model={model} name="SLICES" group={1} />
-                        <ChaosToggle model={model} name="RANDOMIZE" group={2} />
-                    </div>
-                    <div className="chaos-group-box" style={{ left: '26px', top: '78px' }}>
-                        <span className="chaos-cap">BEAT REPEAT</span>
-                        <ChaosToggle model={model} name="ON/OFF" group={6} />
-                        <ChaosToggle model={model} name="POSITIONS" group={7} />
-                        <ChaosToggle model={model} name="PARAMS" group={8} />
-                    </div>
-                    <div className="chaos-group-box" style={{ left: '120px', top: '16px' }}>
-                        <span className="chaos-cap">EFFECTS</span>
-                        <ChaosToggle model={model} name="ON/OFF" group={4} />
-                        <ChaosToggle model={model} name="GLOBAL" group={3} />
-                        <ChaosToggle model={model} name="PER-EFFECT" group={5} />
-                    </div>
-                    <div className="chaos-group-box" style={{ left: '120px', top: '78px' }}>
-                        <span className="chaos-cap">CHAOS</span>
-                        <ChaosToggle model={model} name="VALUE" group={9} />
-                        <ChaosToggle model={model} name="TIME" group={10} />
-                    </div>
+                <div className="chaos-group-box g-play">
+                    <span className="chaos-cap">PLAY</span>
+                    <ChaosToggle model={model} name="PAN" group={0} />
+                    <ChaosToggle model={model} name="SLICES" group={1} />
+                    <ChaosToggle model={model} name="SEQUENCE" group={2} />
                 </div>
-                <div className="case" />
-            </aside>
-        </>
+                <div className="chaos-group-box g-fx">
+                    <span className="chaos-cap">EFFECTS</span>
+                    <ChaosToggle model={model} name="ON/OFF" group={4} />
+                    <ChaosToggle model={model} name="GLOBAL" group={3} />
+                    <ChaosToggle model={model} name="PER-EFFECT" group={5} />
+                </div>
+                <div className="chaos-group-box g-br">
+                    <span className="chaos-cap">BEAT REPEAT</span>
+                    <ChaosToggle model={model} name="ON/OFF" group={6} />
+                    <ChaosToggle model={model} name="POSITIONS" group={7} />
+                    <ChaosToggle model={model} name="PARAMS" group={8} />
+                </div>
+            </div>
+            <div className="case" />
+            <button
+                type="button"
+                className="chaos-drawer-btn"
+                aria-expanded={open}
+                aria-controls={contentId}
+                onClick={() => setOpen(!open)}
+            >
+                Chaos
+            </button>
+        </aside>
     )
 }
 
@@ -1014,46 +1035,29 @@ function ChaosSides({ model }: { model: WebViewModel }) {
 const repeatSizeBase = -5
 const repeatLengthBase = -4
 
+// The BEAT REPEAT drawer, beside the effects part. Its button only slides it out or back.
 function BeatRepeatPart({ model }: { model: WebViewModel }) {
+    const [open, setOpen] = useState(false)
     const lo = model.repeatSizeMinExp - repeatSizeBase
     const hi = model.repeatSizeMaxExp - repeatSizeBase
     const length = model.repeatLengthExp - repeatLengthBase
     const lengthId = useId()
+    const contentId = useId()
     const value = (event: Event) => (event.currentTarget as HTMLInputElement).valueAsNumber
     const onSlider = (apply: (value: number) => void) => (event: Event) => {
         apply(value(event))
         placeThumb(event.currentTarget as HTMLInputElement)
     }
     return (
-        <section className="part beatrepeat" aria-label="Beat repeat">
+        <aside className={open ? 'br-drawer open' : 'br-drawer'} aria-label="Beat repeat">
             <div className="window" />
-            <div className="content">
-                <button
-                    type="button"
-                    className="br-power"
-                    aria-pressed={model.repeatEnabled}
-                    aria-label="Beat repeat on"
-                    data-param="repeatOn"
-                    onClick={() => model.setRepeatEnabled(!model.repeatEnabled)}
-                >
-                    ON
-                </button>
-                {/* LOOP PARTS: 8 numbered buttons. Each one's place and images come from skin.css. */}
-                <div className="br-parts" role="group" aria-label="Loop parts">
-                    {model.repeatPositions.map((on, index) => (
-                        <input
-                            key={index}
-                            type="checkbox"
-                            className="br-part"
-                            aria-label={`Loop part ${index + 1}`}
-                            checked={on}
-                            onChange={(event) => model.setRepeatPosition(index, (event.currentTarget as HTMLInputElement).checked)}
-                        />
-                    ))}
-                </div>
-
-                <span className="br-name size">SIZE</span>
-                <div className="br-scale" aria-hidden="true" />
+            <div className="content" id={contentId}>
+                <span className="br-name size">
+                    SIZE{' '}
+                    <output aria-hidden="true">
+                        [{beatLabel(model.repeatSizeMinExp)},{beatLabel(model.repeatSizeMaxExp)}]
+                    </output>
+                </span>
                 <div className="br-range" style={{ '--lo': String(lo / 6), '--hi': String(hi / 6) }}>
                     <div className="track lit" />
                     <div className="track dark" />
@@ -1100,10 +1104,12 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                     />
                 </div>
 
-                <span className="br-name length">LENGTH</span>
-                <output className="br-value length" htmlFor={lengthId} aria-hidden="true" data-i={length}>
-                    {beatLabel(model.repeatLengthExp)}
-                </output>
+                <span className="br-name length">
+                    LEN{' '}
+                    <output htmlFor={lengthId} aria-hidden="true">
+                        {beatLabel(model.repeatLengthExp)}
+                    </output>
+                </span>
                 <div className="br-slider short length">
                     <div className="track" />
                     <div className="thumb" />
@@ -1120,7 +1126,7 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                         onInput={onSlider((index) => model.setRepeatLength(index + repeatLengthBase))}
                     />
                 </div>
-                <span className="br-name chance">CHANCE</span>
+                <span className="br-name chance">%</span>
                 <div className="br-slider short chance">
                     <div className="track" />
                     <div className="thumb" />
@@ -1137,7 +1143,41 @@ function BeatRepeatPart({ model }: { model: WebViewModel }) {
                 </div>
             </div>
             <div className="case" />
-        </section>
+            <div className="controls">
+                <button
+                    type="button"
+                    className="br-power"
+                    aria-pressed={model.repeatEnabled}
+                    aria-label="Beat repeat on"
+                    data-param="repeatOn"
+                    onClick={() => model.setRepeatEnabled(!model.repeatEnabled)}
+                >
+                    ON
+                </button>
+                {/* LOOP PARTS: 8 numbered buttons on the metal. Each one's place and images come from skin.css. */}
+                <div className="br-parts" role="group" aria-label="Loop parts">
+                    {model.repeatPositions.map((on, index) => (
+                        <input
+                            key={index}
+                            type="checkbox"
+                            className="br-part"
+                            aria-label={`Loop part ${index + 1}`}
+                            checked={on}
+                            onChange={(event) => model.setRepeatPosition(index, (event.currentTarget as HTMLInputElement).checked)}
+                        />
+                    ))}
+                </div>
+            </div>
+            <button
+                type="button"
+                className="br-drawer-btn"
+                aria-expanded={open}
+                aria-controls={contentId}
+                onClick={() => setOpen(!open)}
+            >
+                Beat repeat
+            </button>
+        </aside>
     )
 }
 

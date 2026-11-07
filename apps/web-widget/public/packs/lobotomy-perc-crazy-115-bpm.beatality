@@ -1,0 +1,149 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "Lobotomy perc - crazy - 115 BPM",
+  "bpm": 120,
+  "loop": 16,
+  "slices": -1,
+  "attack": 2,
+  "volume": 1,
+  "panMin": -0.39657600213072913,
+  "panMax": 0.37766539917660485,
+  "bpmSync": true,
+  "retrig": false,
+  "effects": {
+    "enabled": true,
+    "globalPower": 0.3494371173732046,
+    "globalChance": 0.18688571081921493,
+    "beatMin": -2,
+    "beatMax": 0,
+    "delayPower": 0.28479418138191737,
+    "delayChance": 0.3451354100073779,
+    "reverbPower": 0.43925262967274226,
+    "reverbChance": 0.14548363597730052,
+    "reversePower": 0.5714322922580007,
+    "reverseChance": 0.1027673373203851,
+    "filterPower": 0.2688134906642202,
+    "filterChance": 0.4858472550332624,
+    "flangerPower": 0.6883580086581472,
+    "flangerChance": 0.29920941871149614,
+    "trancePower": 0.4788597820155386,
+    "tranceChance": 0.37983257372763696,
+    "shiftPower": 0.753578513657308,
+    "shiftChance": 0.45332668517398406
+  },
+  "repeat": {
+    "enabled": true,
+    "sizeMin": -3,
+    "sizeMax": -1,
+    "length": -1,
+    "chance": 0.4642729970998749,
+    "mix": 0.710240495998619,
+    "positions": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "chaos": {
+    "trigger": "slices",
+    "value": 0.28363746715043364,
+    "beatSize": -1,
+    "loopSize": 6,
+    "sliceSize": 0,
+    "groups": [
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "lobotomy perc 115 5.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": true,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 57.5,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "lobotomy perc 115 4.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": true,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 57.5,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "lobotomy perc 115 3.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": true,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 57.5,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "lobotomy perc 115 2.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": true,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 57.5,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "lobotomy perc 115 1.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": true,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 57.5,
+      "warpParam": 0.5
+    }
+  ]
+}

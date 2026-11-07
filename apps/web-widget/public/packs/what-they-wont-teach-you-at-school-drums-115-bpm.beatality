@@ -1,0 +1,135 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "what they wont teach you at school drums 115 BPM",
+  "bpm": 120,
+  "loop": 16,
+  "slices": -1,
+  "attack": 8,
+  "volume": 1,
+  "panMin": -0.41,
+  "panMax": 0.42,
+  "bpmSync": true,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 0.49,
+    "globalChance": 0.42,
+    "beatMin": -2,
+    "beatMax": 0,
+    "delayPower": 1,
+    "delayChance": 0,
+    "reverbPower": 1,
+    "reverbChance": 0,
+    "reversePower": 1,
+    "reverseChance": 0,
+    "filterPower": 1,
+    "filterChance": 0.56,
+    "flangerPower": 1,
+    "flangerChance": 0.51,
+    "trancePower": 1,
+    "tranceChance": 0.54,
+    "shiftPower": 1,
+    "shiftChance": 0
+  },
+  "repeat": {
+    "enabled": false,
+    "sizeMin": -3,
+    "sizeMax": -1,
+    "length": 0,
+    "chance": 0.32,
+    "mix": 0.63,
+    "positions": [
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "chaos": {
+    "trigger": "none",
+    "value": 0,
+    "beatSize": -1,
+    "loopSize": 4,
+    "sliceSize": 0,
+    "groups": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "wtwtyas4.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "beat",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "wtwtyas3.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "beat",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "wtwtyas2.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "beat",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "wtwtyas1.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "beat",
+      "bpm": 115,
+      "warpParam": 0.5
+    }
+  ]
+}

@@ -3,7 +3,7 @@
 .beatality-skin {
   position: relative;
   width: 496px;
-  height: 779px;   /* top 210 + effects 200 + beat repeat 72 + samples 297 */
+  height: 638px;   /* top 203 + effects 200 + samples 235 (beat repeat and per-sample controls stashed) */
   user-select: none;
 }
 .beatality-skin .part {
@@ -11,10 +11,20 @@
   left: 0;
   width: 496px;
 }
-.beatality-skin .part.top     { top: 0;     height: 210px; }
-.beatality-skin .part.effects { top: 210px; height: 200px; }
-.beatality-skin .part.beatrepeat { top: 410px; height: 72px; }
-.beatality-skin .part.bottom  { top: 482px; height: 297px; }
+.beatality-skin .part.top     { top: 0;     height: 203px; }
+/* The top part is drawn 210 tall and its top 7 px of metal are cut off (CROP in build_parts.py);
+   its controls keep their 210-part coordinates, so their layers start 7 px above the part. */
+.beatality-skin .part.top > .content,
+.beatality-skin .part.top > .controls { inset: -7px 0 7px 0; }
+/* Same for the samples part: drawn 297 tall, top 12 px and bottom 50 px cut off (CROP in build_parts.py). */
+.beatality-skin .part.bottom > .content,
+.beatality-skin .part.bottom > .controls { inset: -12px 0 12px 0; }
+
+/* Stashed: kept in the page (markup, styles, script all still work) but not shown.
+   Remove the class to bring an element back. Now: the beat repeat part (entry 91) and the per-sample controls (entry 92). */
+.beatality-skin .is-stashed { display: none !important; }
+.beatality-skin .part.effects { top: 203px; height: 200px; }
+.beatality-skin .part.bottom  { top: 403px; height: 235px; }
 
 /* window layer (glass / screen) below, metal case above it */
 .beatality-skin .part > .window,
@@ -26,14 +36,14 @@
   background-size: 100% 100%;
   background-repeat: no-repeat;
 }
-.beatality-skin .top     > .window { background-image: url("../shapes/top_glass.png"); }
-.beatality-skin .top     > .case   { background-image: url("../shapes/top_case.png"); }
-.beatality-skin .bottom  > .window { background-image: url("../shapes/bottom_screen.png"); }
-.beatality-skin .bottom  > .case   { background-image: url("../shapes/bottom_case.png"); }
-.beatality-skin .beatrepeat > .window { background-image: url("../shapes/beatrepeat_screen.png"); }
-.beatality-skin .beatrepeat > .case   { background-image: url("../shapes/beatrepeat_case.png"); }
+.beatality-skin .top    > .window { background-image: url("../shapes/top_glass.png"); }
+.beatality-skin .top    > .case   { background-image: url("../shapes/top_case.png"); }
+.beatality-skin .bottom > .window { background-image: url("../shapes/bottom_screen.png"); }
+.beatality-skin .bottom > .case   { background-image: url("../shapes/bottom_case.png"); }
 .beatality-skin .effects > .window { background-image: url("../shapes/effects_screen.png"); }
 .beatality-skin .effects > .case   { background-image: url("../shapes/effects_case.png"); }
+.beatality-skin .beatrepeat > .window { background-image: url("../shapes/beatrepeat_screen.png"); }
+.beatality-skin .beatrepeat > .case   { background-image: url("../shapes/beatrepeat_case.png"); }
 
 /* controls go between the window and the case, so the case's shadow falls on them */
 .beatality-skin .part > .content { position: absolute; inset: 0; }
@@ -181,9 +191,10 @@
 .beatality-skin .bpm-field input:focus { outline: none; box-shadow: none; }
 .beatality-skin .bpm-field input::selection { background: rgba(11, 29, 2, 0.25); }
 
-/* raised buttons: body 18 x 9, bevelled; image adds 4 px round it for the shadow */
+/* raised buttons + / -: body 18 x 9, bevelled; image adds 4 px round it for the shadow (26 x 17).
+   Centred on SYN and RTRG (bodies x 24 .. 42, SYN / RTRG x 20 .. 46), bodies at y 70 and 84, midway between SYN and RTRG. */
 .beatality-skin .bpm-btn {
-  position: absolute; left: 18px; width: 26px; height: 17px;
+  position: absolute; left: 20px; width: 26px; height: 17px;
   padding: 0; border: 0; font-size: 0; cursor: pointer;
   background: url("../shapes/bpm_btn.png") 0 0 / 100% 100% no-repeat;
 }
@@ -192,15 +203,21 @@
 .beatality-skin .bpm-btn:active { background-image: url("../shapes/bpm_btn_pressed.png"); }
 .beatality-skin .bpm-btn:disabled { cursor: default; opacity: 0.5; }
 
-/* SYNC: the same chrome button as BPM + / -, taller (body 18 x 12; image adds 4 px round it for the shadow), "SYN" in pixel
-   letters, at the left end of the BPM caption bar, body at (22, 47), in line with + and -. Off: raised. On (aria-pressed="true"): pushed in. Letters stay dark. */
-.beatality-skin .bpm-sync {
-  position: absolute; left: 18px; top: 43px; width: 26px; height: 20px;
+/* SYNC and RETRIG: the same chrome button as BPM + / -, bigger (body 26 x 12; image 34 x 20), "SYN" / "RTRG" in pixel letters, at the left end of the
+   BPM caption bar (top 44) and the VOLUME caption bar (top 102); body 2 px below the top of the 17 px black bar, in line with + and -.
+   Off: raised. On (aria-pressed="true"): pushed in. Letters stay dark. */
+.beatality-skin .bpm-sync,
+.beatality-skin .retrig {
+  position: absolute; left: 16px; top: 42px; width: 34px; height: 20px;
   padding: 0; border: 0; font-size: 0; cursor: pointer;
   background: url("../shapes/bpm_sync.png") 0 0 / 100% 100% no-repeat;
 }
 .beatality-skin .bpm-sync[aria-pressed="true"] { background-image: url("../shapes/bpm_sync_on.png"); }
 .beatality-skin .bpm-sync:active { background-image: url("../shapes/bpm_sync_pressed.png"); }
+.beatality-skin .retrig { top: 100px; background-image: url("../shapes/retrig.png"); }
+.beatality-skin .retrig[aria-pressed="true"] { background-image: url("../shapes/retrig_on.png"); }
+.beatality-skin .retrig:active { background-image: url("../shapes/retrig_pressed.png"); }
+.beatality-skin .retrig:focus-visible { outline: 1px dotted #c4ff34; outline-offset: -3px; }
 .beatality-skin .bpm-sync:focus-visible { outline: 1px dotted #c4ff34; outline-offset: -3px; }
 
 /* ---------- Upper part: Loop / Slice / Attack, right of the BPM display ----------
@@ -278,6 +295,7 @@
 .beatality-skin .round-btn.load:active   { background-image: url("../shapes/btn_load_pressed.png"); }
 .beatality-skin .round-btn.save:active   { background-image: url("../shapes/btn_save_pressed.png"); }
 .beatality-skin .round-btn:disabled { cursor: default; }
+/* greyed versions (btn_<id>_disabled.png) */
 .beatality-skin .round-btn.append:disabled { background-image: url("../shapes/btn_append_disabled.png"); }
 .beatality-skin .round-btn.remove:disabled { background-image: url("../shapes/btn_remove_disabled.png"); }
 .beatality-skin .round-btn.clear:disabled  { background-image: url("../shapes/btn_clear_disabled.png"); }
@@ -335,13 +353,11 @@
 
 /* pixel sliders (66 px); thumb sits on the groove. BEAT keeps 56 px. */
 .beatality-skin .sample-panel .slider { width: 66px; height: 12px; }
-.beatality-skin .sample-panel .slider.vol    { left: 40px;  top: 6px; --snap: 0.833333; }   /* volume snaps to 1 */
-.beatality-skin .sample-panel .slider.pan    { left: 40px;  top: 24px; --snap: 0.5; }       /* pan snaps to 0 */
+.beatality-skin .sample-panel .slider.vol    { left: 40px;  top: 6px; }
+.beatality-skin .sample-panel .slider.pan    { left: 40px;  top: 24px; }
 .beatality-skin .sample-panel .slider.start  { left: 140px; top: 6px; }
 .beatality-skin .sample-panel .slider.length { left: 140px; top: 24px; }
 .beatality-skin .sample-panel .slider.beat   { left: 386px; top: 24px; width: 56px; }
-/* BEAT works only in BEAT mode; the page disables it otherwise */
-.beatality-skin .sample-panel .slider.beat:has(input:disabled) { opacity: 0.4; }
 .beatality-skin .sample-panel .slider > .track { top: 6px; width: 66px; background-image: url("../shapes/slider_track_props.png"); }
 .beatality-skin .sample-panel .slider > .thumb {   /* small pin: 14 x 10 (slider_thumb_small.png), tip on the groove */
   top: 2px; width: 14px; height: 10px; left: calc(3px + var(--pos) * 60px - 7px);
@@ -354,6 +370,8 @@
 .beatality-skin .sample-panel .slider > input[type="range"] { left: -6px; top: -2px; width: 78px; height: 16px; }
 /* several samples selected and their values differ: no pin until the slider is moved */
 .beatality-skin .sample-panel .slider.mixed > .thumb { visibility: hidden; }
+/* SIZE works only in BEAT warp; the page disables it otherwise */
+.beatality-skin .sample-panel .slider.beat:has(input:disabled) { opacity: 0.4; }
 
 /* text fields: start time (seconds) and the sample's BPM */
 .beatality-skin .sample-panel .field {
@@ -410,8 +428,7 @@
    Captions: dark bars like the BPM caption, same font and size (Orbitron Bold 9.5 px, lime, glow), text right-aligned.
    VOLUME bar starts under the case at the left, as wide as "SAMPLES BPM"; PAN bar in the middle.
    Sliders: the top sliders' pixel design (groove + yellow pin, no ticks) with a small mark at the snap point.
-   Volume 0..1.2, snaps to 1, default 1. Pan is a min / max range like the beat repeat SIZE: each end -1..1, snaps to 0,
-   default 0 / 0. Each slice's pan roll is scaled onto that range. */
+   Volume 0..1.2, snaps to 1, default 1. Pan -1..1, snaps to 0, default 0. */
 .beatality-skin .mix-caption {
   position: absolute; top: 102px; height: 17px; box-sizing: border-box; padding-right: 6px;
   font: 700 9.5px/17px "Orbitron", sans-serif; letter-spacing: 1.14px; white-space: nowrap; text-align: right;
@@ -422,8 +439,8 @@
 .beatality-skin .mix-caption.pan    { left: 303px; width: 56px; }
 
 .beatality-skin .mix-slider { --pos: 0; --snap: 0; position: absolute; top: 104px; height: 14px; }
-.beatality-skin .mix-slider.volume { left: 138px; width: 160px; --len: 154px; --snap: 0.833333; }   /* snap at 1 of 0..1.2 */
-.beatality-skin .mix-slider.pan    { left: 366px; width: 112px; --len: 106px; --snap: 0.5; }       /* snap at 0 of -1..1 */
+.beatality-skin .mix-slider.volume { left: 138px; width: 160px; --len: 154px; }
+.beatality-skin .mix-slider.pan    { left: 366px; width: 112px; --len: 106px; }
 .beatality-skin .mix-slider > .track,
 .beatality-skin .mix-slider > .thumb,
 .beatality-skin .mix-slider > .snap { position: absolute; pointer-events: none; image-rendering: pixelated; }
@@ -440,8 +457,8 @@
 }
 
 /* PAN min / max, drawn like SIZE: the lit groove underneath, the dark pan groove shown only from MIN to MAX,
-   the SIZE pin halves (left = MIN, right = MAX).
-   Two range inputs on top; each one's thumb is only on its own side of the value. */
+   the SIZE pin halves (left = MIN, right = MAX). Each end -1..1, snaps to 0. Two range inputs on top;
+   each one's thumb is only on its own side of the value. */
 .beatality-skin .mix-range { --lo: 0.5; --hi: 0.5; position: absolute; top: 104px; height: 14px; }
 .beatality-skin .mix-range.pan { left: 366px; width: 112px; --len: 106px; }
 .beatality-skin .mix-range > div { position: absolute; pointer-events: none; image-rendering: pixelated; background: 0 0 / 100% 100% no-repeat; }
@@ -466,8 +483,10 @@
 .beatality-skin .mix-range > input.max::-webkit-slider-thumb { transform: translateX(4px); }    /* covers x .. x + 8 */
 .beatality-skin .mix-range > input[type="range"]::-moz-range-thumb { width: 8px; height: 18px; pointer-events: auto; cursor: pointer; border: 0; }
 
-/* Bank list covers the sample grid. SELECT, LOAD FILE, and X cover the sample panel.
-   .picking-bank greys the five round buttons and swaps those two screens. */
+/* ---------- Lower part: bank picker (shown on top of the normal view while LOAD is open) ----------
+   .beatality-skin.picking-bank: the sample grid and the selected-sample screen are hidden, the round buttons are greyed.
+   Screen: "SELECT BANK" header + list of banks in the same scroll rect (the scroll bar works for it); click a line to select.
+   Panel: SELECT, LOAD FILE, X. X goes back to the normal view. LOAD FILE can be greyed (disabled). */
 .beatality-skin .bank-view { display: none; padding: 16px 8px 10px; font: 700 13px/16px Consolas, "Courier New", monospace; }
 .beatality-skin.picking-bank .bank-view { display: block; }
 .beatality-skin.picking-bank .sample-grid { display: none; }   /* the file name and the per-sample controls are hidden too (see above) */
@@ -492,13 +511,15 @@
 .beatality-skin .bank-btn:disabled { cursor: default; background: #6f7166; border-color: #8a8c80; color: #d2d98a; }
 .beatality-skin .bank-btn.close { width: 22px; padding: 0; }
 
-/* ---------- Effects part: EFFECTS ON / OFF, SHUFFLE, caption boxes, vertical sliders ----------
-   Caption boxes sit on the screen above each group. Sliders are pixel art (fx_*.png is 2x):
-   frame 13 x 100, 18 px apart inside a group, groups 4 px apart.
-   Order: GLOBAL power, GLOBAL %, clock, then power and % for each effect.
-   --pos (0..1) comes from the range input; the green fill rises from the bottom to the handle. */
-/* EFFECTS ON / OFF and SHUFFLE: black boxes with a dotted lime edge and pixel text, at the top of the screen.
-   EFFECTS has two states (aria-pressed): lit lime when on, dim green when off. SHUFFLE is lit while held. */
+/* ---------- Effects part: EFFECTS ON / OFF, SHUFFLE, caption boxes, 17 vertical sliders (in the order of the equalizer reference) ----------
+   One row of black caption boxes, one per group:
+   effect name on the first line, "PWR" and "%" under it, each over its own slider; the TIME box has only a green clock. EFFECTS ON / OFF top left, SHUFFLE top right.
+   Sliders (pixel art, 1 art px = 1 CSS px, fx_*.png are 2x): frame 13 x 100, 18 px apart inside a group, groups 4 px apart,
+   no level lines. Order: GLOBAL power, GLOBAL %, TIME (+ scale boxes), then per effect: power, %.
+   skin.js sets --pos (0..1) from the range input; the green fill rises from the bottom to the handle. */
+/* EFFECTS ON / OFF and SHUFFLE: black boxes with a dotted lime edge and pixel text (like the reference "EFFECT OFF" button),
+   at the top of the screen, as in the mock-up. EFFECTS: two states (aria-pressed), lit lime when on, dim green when off.
+   SHUFFLE: push button (was RANDOMIZE), grey-green text, lit while held. */
 .beatality-skin .fx-btn {
   position: absolute; top: 25px; height: 20px; margin: 0; padding: 0; cursor: pointer;
   background: #03060a; border: 1px dotted #5a9a10; border-radius: 0;
@@ -510,6 +531,7 @@
 .beatality-skin .fx-shuffle { left: 345px; width: 58px; color: #7f9a66; }
 .beatality-skin .fx-shuffle:active { color: #d8ff20; text-shadow: 0 0 2px rgba(216, 255, 32, 0.6); background: #0c1408; }
 
+/* caption boxes: black, 1 px dark olive edge (like the reference's ON / AUTO), lime pixel text */
 .beatality-skin .fx-caps { position: absolute; left: 0; top: 51px; width: 496px; height: 22px; }
 .beatality-skin .fx-cap {
   position: absolute; top: 0; height: 22px; box-sizing: border-box;
@@ -519,7 +541,7 @@
 .beatality-skin .fx-cap .name { position: absolute; left: 0; right: 0; top: 1px; text-align: center; }
 .beatality-skin .fx-cap .sub  { position: absolute; top: 11px; transform: translateX(-50%); font-weight: 400; color: #a8d81c; }
 .beatality-skin .fx-cap .clock {
-  position: absolute; left: 5px; top: 3px; width: 15px; height: 15px;
+  position: absolute; left: 5px; top: 3px; width: 15px; height: 15px;   /* centred in the 26 x 22 box */
   background: url("../shapes/fx_clock.png") 0 0 / 100% 100% no-repeat; image-rendering: pixelated;
 }
 
@@ -529,22 +551,22 @@
 .beatality-skin .fx-slider > .track { left: 6px; top: 0; width: 13px; height: 100px; background-image: url("../shapes/fx_track.png"); }
 .beatality-skin .fx-slider > .fill {
   left: 6px; top: 0; width: 13px; height: 100px; background-image: url("../shapes/fx_track_fill.png");
-  clip-path: inset(calc(2px + (1 - var(--pos)) * 87px + 4px) 0 0 0);
+  clip-path: inset(calc(2px + (1 - var(--pos)) * 87px + 4px) 0 0 0);   /* from the handle's middle down */
 }
-.beatality-skin .fx-slider > .thumb {
+.beatality-skin .fx-slider > .thumb {   /* handle 11 x 9 (+1 px shadow), centred on the frame; travels y 2 .. 89 */
   left: 7px; width: 12px; height: 10px; top: calc(2px + (1 - var(--pos)) * 87px);
   background-image: url("../shapes/fx_thumb.png");
 }
 .beatality-skin .fx-slider > input[type="range"] {
   position: absolute; left: 4px; top: -2px; width: 17px; height: 104px; margin: 0; padding: 0;
-  writing-mode: vertical-lr; direction: rtl;
+  writing-mode: vertical-lr; direction: rtl;      /* vertical, minimum at the bottom */
   opacity: 0; cursor: pointer;
 }
 .beatality-skin .fx-slider.idle > input[type="range"] { cursor: default; }
 
 /* TIME: min / max (like the beat repeat SIZE). The handle is split across its middle: the top half is MAX, the bottom half
-   MIN; together they make the whole handle. The green fill shows only between MIN and MAX. --lo / --hi (0..1) come from
-   the two range inputs; each one's thumb is only on its own side of the value (MAX above, MIN below). */
+   MIN; together they make the whole handle. The green fill shows only between MIN and MAX. --lo / --hi (0..1) set by
+   skin.js. Two vertical range inputs on top; each one's thumb is only on its own side of the value (MAX above, MIN below). */
 .beatality-skin .fx-slider.time { --lo: 0; --hi: 1; }
 .beatality-skin .fx-slider.time > .fill {
   clip-path: inset(calc(6.5px + (1 - var(--hi)) * 87px) 0 calc(93.5px - (1 - var(--lo)) * 87px) 0);
@@ -561,6 +583,7 @@
 .beatality-skin .fx-slider.time > input.min::-webkit-slider-thumb { transform: translateY(3px); }    /* covers y .. y + 6 */
 .beatality-skin .fx-slider.time > input[type="range"]::-moz-range-thumb { width: 17px; height: 6px; pointer-events: auto; cursor: pointer; border: 0; }
 
+/* TIME scale: dark boxes with lime pixel digits beside the slider, one at each snap point (like the reference's +20db) */
 .beatality-skin .fx-scale { position: absolute; top: 0; width: 26px; height: 100px; margin: 0; padding: 0; list-style: none; }
 .beatality-skin .fx-scale > li {
   position: absolute; left: 0; width: 26px; height: 11px; margin-top: -6px;
@@ -578,10 +601,9 @@
 .beatality-skin .sample-panel .slider.beat > input[type="range"] { width: 68px; }
 
 /* ---------- Beat Repeat part (496 x 72, between EFFECTS and SAMPLES) ----------
-   Case and screen from beatrepeat_shapes.svg (beatrepeat_case.png, beatrepeat_screen.png). BEAT REPEAT is engraved on the tongue.
+   Case and screen from beatrepeat_shapes.svg (beatrepeat_case.png, beatrepeat_screen.png). BEAT REPEAT engraved on the tongue.
    The case opening is split by a metal pillar (x 176..186): left, the ON button and 8 numbered LOOP PARTS buttons, tight
-   together, filling the opening (in .content, under the case, so its drop shadow falls on them); right, the green screen.
-   Sliders on the screen in a 2 x 2 grid, captions on their left, no value text:
+   together, filling the opening (in .content, under the case, so its drop shadow falls on them); right, the green screen. Sliders on the screen in a 2 x 2 grid, captions on their left, no value text:
    SIZE (min / max with a split pin, every value above it; the groove is dark only between MIN and MAX) over MIX,
    LENGTH over CHANCE. Pixel art: grooves and pins 1 art px = 2 CSS px; scale digits and toggles 1 = 1. */
 /* ON and the 8 LOOP PARTS buttons: SNES-style (flat face, sloped edges, like the console's EJECT key), tight together, filling
@@ -595,19 +617,19 @@
 .beatality-skin .br-power:active { background-image: url("../shapes/br_on_pressed.png"); }
 .beatality-skin .br-power:focus-visible { outline: 1px dotted #0b1d02; outline-offset: -3px; }
 
-/* Each number's images are set here by its place in .br-parts, so the bundler and the plugin both resolve the paths. */
 .beatality-skin .br-part {
   position: absolute; top: 26px; width: 16px; height: 36px; margin: 0; appearance: none; cursor: pointer;
   background: 0 0 / 100% 100% no-repeat;
 }
-.beatality-skin .br-part:nth-child(1) { left: 48px; background-image: url("../shapes/br_part_1.png"); }
-.beatality-skin .br-part:nth-child(2) { left: 64px; background-image: url("../shapes/br_part_2.png"); }
-.beatality-skin .br-part:nth-child(3) { left: 80px; background-image: url("../shapes/br_part_3.png"); }
-.beatality-skin .br-part:nth-child(4) { left: 96px; background-image: url("../shapes/br_part_4.png"); }
-.beatality-skin .br-part:nth-child(5) { left: 112px; background-image: url("../shapes/br_part_5.png"); }
-.beatality-skin .br-part:nth-child(6) { left: 128px; background-image: url("../shapes/br_part_6.png"); }
-.beatality-skin .br-part:nth-child(7) { left: 144px; background-image: url("../shapes/br_part_7.png"); }
-.beatality-skin .br-part:nth-child(8) { left: 160px; background-image: url("../shapes/br_part_8.png"); }
+/* Each number's place and images are set here by its place in .br-parts, so the bundler and the plugin both resolve the paths. */
+.beatality-skin .br-part:nth-child(1) { left: 53px; background-image: url("../shapes/br_part_1.png"); }
+.beatality-skin .br-part:nth-child(2) { left: 75px; background-image: url("../shapes/br_part_2.png"); }
+.beatality-skin .br-part:nth-child(3) { left: 97px; background-image: url("../shapes/br_part_3.png"); }
+.beatality-skin .br-part:nth-child(4) { left: 119px; background-image: url("../shapes/br_part_4.png"); }
+.beatality-skin .br-part:nth-child(5) { left: 141px; background-image: url("../shapes/br_part_5.png"); }
+.beatality-skin .br-part:nth-child(6) { left: 163px; background-image: url("../shapes/br_part_6.png"); }
+.beatality-skin .br-part:nth-child(7) { left: 185px; background-image: url("../shapes/br_part_7.png"); }
+.beatality-skin .br-part:nth-child(8) { left: 207px; background-image: url("../shapes/br_part_8.png"); }
 .beatality-skin .br-part:nth-child(1):checked { background-image: url("../shapes/br_part_1_on.png"); }
 .beatality-skin .br-part:nth-child(2):checked { background-image: url("../shapes/br_part_2_on.png"); }
 .beatality-skin .br-part:nth-child(3):checked { background-image: url("../shapes/br_part_3_on.png"); }
@@ -698,44 +720,39 @@
 .beatality-skin .br-value.length[data-i="5"] { background-image: url("../shapes/br_len_5.png"); }
 
 /* ---------- CHAOS ----------
-   CHAOS toggle (#chaos-toggle) on the top glass, lower right: black pixel button with a dotted edge, off by default.
+   CHAOS toggle (#chaos-toggle) on the top glass, lower right, first of the three top toggles (.top-toggle), off by default.
    Side panels (prototype 2): 150 tall, centred on the top part (top 30) and tucked behind it — the left panel's right wall
    and the right panel's left wall go 20 px under the top part, which casts a soft shadow on them. Layers like a part:
    chaos_<side>_screen.png (dark green, like the samples screen), .content, chaos_<side>_case.png. Lime text, Silkscreen 11 px,
    no bright backgrounds behind text. The skin gets 130 px of room on the left and 206 px on the right for them. */
-.beatality-skin { margin-left: 130px; margin-right: 206px; }
+.beatality-skin { margin-left: 0; margin-right: 24px; }   /* room for the side buttons; the open CHAOS drawer sticks out 226 px more */
 .beatality-skin > .part { z-index: 1; }
-.beatality-skin .chaos-toggle {
-  position: absolute; left: 416px; top: 148px; width: 62px; height: 16px; margin: 0; padding: 0; cursor: pointer;
-  background: #03060a; border: 1px dotted #5a9a10; border-radius: 0; pointer-events: auto;
+/* top toggles on the glass, lower right: CHAOS and EFFECTS in a row (ending at x 478), BEAT REPEAT under them,
+   its left edge at CHAOS's left edge */
+.beatality-skin .top-toggles {
+  position: absolute; right: 18px; top: 145px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  pointer-events: auto;
+}
+.beatality-skin .top-toggles > .row { display: flex; gap: 6px; }
+.beatality-skin .top-toggle {
+  height: 16px; margin: 0; padding: 0 6px; cursor: pointer; white-space: nowrap;
+  background: #03060a; border: 1px dotted #5a9a10; border-radius: 0;
   font: 400 10px/14px "Silkscreen", monospace; letter-spacing: 0.5px; color: #7f9a66; text-align: center;
 }
-.beatality-skin .chaos-toggle[aria-pressed="true"] { color: #d8ff20; text-shadow: 0 0 2px rgba(216, 255, 32, 0.6); border-color: #9ae020; }
-.beatality-skin .chaos-toggle:focus-visible { outline: 1px dotted #0b1d02; outline-offset: 1px; }
+.beatality-skin .top-toggle[aria-pressed="true"] { color: #d8ff20; text-shadow: 0 0 2px rgba(216, 255, 32, 0.6); border-color: #9ae020; }
+.beatality-skin .top-toggle:focus-visible { outline: 1px dotted #0b1d02; outline-offset: 1px; }
+.beatality-skin .main-sliders { position: absolute; inset: 0; pointer-events: none; }   /* clicks pass through to SYN, + / -, RETRIG */
+.beatality-skin .main-sliders > * { pointer-events: auto; }
 
-.beatality-skin .chaos-side { position: absolute; top: 30px; height: 150px; z-index: 0; }
-.beatality-skin .chaos-side.left  { left: -130px; width: 150px; }
-.beatality-skin .chaos-side.right { left: 476px;  width: 226px; }
-.beatality-skin .chaos-side > div { position: absolute; inset: 0; background: 0 0 / 100% 100% no-repeat; }
-.beatality-skin .chaos-side > .window, .beatality-skin .chaos-side > .case { pointer-events: none; }
-.beatality-skin .chaos-side.left  > .window { background-image: url("../shapes/chaos_left_screen.png"); }
-.beatality-skin .chaos-side.left  > .case   { background-image: url("../shapes/chaos_left_case.png"); }
-.beatality-skin .chaos-side.right > .window { background-image: url("../shapes/chaos_right_screen.png"); }
-.beatality-skin .chaos-side.right > .case   { background-image: url("../shapes/chaos_right_case.png"); }
-.beatality-skin .chaos-side > .case::after {    /* the top part's shadow on the panel, along the edge it tucks under */
-  content: ""; position: absolute; top: 0; bottom: 0; width: 14px;
-}
-.beatality-skin .chaos-side.left  > .case::after { right: 20px; background: linear-gradient(to left, rgba(0, 0, 0, 0.45), transparent); }
-.beatality-skin .chaos-side.right > .case::after { left: 20px;  background: linear-gradient(to right, rgba(0, 0, 0, 0.45), transparent); }
-.beatality-skin .chaos-side > .content { font: 400 11px/13px "Silkscreen", monospace; letter-spacing: -0.5px; color: #c8ff2a; }
-.beatality-skin .chaos-side .content > * { position: absolute; }
-.beatality-skin .chaos-side .content > .chaos-title, .beatality-skin .chaos-slider > div, .beatality-skin .chaos-small > div {
+.beatality-skin .chaos-drawer > .content { font: 400 11px/13px "Silkscreen", monospace; letter-spacing: -0.5px; color: #c8ff2a; }
+.beatality-skin .chaos-drawer .content > * { position: absolute; }
+.beatality-skin .chaos-drawer .content > .chaos-title, .beatality-skin .chaos-slider > div, .beatality-skin .chaos-small > div {
   position: absolute; pointer-events: none; image-rendering: pixelated; background: 0 0 / 100% 100% no-repeat;
 }
 
-/* left panel (screen x 10..140, y 8..142): title, star slider, TRIGGER, its value slider — all 98 wide from x 18 */
-.beatality-skin .chaos-side .content > .chaos-title { left: 22px; top: 14px; width: 90px; height: 32px; background-image: url("../shapes/chaos_title_lime.png"); }
-.beatality-skin .chaos-slider { --pos: 0; left: 18px; top: 50px; width: 98px; height: 20px; }
+/* drawer, left column (x 18..116): title, star slider, TRIGGER, its value slider — all 98 wide; CHAOS group at the bottom */
+.beatality-skin .chaos-drawer .content > .chaos-title { left: 22px; top: 8px; width: 90px; height: 32px; background-image: url("../shapes/chaos_title_lime.png"); }
+.beatality-skin .chaos-slider { --pos: 0; left: 18px; top: 41px; width: 98px; height: 20px; }
 .beatality-skin .chaos-slider > .track,
 .beatality-skin .chaos-slider > .fill { left: 0; top: 0; width: 98px; height: 20px; background-image: url("../shapes/chaos_track.png"); }
 .beatality-skin .chaos-slider > .fill { background-image: url("../shapes/chaos_fill.png"); clip-path: inset(0 calc(89px - var(--pos) * 79px) 0 0); }
@@ -743,26 +760,26 @@
 .beatality-skin .chaos-slider > input[type="range"] { position: absolute; left: -2px; top: 0; width: 102px; height: 20px; margin: 0; opacity: 0; cursor: pointer; }
 
 .beatality-skin .chaos-cap {
-  height: 13px; padding: 0 3px; box-sizing: border-box; background: #0b1d02; box-shadow: 0 0 0 1px #5aa010;
+  height: 13px; padding: 0 3px; box-sizing: border-box; background: #0b1d02;
   color: #d8ff20; white-space: nowrap; overflow: hidden;
 }
-.beatality-skin .chaos-cap.trigger { left: 18px; top: 76px; width: 98px; }
-.beatality-skin .chaos-cap.amount  { left: 18px; top: 109px; width: 98px; letter-spacing: -1px; }
+.beatality-skin .chaos-cap.trigger { left: 18px; top: 64px; width: 98px; }
+.beatality-skin .chaos-cap.amount  { left: 18px; top: 94px; width: 98px; letter-spacing: -1px; }
 .beatality-skin .chaos-arrow {
-  top: 91px; width: 8px; height: 12px; margin: 0; padding: 0; border: 0; cursor: pointer;
+  top: 79px; width: 8px; height: 12px; margin: 0; padding: 0; border: 0; cursor: pointer;
   background: 0 0 / 100% 100% no-repeat; image-rendering: pixelated;
 }
 .beatality-skin .chaos-arrow.prev { left: 18px; background-image: url("../shapes/chaos_arrow_left.png"); }
 .beatality-skin .chaos-arrow.next { left: 108px; background-image: url("../shapes/chaos_arrow_right.png"); }
 .beatality-skin .chaos-arrow:active { filter: brightness(0.7); }
-.beatality-skin .chaos-trigger { left: 26px; top: 91px; width: 82px; height: 12px; text-align: center; white-space: nowrap; }
-.beatality-skin .chaos-small { --pos: 0; left: 18px; top: 124px; width: 98px; height: 12px; display: none; }
+.beatality-skin .chaos-trigger { left: 26px; top: 79px; width: 82px; height: 12px; text-align: center; white-space: nowrap; }
+.beatality-skin .chaos-small { --pos: 0; left: 18px; top: 108px; width: 98px; height: 12px; display: none; }
 .beatality-skin .chaos-small.on { display: block; }
 .beatality-skin .chaos-small > .track { left: 0; top: 6px; width: 98px; height: 8px; background-image: url("../shapes/chaos_value_track.png"); }
 .beatality-skin .chaos-small > .thumb { top: 2px; width: 14px; height: 10px; left: calc(3px + var(--pos) * 92px - 7px); background-image: url("../shapes/slider_thumb_small.png"); }
 .beatality-skin .chaos-small > input[type="range"] { position: absolute; left: -6px; top: -2px; width: 110px; height: 16px; margin: 0; opacity: 0; cursor: pointer; }
 
-/* right panel (screen x 10..216; x 0..20 is under the top part): two columns of groups, caption bar then toggles */
+/* toggle groups: caption bar then toggles. Drawer: CHAOS bottom left; PLAY, EFFECTS, BEAT REPEAT in the right column (x 124..220) */
 .beatality-skin .chaos-group-box { width: 88px; display: flex; flex-direction: column; align-items: stretch; gap: 3px; }
 .beatality-skin .chaos-group-box > .chaos-cap { position: static; margin-bottom: 1px; }
 .beatality-skin .chaos-tog {
@@ -774,5 +791,209 @@
 }
 .beatality-skin .chaos-tog > input:checked { background: #c8ff2a; box-shadow: inset 0 0 0 2px #086000; }
 .beatality-skin .chaos-tog > input:focus-visible { outline: 1px dotted #c8ff2a; outline-offset: 1px; }
-/* The CHAOS toggle shows the side panels; they are hidden while it is off. */
-.beatality-skin:not(.chaos-open) .chaos-side { display: none; }
+
+
+/* ---------- Side buttons (entry 93): metal tabs on the right edge, tucked 10 px under the parts ----------
+   side_<id>.png / side_<id>_pressed.png (32 wide, 2x images): metal texture, bevel, round corners, engraved text bottom to top.
+   CHAOS beside the top part, BEAT REPEAT beside the effects part, SAMPLE SETTINGS beside the samples part. No action yet. */
+.beatality-skin .side-buttons { position: absolute; left: 486px; top: 0; width: 32px; height: 100%; z-index: 0; pointer-events: none; }
+.beatality-skin .side-btn {
+  position: absolute; left: 0; width: 32px; margin: 0; padding: 0; border: 0; font-size: 0; color: transparent;
+  background: transparent 0 0 / 100% 100% no-repeat; cursor: pointer; pointer-events: auto;
+}
+.beatality-skin .side-btn::after {   /* the parts' shadow on the button, along the edge it tucks under */
+  content: ""; position: absolute; left: 10px; top: 2px; bottom: 2px; width: 5px; pointer-events: none;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.4), transparent);
+}
+.beatality-skin .side-btn.chaos      { top: 10px;  height: 186px; background-image: url("../shapes/side_chaos.png"); }
+.beatality-skin .side-btn.samples    { top: 446px; height: 168px; background-image: url("../shapes/side_samples.png"); }
+.beatality-skin .side-btn.chaos:active      { background-image: url("../shapes/side_chaos_pressed.png"); }
+.beatality-skin .side-btn.samples:active    { background-image: url("../shapes/side_samples_pressed.png"); }
+.beatality-skin .side-btn:focus-visible { outline: 1px dotted #2b2f2d; outline-offset: -4px; }
+
+
+/* ---------- CHAOS drawer (entry 94): slides out of the top part's right edge ----------
+   260 x 190 at x 486, y 8 (x 0..10 under the top part). chaos_drawer_screen.png under the controls, chaos_drawer_case.png
+   (metal, screen cut out) over them, chaos_drawer_btn(_pressed).png as the right end (x 236..260). 2x images.
+   Closed: slid 226 px left under the top part, only the button shows. .open: slid out. */
+.beatality-skin .chaos-drawer {
+  position: absolute; left: 486px; top: 6px; width: 260px; height: 190px; z-index: 0;
+  transform: translateX(-226px); transition: transform 0.25s ease;
+}
+.beatality-skin .chaos-drawer.open { transform: none; }
+.beatality-skin .chaos-drawer > .window,
+.beatality-skin .chaos-drawer > .case { position: absolute; inset: 0; pointer-events: none; background: 0 0 / 100% 100% no-repeat; }
+.beatality-skin .chaos-drawer > .window { background-image: url("../shapes/chaos_drawer_screen.png"); }
+.beatality-skin .chaos-drawer > .case   { background-image: url("../shapes/chaos_drawer_case.png"); }
+.beatality-skin .chaos-drawer > .case::after {   /* the top part's shadow, along the edge the drawer comes out of */
+  content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 12px;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.45), transparent);
+}
+.beatality-skin .chaos-drawer > .content { position: absolute; inset: 0; transition: visibility 0s; }
+.beatality-skin .chaos-drawer:not(.open) > .content { visibility: hidden; transition: visibility 0s 0.25s; }   /* no tabbing into it when closed */
+.beatality-skin .chaos-drawer .chaos-group-box.g-chaos { left: 18px;  top: 128px; width: 98px; }   /* level with BEAT REPEAT */
+
+.beatality-skin .chaos-drawer .chaos-group-box.g-play  { left: 124px; top: 12px;  width: 96px; }
+.beatality-skin .chaos-drawer .chaos-group-box.g-fx    { left: 124px; top: 70px;  width: 96px; }
+.beatality-skin .chaos-drawer .chaos-group-box.g-br    { left: 124px; top: 128px; width: 96px; }
+.beatality-skin .chaos-drawer-btn {
+  position: absolute; left: 236px; top: 0; width: 24px; height: 190px; margin: 0; padding: 0; border: 0;
+  font-size: 0; color: transparent; cursor: pointer; background: url("../shapes/chaos_drawer_btn.png") 0 0 / 100% 100% no-repeat;
+}
+.beatality-skin .chaos-drawer-btn:active { background-image: url("../shapes/chaos_drawer_btn_pressed.png"); }
+.beatality-skin .chaos-drawer-btn:focus-visible { outline: 1px dotted #2b2f2d; outline-offset: -4px; }
+
+
+/* ---------- BEAT REPEAT drawer (entry 97): slides out beside the effects part ----------
+   260 x 172 at x 486, y 220 (x 0..10 under the effects part). br_drawer_screen.png (light LOOP PARTS recess x 51..230, y 24..78;
+   lime glass x 6..230, y 86..166) under the controls, br_drawer_case.png (metal, LOOP PARTS engraved) over them,
+   br_drawer_btn(_pressed).png as the right end (x 236..260). 2x images. Closed: slid 226 px left, only the button shows. */
+.beatality-skin .br-drawer {
+  position: absolute; left: 486px; top: 217px; width: 260px; height: 172px; z-index: 0;
+  transform: translateX(-226px); transition: transform 0.25s ease;
+}
+.beatality-skin .br-drawer.open { transform: none; }
+.beatality-skin .br-drawer > .window,
+.beatality-skin .br-drawer > .case { position: absolute; inset: 0; pointer-events: none; background: 0 0 / 100% 100% no-repeat; }
+.beatality-skin .br-drawer > .window { background-image: url("../shapes/br_drawer_screen.png"); }
+.beatality-skin .br-drawer > .case   { background-image: url("../shapes/br_drawer_case.png"); }
+.beatality-skin .br-drawer > .case::after {
+  content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 12px;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.45), transparent);
+}
+.beatality-skin .br-drawer > .content,
+.beatality-skin .br-drawer > .controls { position: absolute; inset: 0; transition: visibility 0s; }
+.beatality-skin .br-drawer > .controls { pointer-events: none; }
+.beatality-skin .br-drawer > .controls > * { pointer-events: auto; }
+.beatality-skin .br-drawer:not(.open) > .content,
+.beatality-skin .br-drawer:not(.open) > .controls { visibility: hidden; transition: visibility 0s 0.25s; }
+.beatality-skin .br-drawer-btn {
+  position: absolute; left: 236px; top: 0; width: 24px; height: 172px; margin: 0; padding: 0; border: 0;
+  font-size: 0; color: transparent; cursor: pointer; background: url("../shapes/br_drawer_btn.png") 0 0 / 100% 100% no-repeat;
+}
+.beatality-skin .br-drawer-btn:active { background-image: url("../shapes/br_drawer_btn_pressed.png"); }
+.beatality-skin .br-drawer-btn:focus-visible { outline: 1px dotted #2b2f2d; outline-offset: -4px; }
+
+/* buttons: taller, all corners round (br_on*.png 34 x 44, br_part_<n>*.png 21 x 44, 1 px apart; left set inline).
+   ON and 1..8 sit on the metal surface, in .controls over the case (entry 99; no recess). */
+.beatality-skin .br-drawer .br-power { left: 14px; top: 29px; width: 34px; height: 44px; }
+.beatality-skin .br-drawer .br-part  { top: 29px; width: 21px; height: 44px; }
+/* raised buttons drop a shadow on the metal, away from the light (top-left); pushed in (on / checked / held): no shadow (entry 101) */
+.beatality-skin .br-drawer .br-power,
+.beatality-skin .br-drawer .br-part { filter: drop-shadow(1px 2px 1.5px rgba(0, 0, 0, 0.45)); }
+.beatality-skin .br-drawer .br-power[aria-pressed="true"],
+.beatality-skin .br-drawer .br-power:active,
+.beatality-skin .br-drawer .br-part:checked,
+.beatality-skin .br-drawer .br-part:active { filter: none; }
+
+/* screen (entry 98): a 2 x 2 grid, caption on top of each slider. Captions like the CHAOS drawer's (.chaos-cap): Silkscreen 11 px,
+   lime on a black bar, 13 tall. All four grooves 100 px (br_track_mid*.png, travel 94). Left x 17..117: SIZE [min - max] + range,
+   MIX + slider. Right x 124..224: LEN value + slider, % + slider. */
+.beatality-skin .br-drawer .br-name {
+  height: 13px; padding: 0 3px; box-sizing: border-box; background: #0b1d02; color: #d8ff20;
+  font: 400 11px/13px "Silkscreen", monospace; letter-spacing: -0.5px; width: 100px;
+}
+.beatality-skin .br-drawer .br-name output { font: inherit; color: inherit; letter-spacing: inherit; }
+.beatality-skin .br-drawer .br-name.size   { left: 17px;  top: 95px; }
+.beatality-skin .br-drawer .br-name.mix    { left: 17px;  top: 128px; }
+.beatality-skin .br-drawer .br-name.length { left: 124px; top: 95px; }
+.beatality-skin .br-drawer .br-name.chance { left: 124px; top: 128px; }
+.beatality-skin .br-drawer .br-range { left: 17px; top: 108px; width: 100px; }
+.beatality-skin .br-drawer .br-range > .track { width: 100px; }
+.beatality-skin .br-drawer .br-range > .track.lit  { background-image: url("../shapes/br_track_mid_lit.png"); }
+.beatality-skin .br-drawer .br-range > .track.dark {
+  background-image: url("../shapes/br_track_mid.png");
+  clip-path: inset(0 calc(100px - 3px - var(--hi) * 94px) 0 calc(3px + var(--lo) * 94px));
+}
+.beatality-skin .br-drawer .br-range > .pin.min { left: calc(3px + var(--lo) * 94px - 8px); }
+.beatality-skin .br-drawer .br-range > .pin.max { left: calc(3px + var(--hi) * 94px - 1px); }
+.beatality-skin .br-drawer .br-range > input[type="range"] { width: 102px; }
+.beatality-skin .br-drawer .br-slider { width: 100px; --travel: 94px; }
+.beatality-skin .br-drawer .br-slider > .track { background-image: url("../shapes/br_track_mid.png"); }
+.beatality-skin .br-drawer .br-slider.mix    { left: 17px;  top: 141px; }
+.beatality-skin .br-drawer .br-slider.length { left: 124px; top: 108px; }
+.beatality-skin .br-drawer .br-slider.chance { left: 124px; top: 141px; }
+
+
+/* ---------- SAMPLE SETTINGS drawer (entry 102): slides out beside the samples part ----------
+   260 x 160 at x 486, y 450 (x 0..10 under the samples part). ss_drawer_screen.png (dark green, x 6..230, y 6..154),
+   ss_drawer_case.png, ss_drawer_btn(_pressed).png at the right end (x 236..260). Closed: slid 226 px left, only the button shows.
+   Holds the selected sample's controls (.sample-panel, same ids and script). Captions on black bars like the CHAOS drawer,
+   left of their controls. Bigger than the old strip: yellow pin of the top sliders, 11 px text, bigger fields.
+   Left column x 16..113, right x 122..222. Rows: VOL | PAN; ST. | start time; LEN. | LOOP; WARPING; TYPE < > | BPM; SIZE value | slider. */
+.beatality-skin .ss-drawer {
+  position: absolute; left: 486px; top: 440px; width: 260px; height: 160px; z-index: 0;
+  transform: translateX(-226px); transition: transform 0.25s ease;
+}
+.beatality-skin .ss-drawer.open { transform: none; }
+.beatality-skin .ss-drawer > .window,
+.beatality-skin .ss-drawer > .case { position: absolute; inset: 0; pointer-events: none; background: 0 0 / 100% 100% no-repeat; }
+.beatality-skin .ss-drawer > .window { background-image: url("../shapes/ss_drawer_screen.png"); }
+.beatality-skin .ss-drawer > .case   { background-image: url("../shapes/ss_drawer_case.png"); }
+.beatality-skin .ss-drawer > .case::after {
+  content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 12px;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.45), transparent);
+}
+.beatality-skin .ss-drawer > .content { position: absolute; inset: 0; transition: visibility 0s; }
+.beatality-skin .ss-drawer:not(.open) > .content { visibility: hidden; transition: visibility 0s 0.25s; }
+.beatality-skin .ss-drawer-btn {
+  position: absolute; left: 236px; top: 0; width: 24px; height: 160px; margin: 0; padding: 0; border: 0;
+  font-size: 0; color: transparent; cursor: pointer; background: url("../shapes/ss_drawer_btn.png") 0 0 / 100% 100% no-repeat;
+}
+.beatality-skin .ss-drawer-btn:active { background-image: url("../shapes/ss_drawer_btn_pressed.png"); }
+.beatality-skin .ss-drawer-btn:focus-visible { outline: 1px dotted #2b2f2d; outline-offset: -4px; }
+
+.beatality-skin .ss-drawer .sample-panel { left: 0; top: 0; width: 260px; height: 160px; }
+/* captions: black bars, Silkscreen 11 px, lime (as .chaos-cap) */
+.beatality-skin .ss-drawer .sample-panel .name {
+  height: 13px; padding: 0 3px; box-sizing: border-box; background: #0b1d02; color: #d8ff20; text-shadow: none; text-align: left;
+  font: 400 11px/13px "Silkscreen", monospace; letter-spacing: -0.5px;
+}
+.beatality-skin .ss-drawer .sample-panel .name .value { font-weight: 400; }
+.beatality-skin .ss-drawer .sample-panel .name.vol     { left: 16px;  top: 16px; width: 28px; }
+.beatality-skin .ss-drawer .sample-panel .name.pan     { left: 122px; top: 16px; width: 30px; }
+.beatality-skin .ss-drawer .sample-panel .name.start   { left: 16px;  top: 38px; width: 28px; }
+.beatality-skin .ss-drawer .sample-panel .name.length  { left: 16px;  top: 60px; width: 28px; }
+.beatality-skin .ss-drawer .sample-panel .name.loop    { left: 122px; top: 60px; width: 34px; }
+.beatality-skin .ss-drawer .sample-panel .name.warping { left: 16px;  top: 86px; width: 205px; text-align: center; }
+.beatality-skin .ss-drawer .sample-panel .name.warp    { left: 16px;  top: 108px; width: 34px; }
+.beatality-skin .ss-drawer .sample-panel .name.bpm     { left: 122px; top: 108px; width: 30px; }
+.beatality-skin .ss-drawer .sample-panel .name.beat    { left: 16px;  top: 130px; width: 98px; }
+/* sliders: 66 px groove (100 px for SIZE), the top sliders' yellow pin (18 x 12) */
+.beatality-skin .ss-drawer .sample-panel .slider.vol    { left: 47px;  top: 12px; }
+.beatality-skin .ss-drawer .sample-panel .slider.pan    { left: 155px; top: 12px; }
+.beatality-skin .ss-drawer .sample-panel .slider.start  { left: 47px;  top: 34px; }
+.beatality-skin .ss-drawer .sample-panel .slider.length { left: 47px;  top: 56px; }
+.beatality-skin .ss-drawer .sample-panel .slider > .thumb {
+  top: 0; width: 18px; height: 12px; left: calc(3px + var(--pos) * 60px - 9px); background-image: url("../shapes/slider_thumb.png");
+}
+.beatality-skin .ss-drawer .sample-panel .slider.beat { left: 122px; top: 126px; width: 100px; }
+.beatality-skin .ss-drawer .sample-panel .slider.beat > .track { width: 100px; background-image: url("../shapes/br_track_mid.png"); }
+.beatality-skin .ss-drawer .sample-panel .slider.beat > .thumb { left: calc(3px + var(--pos) * 94px - 9px); }
+.beatality-skin .ss-drawer .sample-panel .slider.beat > input[type="range"] { width: 112px; }
+/* fields: 11 px text, 15 tall */
+.beatality-skin .ss-drawer .sample-panel .field { height: 15px; font: 400 11px/13px "Silkscreen", monospace; letter-spacing: -0.5px; }
+.beatality-skin .ss-drawer .sample-panel .field.time { left: 155px; top: 37px; width: 66px; }
+.beatality-skin .ss-drawer .sample-panel .field.bpm  { left: 155px; top: 107px; width: 66px; }
+.beatality-skin .ss-drawer .sample-panel .toggle { left: 160px; top: 59px; }
+/* TYPE: < value > */
+.beatality-skin .ss-drawer .sample-panel .warp-btn { top: 106px; }
+.beatality-skin .ss-drawer .sample-panel .warp-btn.prev { left: 53px; }
+.beatality-skin .ss-drawer .sample-panel .warp-btn.next { left: 103px; }
+.beatality-skin .ss-drawer .sample-panel .warp-value {
+  left: 65px; top: 107px; width: 38px; height: 14px; font: 400 11px/14px "Silkscreen", monospace; letter-spacing: -0.5px; color: #d8ff20;
+}
+
+
+/* Drawer buttons while closed (entry 104): the parts' shadow falls on the edge they come out from under,
+   as on the drawers' case when open. Fades out as the drawer opens. */
+.beatality-skin .chaos-drawer-btn::after,
+.beatality-skin .br-drawer-btn::after,
+.beatality-skin .ss-drawer-btn::after {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 10px; pointer-events: none;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.5), transparent);
+  border-radius: 0; transition: opacity 0.25s ease;
+}
+.beatality-skin .open > .chaos-drawer-btn::after,
+.beatality-skin .open > .br-drawer-btn::after,
+.beatality-skin .open > .ss-drawer-btn::after { opacity: 0; }

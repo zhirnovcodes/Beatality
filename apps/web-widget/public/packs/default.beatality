@@ -1,0 +1,78 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "Default",
+  "bpm": 120,
+  "loop": 8,
+  "slices": 0,
+  "attack": 8,
+  "volume": 1,
+  "panMin": 0,
+  "panMax": 0,
+  "bpmSync": true,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 1,
+    "globalChance": 0,
+    "beatMin": -2,
+    "beatMax": 0,
+    "delayPower": 1,
+    "delayChance": 0,
+    "reverbPower": 1,
+    "reverbChance": 0,
+    "reversePower": 1,
+    "reverseChance": 0,
+    "filterPower": 1,
+    "filterChance": 0,
+    "flangerPower": 1,
+    "flangerChance": 0,
+    "trancePower": 1,
+    "tranceChance": 0,
+    "shiftPower": 1,
+    "shiftChance": 0
+  },
+  "repeat": {
+    "enabled": false,
+    "sizeMin": -2,
+    "sizeMax": -2,
+    "length": 0,
+    "chance": 0,
+    "mix": 1,
+    "positions": [
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "chaos": {
+    "trigger": "none",
+    "value": 0,
+    "beatSize": -1,
+    "loopSize": 4,
+    "sliceSize": 0,
+    "groups": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": []
+}

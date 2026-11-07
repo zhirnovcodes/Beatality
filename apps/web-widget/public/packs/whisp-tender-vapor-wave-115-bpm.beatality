@@ -1,0 +1,121 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "Whisp tender vapor wave 115 BPM",
+  "bpm": 120,
+  "loop": 16,
+  "slices": 0,
+  "attack": 8,
+  "volume": 1,
+  "panMin": -0.6078199672698975,
+  "panMax": 0.1389847528934479,
+  "bpmSync": true,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 0.853642984032631,
+    "globalChance": 0.6864210612773896,
+    "beatMin": -2,
+    "beatMax": -2,
+    "delayPower": 0.6489926266670227,
+    "delayChance": 0.2889467108845711,
+    "reverbPower": 0.44581216454505923,
+    "reverbChance": 0.38473922288417817,
+    "reversePower": 0.8392885166406632,
+    "reverseChance": 0.3055184220671654,
+    "filterPower": 0.4422903347015381,
+    "filterChance": 0.0018646350502967834,
+    "flangerPower": 0.6528449940681458,
+    "flangerChance": 0.155983622610569,
+    "trancePower": 0.23544570684432983,
+    "tranceChance": 0.6220731317996979,
+    "shiftPower": 0.7519403237104416,
+    "shiftChance": 0.6043665717244149
+  },
+  "repeat": {
+    "enabled": true,
+    "sizeMin": -3,
+    "sizeMax": -2,
+    "length": -3,
+    "chance": 0.4775422537326813,
+    "mix": 0.06349010825157166,
+    "positions": [
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "chaos": {
+    "trigger": "slices",
+    "value": 0.62,
+    "beatSize": -1,
+    "loopSize": 4,
+    "sliceSize": 2,
+    "groups": [
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "quaiku vox.wav"
+      },
+      "start": 0,
+      "length": 0.492,
+      "loop": true,
+      "volume": 1.2,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "quaiku vox.wav"
+      },
+      "start": 0.75,
+      "length": 1,
+      "loop": true,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "quaiku vox.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    }
+  ]
+}

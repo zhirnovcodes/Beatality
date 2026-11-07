@@ -1,0 +1,149 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "xolotl drums 115 BPM",
+  "bpm": 120,
+  "loop": 16,
+  "slices": -1,
+  "attack": 2,
+  "volume": 1,
+  "panMin": -0.20433529436588288,
+  "panMax": 0.3778655308485031,
+  "bpmSync": true,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 0.86,
+    "globalChance": 0.31,
+    "beatMin": -3,
+    "beatMax": 0,
+    "delayPower": 0.42,
+    "delayChance": 0.37,
+    "reverbPower": 0.45,
+    "reverbChance": 0.41,
+    "reversePower": 0.54,
+    "reverseChance": 0.54,
+    "filterPower": 0.51,
+    "filterChance": 0.42,
+    "flangerPower": 0.44,
+    "flangerChance": 0.35,
+    "trancePower": 0.34,
+    "tranceChance": 0.5,
+    "shiftPower": 0,
+    "shiftChance": 0
+  },
+  "repeat": {
+    "enabled": true,
+    "sizeMin": -1,
+    "sizeMax": 0,
+    "length": 0,
+    "chance": 0.5840172530710697,
+    "mix": 0.7226420798897742,
+    "positions": [
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "chaos": {
+    "trigger": "loop",
+    "value": 0.69,
+    "beatSize": 0,
+    "loopSize": 1,
+    "sliceSize": 0,
+    "groups": [
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "xolotl2.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "xolotl1.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "orgolorg drums 2.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "orgolorg drums 1.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "orgolorg drums 2.wav"
+      },
+      "start": 0.4999995659725989,
+      "length": 1,
+      "loop": true,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0
+    }
+  ]
+}

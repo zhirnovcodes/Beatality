@@ -2,5 +2,41 @@
   {
     "name": "Lobotomy perc preset - 115 BPM",
     "file": "lobotomy-perc-preset-115-bpm.beatality"
+  },
+  {
+    "name": "Lobotomy perc - crazy - 115 BPM",
+    "file": "lobotomy-perc-crazy-115-bpm.beatality"
+  },
+  {
+    "name": "Default",
+    "file": "default.beatality"
+  },
+  {
+    "name": "Whisp tender vox set 150 BPM",
+    "file": "whisp-tender-vox-set-150-bpm.beatality"
+  },
+  {
+    "name": "Whisp tender vapor wave 115 BPM",
+    "file": "whisp-tender-vapor-wave-115-bpm.beatality"
+  },
+  {
+    "name": "u i i i a a a 150 bpm",
+    "file": "u-i-i-i-a-a-a-150-bpm.beatality"
+  },
+  {
+    "name": "u i i i a a a crazier 150 bpm",
+    "file": "u-i-i-i-a-a-a-crazier-150-bpm.beatality"
+  },
+  {
+    "name": "xolotl drums 115 BPM",
+    "file": "xolotl-drums-115-bpm.beatality"
+  },
+  {
+    "name": "what they wont teach you at school drums 115 BPM",
+    "file": "what-they-wont-teach-you-at-school-drums-115-bpm.beatality"
+  },
+  {
+    "name": "orgolorg vox 115 bpm",
+    "file": "orgolorg-vox-115-bpm.beatality"
   }
 ]

@@ -1,0 +1,163 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "u i i i a a a 150 bpm",
+  "bpm": 120,
+  "loop": 8,
+  "slices": -1,
+  "attack": 8,
+  "volume": 1,
+  "panMin": -0.3931668996810913,
+  "panMax": 0.7815830111503601,
+  "bpmSync": true,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 0.6387205272912979,
+    "globalChance": 0.591958224773407,
+    "beatMin": -3,
+    "beatMax": -1,
+    "delayPower": 0.9595663696527481,
+    "delayChance": 0.1382993459701538,
+    "reverbPower": 0.9044748693704605,
+    "reverbChance": 0.45969080924987793,
+    "reversePower": 0.47908586263656616,
+    "reverseChance": 0.4886060953140259,
+    "filterPower": 0.48031221330165863,
+    "filterChance": 0.37875896692276,
+    "flangerPower": 0.9316658973693848,
+    "flangerChance": 0.8443613648414612,
+    "trancePower": 0.30943748354911804,
+    "tranceChance": 0.8671615123748779,
+    "shiftPower": 0.5141175240278244,
+    "shiftChance": 0.5606037974357605
+  },
+  "repeat": {
+    "enabled": true,
+    "sizeMin": -2,
+    "sizeMax": -1,
+    "length": -4,
+    "chance": 0.11556333303451538,
+    "mix": 0.9938433766365051,
+    "positions": [
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "chaos": {
+    "trigger": "slices",
+    "value": 1,
+    "beatSize": -1,
+    "loopSize": 1,
+    "sliceSize": 2,
+    "groups": [
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "uiiia.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "uiiia.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": true,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "uiiia.wav"
+      },
+      "start": 0,
+      "length": 0.379,
+      "loop": true,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "uiiia.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": true,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "uiiia.wav"
+      },
+      "start": 0.5,
+      "length": 0.347,
+      "loop": true,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "uiiia.wav"
+      },
+      "start": 0.25,
+      "length": 0.202,
+      "loop": true,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    }
+  ]
+}

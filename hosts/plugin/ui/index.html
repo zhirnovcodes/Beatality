@@ -5,13 +5,16 @@
 <title>Beatality</title>
 <link rel="stylesheet" href="/ui/skin/skin.css">
 <style>
-  html, body { margin: 0; width: 832px; height: 800px; overflow: hidden; background: #2a2c30; }
+  html, body { margin: 0; width: 746px; height: 638px; overflow: hidden; background: #2a2c30; }
+  /* Floats over the bottom of the skin, and only while there is an error, so the window is just the skin. */
   #error {
-    width: 480px;
-    height: 21px; margin: 0 0 0 130px; padding: 0 8px;
+    position: absolute; left: 8px; top: 609px; z-index: 100; box-sizing: border-box;
+    width: 480px; height: 21px; margin: 0; padding: 0 8px; border-radius: 4px;
+    background: rgba(20, 20, 22, 0.88); pointer-events: none;
     color: #ff8d8d; font: 12px/21px system-ui, sans-serif;
     text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  #error:empty { display: none; }
   .beatality-skin .sample-grid .row > .spectrum { overflow: hidden; }
   .beatality-skin .sample-grid .row > .spectrum canvas {
     position: absolute; left: 0; top: 0; width: 424px; height: 28px; pointer-events: none;
@@ -20,11 +23,93 @@
 </head>
 <body>
 <div class="beatality-skin">
-  <!-- CHAOS side panels, shown while the CHAOS toggle is on. data-trigger and data-group are bt::ChaosTrigger and
-       bt::ChaosGroup numbers. -->
-  <aside class="chaos-side left" id="chaos-left" aria-label="Chaos">
+  <!-- SAMPLE SETTINGS drawer: slides out beside the samples part; its button is the right end. The selected sample's controls:
+       VOL / PAN, ST. / start time (s), LEN. / LOOP, then WARPING: TYPE (none, beat, pitch) / BPM, SIZE (1/32 .. 2). -->
+  <aside class="ss-drawer" id="ss-drawer" aria-label="Sample settings">
     <div class="window"></div>
-    <div class="content">
+    <div class="content" id="ss-drawer-content">
+    <fieldset class="sample-panel" id="selected-sample" disabled>
+      <span class="name vol">VOL</span>
+      <div class="slider vol"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
+        <input type="range" id="volume" min="0" max="1.2" step="0.01" value="1" aria-label="Volume" data-snap="1"></div>
+      <span class="name pan">PAN</span>
+      <div class="slider pan"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
+        <input type="range" id="pan" min="-1" max="1" step="0.01" value="0" aria-label="Pan" data-snap="0"></div>
+
+      <span class="name start">ST.</span>
+      <div class="slider start"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="start" min="0" max="1" step="0.001" value="0" aria-label="Start"></div>
+      <span class="name length">LEN.</span>
+      <div class="slider length"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="length" min="0" max="1" step="0.001" value="1" aria-label="Length"></div>
+
+      <input type="text" class="field time" id="start-time" value="0.00" inputmode="decimal" spellcheck="false" aria-label="Start (seconds)" data-max="0">
+      <span class="name loop">LOOP</span>
+      <input type="checkbox" class="toggle" id="track-loop" aria-label="Loop">
+
+      <span class="name bpm">BPM</span>
+      <input type="text" class="field bpm" id="track-bpm" value="120.0" inputmode="decimal" spellcheck="false" aria-label="Sample BPM">
+
+      <span class="name warping">WARPING</span>
+      <span class="name warp">TYPE</span>
+      <button type="button" class="warp-btn prev" id="warp-prev" aria-label="Previous warp mode"></button>
+      <output class="warp-value" id="track-warp" data-value="none" aria-label="Warp">NONE</output>
+      <button type="button" class="warp-btn next" id="warp-next" aria-label="Next warp mode"></button>
+
+      <span class="name beat">SIZE <b class="value"></b></span>
+      <div class="slider beat"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="track-beat" min="0" max="6" step="1" value="0" aria-label="Beat"></div>
+    </fieldset>
+    </div>
+    <div class="case"></div>
+    <button type="button" class="ss-drawer-btn" id="side-samples" aria-expanded="false" aria-controls="ss-drawer-content">Sample settings</button>
+  </aside>
+
+  <!-- BEAT REPEAT drawer: slides out beside the effects part; its button is the right end.
+       Screen: SIZE (min / max, 1/32 .. 2, index 0..6) over MIX (0..1) | LEN (1/16 .. 2, index 0..5) over % (chance, 0..1).
+       ON and the 8 LOOP PARTS buttons (place and images from skin.css) sit on the metal, over the case. -->
+  <aside class="br-drawer" id="br-drawer" aria-label="Beat repeat">
+    <div class="window"></div>
+    <div class="content" id="br-drawer-content">
+      <span class="br-name size">SIZE <output id="br-size-value" for="br-size-min br-size-max" aria-hidden="true"></output></span>
+      <div class="br-range" id="br-size">
+        <div class="track lit"></div><div class="track dark"></div><div class="pin min"></div><div class="pin max"></div>
+        <input type="range" class="min" id="br-size-min" min="0" max="6" step="1" value="5" aria-label="Size minimum">
+        <input type="range" class="max" id="br-size-max" min="0" max="6" step="1" value="5" aria-label="Size maximum">
+      </div>
+      <span class="br-name mix">MIX</span>
+      <div class="br-slider long mix"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="br-mix" min="0" max="1" step="0.01" value="1" aria-label="Mix"></div>
+
+      <span class="br-name length">LEN <output id="br-length-value" for="br-length" aria-hidden="true">1</output></span>
+      <div class="br-slider short length"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="br-length" min="0" max="5" step="1" value="4" aria-label="Length"></div>
+      <span class="br-name chance">%</span>
+      <div class="br-slider short chance"><div class="track"></div><div class="thumb"></div>
+        <input type="range" id="br-chance" min="0" max="1" step="0.01" value="0" aria-label="Chance"></div>
+    </div>
+    <div class="case"></div>
+    <div class="controls">
+      <button type="button" class="br-power" id="br-power" aria-pressed="false" aria-label="Beat repeat on">ON</button>
+      <div class="br-parts" role="group" aria-label="Loop parts">
+        <input type="checkbox" class="br-part" id="br-pos-1" aria-label="Loop part 1">
+        <input type="checkbox" class="br-part" id="br-pos-2" aria-label="Loop part 2">
+        <input type="checkbox" class="br-part" id="br-pos-3" aria-label="Loop part 3">
+        <input type="checkbox" class="br-part" id="br-pos-4" aria-label="Loop part 4">
+        <input type="checkbox" class="br-part" id="br-pos-5" aria-label="Loop part 5">
+        <input type="checkbox" class="br-part" id="br-pos-6" aria-label="Loop part 6">
+        <input type="checkbox" class="br-part" id="br-pos-7" aria-label="Loop part 7">
+        <input type="checkbox" class="br-part" id="br-pos-8" aria-label="Loop part 8">
+      </div>
+    </div>
+    <button type="button" class="br-drawer-btn" id="side-beatrepeat" aria-expanded="false" aria-controls="br-drawer-content">Beat repeat</button>
+  </aside>
+
+  <!-- CHAOS drawer: slides out of the top part's right edge; its button is the right end. It only shows or hides the
+       controls. data-trigger and data-group are bt::ChaosTrigger and bt::ChaosGroup numbers. -->
+  <aside class="chaos-drawer" id="chaos-drawer" aria-label="Chaos">
+    <div class="window"></div>
+    <div class="content" id="chaos-drawer-content">
       <div class="chaos-title" aria-hidden="true"></div>
       <div class="chaos-slider">
         <div class="track"></div><div class="fill"></div><div class="star"></div>
@@ -41,29 +126,24 @@
         <input type="range" id="chaos-slice-size" min="-1" max="2" step="1" value="0" aria-label="Slices"></div>
       <div class="chaos-small" data-trigger="4"><div class="track"></div><div class="thumb"></div>
         <input type="range" id="chaos-beat-size" min="-2" max="1" step="1" value="0" aria-label="Beats"></div>
-    </div>
-    <div class="case"></div>
-  </aside>
-  <aside class="chaos-side right" id="chaos-right" aria-label="Chaos toggles">
-    <div class="window"></div>
-    <div class="content">
-      <div class="chaos-group-box" style="left: 26px; top: 16px"><span class="chaos-cap">PLAY</span>
+      <div class="chaos-group-box g-chaos"><span class="chaos-cap">CHAOS</span>
+        <label class="chaos-tog">VALUE<input type="checkbox" class="chaos-group" data-group="9"></label>
+        <label class="chaos-tog">TIME<input type="checkbox" class="chaos-group" data-group="10"></label></div>
+      <div class="chaos-group-box g-play"><span class="chaos-cap">PLAY</span>
         <label class="chaos-tog">PAN<input type="checkbox" class="chaos-group" data-group="0"></label>
         <label class="chaos-tog">SLICES<input type="checkbox" class="chaos-group" data-group="1"></label>
-        <label class="chaos-tog">RANDOMIZE<input type="checkbox" class="chaos-group" data-group="2"></label></div>
-      <div class="chaos-group-box" style="left: 26px; top: 78px"><span class="chaos-cap">BEAT REPEAT</span>
-        <label class="chaos-tog">ON/OFF<input type="checkbox" class="chaos-group" data-group="6"></label>
-        <label class="chaos-tog">POSITIONS<input type="checkbox" class="chaos-group" data-group="7"></label>
-        <label class="chaos-tog">PARAMS<input type="checkbox" class="chaos-group" data-group="8"></label></div>
-      <div class="chaos-group-box" style="left: 120px; top: 16px"><span class="chaos-cap">EFFECTS</span>
+        <label class="chaos-tog">SEQUENCE<input type="checkbox" class="chaos-group" data-group="2"></label></div>
+      <div class="chaos-group-box g-fx"><span class="chaos-cap">EFFECTS</span>
         <label class="chaos-tog">ON/OFF<input type="checkbox" class="chaos-group" data-group="4"></label>
         <label class="chaos-tog">GLOBAL<input type="checkbox" class="chaos-group" data-group="3"></label>
         <label class="chaos-tog">PER-EFFECT<input type="checkbox" class="chaos-group" data-group="5"></label></div>
-      <div class="chaos-group-box" style="left: 120px; top: 78px"><span class="chaos-cap">CHAOS</span>
-        <label class="chaos-tog">VALUE<input type="checkbox" class="chaos-group" data-group="9"></label>
-        <label class="chaos-tog">TIME<input type="checkbox" class="chaos-group" data-group="10"></label></div>
+      <div class="chaos-group-box g-br"><span class="chaos-cap">BEAT REPEAT</span>
+        <label class="chaos-tog">ON/OFF<input type="checkbox" class="chaos-group" data-group="6"></label>
+        <label class="chaos-tog">POSITIONS<input type="checkbox" class="chaos-group" data-group="7"></label>
+        <label class="chaos-tog">PARAMS<input type="checkbox" class="chaos-group" data-group="8"></label></div>
     </div>
     <div class="case"></div>
+    <button type="button" class="chaos-drawer-btn" id="side-chaos" aria-expanded="false" aria-controls="chaos-drawer-content">Chaos</button>
   </aside>
   <section class="part top" aria-label="Main controls">
     <div class="window"></div>
@@ -79,6 +159,10 @@
       <button type="button" class="bpm-sync" id="bpm-sync" aria-pressed="false" aria-label="Sync">SYNC</button>
 
       <span class="mix-caption volume">VOLUME</span>
+      <!-- On, a slice that starts on the slice already playing restarts it. -->
+      <button type="button" class="retrig" id="retrig" aria-pressed="true" aria-label="Retrigger">RTRG</button>
+      <!-- Clicks between the sliders pass through to SYN, + / - and RTRG. -->
+      <div class="main-sliders" id="main-sliders">
       <div class="mix-slider volume"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
         <input type="range" id="master-volume" min="0" max="1.2" step="0.01" value="1" data-snap="1" aria-label="Volume"></div>
       <span class="mix-caption pan">PAN</span>
@@ -87,11 +171,6 @@
         <div class="track lit"></div><div class="track dark"></div><div class="snap"></div><div class="pin min"></div><div class="pin max"></div>
         <input type="range" class="min" id="master-pan-min" min="-1" max="1" step="0.01" value="0" aria-label="Pan minimum">
         <input type="range" class="max" id="master-pan-max" min="-1" max="1" step="0.01" value="0" aria-label="Pan maximum">
-      </div>
-
-      <div class="seek" role="meter" aria-label="Playhead position" aria-valuemin="0" aria-valuemax="1">
-        <div class="band"></div><div class="head"></div>
-        <input type="range" id="playhead" min="0" max="1" step="0.001" value="0" disabled tabindex="-1" aria-label="Playhead position">
       </div>
 
       <div class="slider-captions" aria-hidden="true">
@@ -111,12 +190,16 @@
         <div class="track"></div><div class="ticks dim"></div><div class="ticks lit"></div><div class="thumb"></div>
         <input type="range" id="attack" min="2" max="16" step="1" value="2" aria-label="Attack (ms)">
       </div>
+      </div>
+
+      <div class="seek" role="meter" aria-label="Playhead position" aria-valuemin="0" aria-valuemax="1">
+        <div class="band"></div><div class="head"></div>
+        <input type="range" id="playhead" min="0" max="1" step="0.001" value="0" disabled tabindex="-1" aria-label="Playhead position">
+      </div>
     </div>
     <div class="case"></div>
     <div class="controls">
-      <button type="button" class="randomize" id="randomize">Randomize</button>
-      <!-- Shows the CHAOS side panels. -->
-      <button type="button" class="chaos-toggle" id="chaos-toggle" aria-pressed="false">CHAOS</button>
+      <button type="button" class="randomize" id="randomize">Randomize sequence</button>
     </div>
   </section>
   <section class="part effects" aria-label="Effects">
@@ -176,43 +259,6 @@
     </div>
     <div class="case"></div>
   </section>
-  <section class="part beatrepeat" aria-label="Beat repeat">
-    <div class="window"></div>
-    <div class="content">
-      <!-- ON | LOOP PARTS 8 numbered buttons (place and images from skin.css) | SIZE (min / max, 1/32 .. 2, index 0..6) over MIX (0..1) | LENGTH (1/16 .. 2, index 0..5) over CHANCE (0..1) -->
-      <button type="button" class="br-power" id="br-power" aria-pressed="false" aria-label="Beat repeat on">ON</button>
-      <div class="br-parts" role="group" aria-label="Loop parts">
-        <input type="checkbox" class="br-part" id="br-pos-1" aria-label="Loop part 1">
-        <input type="checkbox" class="br-part" id="br-pos-2" aria-label="Loop part 2">
-        <input type="checkbox" class="br-part" id="br-pos-3" aria-label="Loop part 3">
-        <input type="checkbox" class="br-part" id="br-pos-4" aria-label="Loop part 4">
-        <input type="checkbox" class="br-part" id="br-pos-5" aria-label="Loop part 5">
-        <input type="checkbox" class="br-part" id="br-pos-6" aria-label="Loop part 6">
-        <input type="checkbox" class="br-part" id="br-pos-7" aria-label="Loop part 7">
-        <input type="checkbox" class="br-part" id="br-pos-8" aria-label="Loop part 8">
-      </div>
-
-      <span class="br-name size">SIZE</span>
-      <div class="br-scale" aria-hidden="true"></div>
-      <div class="br-range" id="br-size">
-        <div class="track lit"></div><div class="track dark"></div><div class="pin min"></div><div class="pin max"></div>
-        <input type="range" class="min" id="br-size-min" min="0" max="6" step="1" value="5" aria-label="Size minimum">
-        <input type="range" class="max" id="br-size-max" min="0" max="6" step="1" value="5" aria-label="Size maximum">
-      </div>
-      <span class="br-name mix">MIX</span>
-      <div class="br-slider long mix"><div class="track"></div><div class="thumb"></div>
-        <input type="range" id="br-mix" min="0" max="1" step="0.01" value="1" aria-label="Mix"></div>
-
-      <span class="br-name length">LENGTH</span>
-      <output class="br-value length" id="br-length-value" for="br-length" aria-hidden="true" data-i="4">1</output>
-      <div class="br-slider short length"><div class="track"></div><div class="thumb"></div>
-        <input type="range" id="br-length" min="0" max="5" step="1" value="4" aria-label="Length"></div>
-      <span class="br-name chance">CHANCE</span>
-      <div class="br-slider short chance"><div class="track"></div><div class="thumb"></div>
-        <input type="range" id="br-chance" min="0" max="1" step="0.01" value="0" aria-label="Chance"></div>
-    </div>
-    <div class="case"></div>
-  </section>
   <section class="part bottom" aria-label="Samples">
     <div class="window"></div>
     <div class="content">
@@ -245,47 +291,10 @@
       </div>
       <!-- selected sample's file name, right of the buttons (the bank picker buttons take its place) -->
       <div class="track-name" id="track-name" title=""></div>
-
-      <!-- selected sample's controls, on the dark screen under the buttons.
-           VOL / PAN | ST. (start) / LEN. (length) | start time (s) / LOOP | BPM | WARP (none, beat, pitch) | BEAT (1/32 .. 2) -->
-      <fieldset class="sample-panel" id="selected-sample" disabled>
-        <span class="name vol">VOL</span>
-        <div class="slider vol"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
-          <input type="range" id="volume" min="0" max="1.2" step="0.01" value="1" aria-label="Volume" data-snap="1"></div>
-        <span class="name pan">PAN</span>
-        <div class="slider pan"><div class="track"></div><div class="snap"></div><div class="thumb"></div>
-          <input type="range" id="pan" min="-1" max="1" step="0.01" value="0" aria-label="Pan" data-snap="0"></div>
-
-        <span class="name start">ST.</span>
-        <div class="slider start"><div class="track"></div><div class="thumb"></div>
-          <input type="range" id="start" min="0" max="1" step="0.001" value="0" aria-label="Start"></div>
-        <span class="name length">LEN.</span>
-        <div class="slider length"><div class="track"></div><div class="thumb"></div>
-          <input type="range" id="length" min="0" max="1" step="0.001" value="1" aria-label="Length"></div>
-
-        <input type="text" class="field time" id="start-time" value="0.00" inputmode="decimal" spellcheck="false" aria-label="Start (seconds)" data-max="0">
-        <span class="name loop">LOOP</span>
-        <input type="checkbox" class="toggle" id="track-loop" aria-label="Loop">
-
-        <span class="name bpm">BPM</span>
-        <input type="text" class="field bpm" id="track-bpm" value="120.0" inputmode="decimal" spellcheck="false" aria-label="Sample BPM">
-
-        <span class="name warp">WARP</span>
-        <button type="button" class="warp-btn prev" id="warp-prev" aria-label="Previous warp mode"></button>
-        <output class="warp-value" id="track-warp" data-value="none" aria-label="Warp">NONE</output>
-        <button type="button" class="warp-btn next" id="warp-next" aria-label="Next warp mode"></button>
-
-        <span class="name beat">BEAT <b class="value"></b></span>
-        <div class="slider beat"><div class="track"></div><div class="thumb"></div>
-          <input type="range" id="track-beat" min="0" max="6" step="1" value="0" aria-label="Beat"></div>
-      </fieldset>
     </div>
   </section>
 </div>
 <p id="error"></p>
-<!-- Plain placeholder until the toggle has a design. -->
-<button type="button" id="retrig" aria-pressed="true"
-        style="position: fixed; left: 8px; bottom: 2px; height: 19px; padding: 0 8px; font: 11px system-ui, sans-serif;">RETRIG ON</button>
 <script src="/plugin.js"></script>
 </body>
 </html>
