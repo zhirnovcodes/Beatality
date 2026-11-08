@@ -1,0 +1,233 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "Fuku Fuku vox 115 bpm",
+  "bpm": 120,
+  "loop": 8,
+  "slices": -1,
+  "attack": 5,
+  "volume": 1,
+  "panMin": -0.38,
+  "panMax": 0.43,
+  "bpmSync": true,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 1,
+    "globalChance": 0.32,
+    "beatMin": -2,
+    "beatMax": 1,
+    "delayPower": 1,
+    "delayChance": 0.27241581678390503,
+    "reverbPower": 0.936744921207428,
+    "reverbChance": 0.8048965930938721,
+    "reversePower": 0.901288070678711,
+    "reverseChance": 0.5459288954734802,
+    "filterPower": 1,
+    "filterChance": 0.09570449590682983,
+    "flangerPower": 1,
+    "flangerChance": 0.08204776048660278,
+    "trancePower": 1,
+    "tranceChance": 0.3500283360481262,
+    "shiftPower": 0.9601854538917542,
+    "shiftChance": 0.0226173996925354
+  },
+  "repeat": {
+    "enabled": true,
+    "sizeMin": -2,
+    "sizeMax": -2,
+    "length": 0,
+    "chance": 0.3582128882408142,
+    "mix": 0.9895562529563904,
+    "positions": [
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "chaos": {
+    "trigger": "loop",
+    "value": 1,
+    "beatSize": -1,
+    "loopSize": 2,
+    "sliceSize": 0,
+    "groups": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "fuku fuku vox 115 bpm 12.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "fuku fuku vox 115 bpm 11.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "fuku fuku vox 115 bpm 10.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "fuku fuku vox 115 bpm 9.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "fuku fuku vox 115 bpm 8.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "fuku fuku vox 115 bpm 6.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "fuku fuku vox 115 bpm 5.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "fuku fuku vox 115 bpm 4.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "fuku fuku vox 115 bpm 3.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "fuku fuku vox 115 bpm 2.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "fuku fuku vox 115 bpm 1.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0.5
+    }
+  ]
+}

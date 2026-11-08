@@ -1,0 +1,135 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "swarog dnb 180 bpm",
+  "bpm": 120,
+  "loop": 16,
+  "slices": -2,
+  "attack": 2,
+  "volume": 1,
+  "panMin": -0.55,
+  "panMax": 0.55,
+  "bpmSync": true,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 0.69,
+    "globalChance": 0.36,
+    "beatMin": -2,
+    "beatMax": 0,
+    "delayPower": 0.348162232542038,
+    "delayChance": 0.4457609971165657,
+    "reverbPower": 0.47252705847024923,
+    "reverbChance": 0.16821616321802138,
+    "reversePower": 0.8218258009910584,
+    "reverseChance": 0.16710130321979522,
+    "filterPower": 0.7339821806311607,
+    "filterChance": 0.4506803419589996,
+    "flangerPower": 0.4000509775280953,
+    "flangerChance": 0.449659280359745,
+    "trancePower": 0.9079439129471779,
+    "tranceChance": 0.2940350416898727,
+    "shiftPower": 0.6710443952202797,
+    "shiftChance": 0.47584554028511045
+  },
+  "repeat": {
+    "enabled": true,
+    "sizeMin": -1,
+    "sizeMax": -1,
+    "length": -2,
+    "chance": 0.3295516774058342,
+    "mix": 0.13098856508731843,
+    "positions": [
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "chaos": {
+    "trigger": "loop",
+    "value": 0.34,
+    "beatSize": -1,
+    "loopSize": 1,
+    "sliceSize": 0,
+    "groups": [
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "svarog dnb drums 180 BPM 4.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 180,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "svarog dnb drums 180 BPM 3.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 180,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "svarog dnb drums 180 BPM 2.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 180,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "svarog dnb drums 180 BPM 1.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 180,
+      "warpParam": 0
+    }
+  ]
+}

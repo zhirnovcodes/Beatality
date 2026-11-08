@@ -6,6 +6,8 @@
 <link rel="stylesheet" href="/ui/skin/skin.css">
 <style>
   html, body { margin: 0; width: 746px; height: 638px; overflow: hidden; background: #2a2c30; }
+  /* The strip right of the 496 px skin, behind the drawers. The image is 2x (496 x 1276). */
+  body { background: #2a2c30 url("/ui/shapes/vst_backdrop.png") 496px 0 / 250px 638px no-repeat; }
   /* Floats over the bottom of the skin, and only while there is an error, so the window is just the skin. */
   #error {
     position: absolute; left: 8px; top: 609px; z-index: 100; box-sizing: border-box;

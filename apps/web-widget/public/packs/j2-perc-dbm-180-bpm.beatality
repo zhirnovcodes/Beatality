@@ -1,0 +1,135 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "J2 perc DBM 180 bpm",
+  "bpm": 120,
+  "loop": 16,
+  "slices": -1,
+  "attack": 8,
+  "volume": 1,
+  "panMin": -0.6,
+  "panMax": 0.55,
+  "bpmSync": true,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 1,
+    "globalChance": 0.61,
+    "beatMin": -2,
+    "beatMax": 1,
+    "delayPower": 0.16567288661003113,
+    "delayChance": 0.2775972982048988,
+    "reverbPower": 0.791261925971508,
+    "reverbChance": 0.3098649160265922,
+    "reversePower": 0.9547339489579201,
+    "reverseChance": 0.08783736473321914,
+    "filterPower": 0.2419002678513527,
+    "filterChance": 0.06422426730394364,
+    "flangerPower": 0.802419753754139,
+    "flangerChance": 0.22454088288545607,
+    "trancePower": 0.4017721718549728,
+    "tranceChance": 0.5817896307706832,
+    "shiftPower": 0.2812484094619751,
+    "shiftChance": 0.25143250966072084
+  },
+  "repeat": {
+    "enabled": true,
+    "sizeMin": -3,
+    "sizeMax": -2,
+    "length": -1,
+    "chance": 0.18309682458639145,
+    "mix": 0.35595657527446745,
+    "positions": [
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "chaos": {
+    "trigger": "beats",
+    "value": 0.38,
+    "beatSize": 1,
+    "loopSize": 1,
+    "sliceSize": 0,
+    "groups": [
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "j2 perc dnb 180 BPM 4.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 180,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "j2 perc dnb 180 BPM 3.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 180,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "j2 perc dnb 180 BPM 2.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 180,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "j2 perc dnb 180 BPM 1.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 180,
+      "warpParam": 0
+    }
+  ]
+}

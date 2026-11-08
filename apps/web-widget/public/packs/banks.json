@@ -38,5 +38,17 @@
   {
     "name": "orgolorg vox 115 bpm",
     "file": "orgolorg-vox-115-bpm.beatality"
+  },
+  {
+    "name": "Fuku Fuku vox 115 bpm",
+    "file": "fuku-fuku-vox-115-bpm.beatality"
+  },
+  {
+    "name": "J2 perc DBM 180 bpm",
+    "file": "j2-perc-dbm-180-bpm.beatality"
+  },
+  {
+    "name": "swarog dnb 180 bpm",
+    "file": "swarog-dnb-180-bpm.beatality"
   }
 ]
