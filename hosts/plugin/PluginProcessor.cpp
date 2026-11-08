@@ -200,7 +200,7 @@ void freePayload(AppendPayload* payload) {
 // A mode number outside 0..2 is None. The engine clamps bpm and param.
 bt::WarpSettings warpSettings(int mode, double bpm, double param) {
     bt::WarpSettings warp;
-    warp.mode = mode >= 0 && mode <= 2 ? static_cast<bt::WarpMode>(mode) : bt::WarpMode::None;
+    warp.mode = mode >= 0 && mode <= 3 ? static_cast<bt::WarpMode>(mode) : bt::WarpMode::None;
     warp.bpm = bpm;
     warp.param = param;
     return warp;

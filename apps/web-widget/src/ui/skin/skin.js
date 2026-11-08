@@ -253,7 +253,7 @@
 
 /* Selected sample: BPM field, WARP and BEAT.
    - BPM (#track-bpm): the sample's own tempo, one decimal, 20 .. 999 (data-min / data-max); Enter or leaving the field applies it.
-   - WARP (#track-warp): none / beat / pitch; the arrows step through them (wrapping). Value in data-value, "change" fired on it.
+   - WARP (#track-warp): none / beat / pitch / grain; the arrows step through them (wrapping). Value in data-value, "change" fired on it.
    - BEAT (#track-beat): index 0..6 into 1/32, 1/16, 1/8, 1/4, 1/2, 1, 2 (beats), so it always snaps to one of them;
      the caption shows the value; the value in beats is on the input as data-beats. */
 (function () {
@@ -269,7 +269,7 @@
     fix();
   }
 
-  const WARP = ["none", "beat", "pitch"];
+  const WARP = ["none", "beat", "pitch", "grain"];
   const warp = document.getElementById("track-warp");
   if (warp) {
     const set = function (i) {

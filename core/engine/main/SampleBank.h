@@ -17,7 +17,7 @@ struct SampleSettings {
 };
 
 // How a track is fitted to the project tempo. The values match the host's mode numbers.
-enum class WarpMode { None = 0, Beat = 1, Pitch = 2 };
+enum class WarpMode { None = 0, Beat = 1, Pitch = 2, Grain = 3 };
 
 // The track's own tempo and how it is warped. bpm is 1..999.9. param is 0..1, and its meaning depends on the mode.
 struct WarpSettings {

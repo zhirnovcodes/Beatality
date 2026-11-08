@@ -25,10 +25,10 @@ double clamp(double value, double low, double high) {
 }
 
 // In the engine's order: the index is the mode number.
-const char* const kWarpNames[] = {"none", "beat", "pitch"};
+const char* const kWarpNames[] = {"none", "beat", "pitch", "grain"};
 
 int warpFromName(const juce::String& name) {
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 4; ++i) {
         if (name == kWarpNames[i]) {
             return i;
         }
@@ -369,7 +369,7 @@ juce::String encodePack(const PackDocument& pack) {
         item->setProperty("pan", track.pan);
         item->setProperty("length", track.length);
         item->setProperty("loop", track.loop);
-        item->setProperty("warp", kWarpNames[track.warp >= 0 && track.warp <= 2 ? track.warp : 0]);
+        item->setProperty("warp", kWarpNames[track.warp >= 0 && track.warp <= 3 ? track.warp : 0]);
         item->setProperty("bpm", track.bpm);
         item->setProperty("warpParam", track.warpParam);
         tracks.add(juce::var(item));

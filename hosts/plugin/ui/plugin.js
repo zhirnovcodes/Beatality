@@ -49,9 +49,13 @@ const state = {
 }
 
 // Warp modes in the engine's order: the index is the mode number setWarp takes.
-const warpModes = ['none', 'beat', 'pitch']
+const warpModes = ['none', 'beat', 'pitch', 'grain']
 // The BEAT slider's steps, in beats. Its index over the last index is the engine's warp param.
 const beatSteps = ['1/32', '1/16', '1/8', '1/4', '1/2', '1', '2']
+// In grain mode the same slider is continuous: its value over grainSteps is the engine's warp param.
+const grainSteps = 100
+// The engine's grain size for a warp param: 10 ms at 0, 200 ms at 1, on an exponential curve.
+const grainMs = (param) => 10 * Math.pow(20, param)
 // The sample BPM field accepts this range, one decimal place.
 const bpmMin = 20
 const bpmMax = 999
@@ -429,13 +433,19 @@ function syncWarpPanel() {
     }
     const beat = document.getElementById('track-beat')
     if (beat instanceof HTMLInputElement) {
-        // BEAT changes the sound only in beat mode, so it is disabled unless every selected sample is in it.
-        beat.disabled = warp !== 1
-        const step = none ? 0 : shared((index) => (plays[index] ? Math.round(plays[index].warpParam * (beatSteps.length - 1)) : undefined))
+        // SIZE changes the sound only in beat and grain mode, so it is disabled unless every selected sample is in one of them.
+        // Beat mode steps through beatSteps. Grain mode is continuous over grainSteps.
+        const grain = warp === 3
+        beat.disabled = warp !== 1 && !grain
+        const last = grain ? grainSteps : beatSteps.length - 1
+        beat.max = String(last)
+        const step = none ? 0 : shared((index) => (plays[index] ? Math.round(plays[index].warpParam * last) : undefined))
         setRange('track-beat', step)
+        placeThumb(beat)
         const caption = document.querySelector('.sample-panel .name.beat .value')
         if (caption) {
-            caption.textContent = step === undefined ? '--' : beatSteps[Number(beat.value)] || ''
+            const value = Number(beat.value)
+            caption.textContent = step === undefined ? '--' : grain ? Math.round(grainMs(value / last)) + 'ms' : beatSteps[value] || ''
         }
     }
     const bpm = document.getElementById('track-bpm')
@@ -1076,11 +1086,11 @@ function onWarp(event) {
         return
     }
     if (input.id === 'track-beat') {
-        // The slider is an index into beatSteps. The engine param is that index over the last one.
+        // The slider's value over its max is the engine param: an index into beatSteps, or a grain size step.
         placeThumb(input)
         for (const index of selected) {
             if (plays[index]) {
-                plays[index].warpParam = Number(input.value) / (beatSteps.length - 1)
+                plays[index].warpParam = Number(input.value) / Number(input.max)
             }
         }
         syncWarpPanel()
@@ -1101,7 +1111,7 @@ function onWarp(event) {
     commitWarp()
 }
 
-// Steps WARP through none → beat → pitch, wrapping, from the first selected sample's mode.
+// Steps WARP through none → beat → pitch → grain, wrapping, from the first selected sample's mode.
 // Every selected sample takes the new mode.
 function stepWarp(delta) {
     const first = plays[selected[0]]

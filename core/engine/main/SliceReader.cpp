@@ -11,6 +11,9 @@ namespace {
 
 constexpr int kFragmentExpMin = -5;
 constexpr int kFragmentExpMax = 1;
+constexpr double kGrainMinMs = 10.0;
+constexpr double kGrainMaxMs = 200.0;
+constexpr double kPi = 3.14159265358979323846;
 
 double unit(double value) {
     if (value < 0.0) {
@@ -26,6 +29,11 @@ double unit(double value) {
 double fragmentBeats(double param) {
     const int steps = kFragmentExpMax - kFragmentExpMin;
     return std::ldexp(1.0, kFragmentExpMin + static_cast<int>(std::lround(unit(param) * steps)));
+}
+
+// Grain mode: param 0 is a 10 ms grain, param 1 is 200 ms, on an exponential curve. In frames.
+double grainFrames(double param, double sampleRate) {
+    return kGrainMinMs * std::pow(kGrainMaxMs / kGrainMinMs, unit(param)) * 0.001 * sampleRate;
 }
 
 } // namespace
@@ -60,6 +68,9 @@ SliceReader::SliceReader(const SampleBuffer& buffer, const SampleSettings& play,
         // A fragment with enough audio is cut where the next one starts, and the two crossfade.
         // A short one fades out at its own end, and the rest of its place is silent.
         fadeOut_ = fragmentSource_ >= fragmentOut_ ? fragmentOut_ : fragmentSource_ - fade_;
+    } else if (warp.mode == WarpMode::Grain) {
+        grainHop_ = grainFrames(warp.param, settings.sampleRate) * 0.5;
+        grainSourceHop_ = grainHop_ * ratio;
     } else if (sourceSlice < static_cast<double>(sliceFrames)) {
         end_ = sourceSlice;
     }
@@ -78,6 +89,13 @@ Frame SliceReader::read(double local) const {
         const Frame previous = fragment(index - 1.0, offset + fragmentOut_);
         frame.l = current.l + previous.l;
         frame.r = current.r + previous.r;
+    } else if (grainHop_ > 0.0) {
+        // The grain centred at or before this frame, and the next one.
+        const double index = std::floor(local / grainHop_);
+        const Frame current = grain(index, local);
+        const Frame next = grain(index + 1.0, local);
+        frame.l = current.l + next.l;
+        frame.r = current.r + next.r;
     } else {
         frame = at(origin_ + local * step_);
     }
@@ -96,6 +114,19 @@ Frame SliceReader::fragment(double index, double offset) const {
         gain = static_cast<float>(1.0 - (offset - fadeOut_) / fade_);
     }
     Frame frame = at(origin_ + index * fragmentSource_ + offset);
+    frame.l *= gain;
+    frame.r *= gain;
+    return frame;
+}
+
+Frame SliceReader::grain(double index, double local) const {
+    const double offset = local - index * grainHop_;
+    if (!(std::fabs(offset) < grainHop_)) {
+        return {};
+    }
+    // At its centre the grain reads the file at its own source position, so grain 0 starts the slice exactly at origin_.
+    const float gain = static_cast<float>(0.5 * (1.0 + std::cos(kPi * offset / grainHop_)));
+    Frame frame = at(origin_ + index * grainSourceHop_ + offset);
     frame.l *= gain;
     frame.r *= gain;
     return frame;

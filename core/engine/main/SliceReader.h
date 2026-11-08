@@ -18,6 +18,8 @@ struct Frame {
 // Pitch stretches the source slice across the project slice, so the pitch moves with the tempo ratio.
 // Beat cuts the source slice into fragments of 1/32 to 2 beats. Each one plays at original speed from its own
 // place on the project grid, with a short fade at both ends, so the source slice still fills the project slice.
+// Grain reads Hann-windowed grains of 10 to 200 ms at original speed. Grain centres sit half a grain apart on the
+// project grid and their read positions advance by the tempo ratio, so two grains always overlap and their gains sum to 1.
 class SliceReader {
 public:
     SliceReader(const SampleBuffer& buffer, const SampleSettings& play, const WarpSettings& warp, const ClockSettings& settings,
@@ -29,6 +31,8 @@ public:
 private:
     // Fragment index at offset frames into it, faded. Silence outside the fragment.
     Frame fragment(double index, double offset) const;
+    // Grain index centred at index * grainHop_, Hann-windowed, at local. Silence more than one hop from its centre.
+    Frame grain(double index, double local) const;
     // The file at a fractional frame, before volume and pan.
     Frame at(double position) const;
 
@@ -47,6 +51,10 @@ private:
     // Length of the fade at each end of a fragment, and where its fade-out starts.
     double fade_ = 0;
     double fadeOut_ = 0;
+    // Grain mode only. 0 in the other modes.
+    // Half a grain on the project grid (the hop between grain centres), and the same hop in the file.
+    double grainHop_ = 0;
+    double grainSourceHop_ = 0;
     // The slot is past the track's slices and the track does not loop.
     bool silent_ = false;
 };

@@ -50,6 +50,10 @@ function holdSnap(input: HTMLInputElement): number {
 
 // The BEAT slider's steps, in beats. Its index over the last index is the engine's warp param.
 const beatSteps = ['1/32', '1/16', '1/8', '1/4', '1/2', '1', '2']
+// In grain mode the same slider is continuous: its value over grainSteps is the engine's warp param.
+const grainSteps = 100
+// The engine's grain size for a warp param: 10 ms at 0, 200 ms at 1, on an exponential curve.
+const grainMs = (param: number) => 10 * Math.pow(20, param)
 
 // The sample BPM field accepts this range, one decimal place.
 const bpmMin = 20
@@ -236,17 +240,16 @@ export class WebPresenter {
         })
         warpPrev.addEventListener('click', () => this.stepWarp(-1))
         warpNext.addEventListener('click', () => this.stepWarp(1))
-        // The slider is an index into beatSteps. The engine param is that index over the last one.
+        // The slider's value over its max is the engine param: an index into beatSteps, or a grain size step.
         beat.addEventListener('input', () => {
             placeThumb(beat)
-            beatCaption.textContent = beatSteps[Number(beat.value)] ?? ''
-            this.editWarp({ warpParam: Number(beat.value) / (beatSteps.length - 1) })
+            this.editWarp({ warpParam: Number(beat.value) / Number(beat.max) })
             this.syncWarp()
         })
         this.syncPanel()
     }
 
-    // Steps WARP through none → beat → pitch, wrapping, from the first selected sample's mode.
+    // Steps WARP through none → beat → pitch → grain, wrapping, from the first selected sample's mode.
     // Every selected sample takes the new mode.
     private stepWarp(delta: 1 | -1) {
         const current = this.selected.length > 0 ? this.client.registry.playAt(this.selected[0]) : null
@@ -602,15 +605,22 @@ export class WebPresenter {
         }
         const beat = this.beatInput
         if (beat) {
-            // BEAT changes the sound only in beat mode, so it is disabled unless every selected sample is in it.
-            beat.disabled = warp !== 'beat'
+            // SIZE changes the sound only in beat and grain mode, so it is disabled unless every selected sample is in one of them.
+            // Beat mode steps through beatSteps. Grain mode is continuous over grainSteps.
+            const grain = warp === 'grain'
+            beat.disabled = warp !== 'beat' && !grain
+            const last = grain ? grainSteps : beatSteps.length - 1
+            beat.max = String(last)
             const index = none ? 0 : this.shared((at) => {
                 const param = play(at)?.warpParam
-                return param === undefined ? undefined : Math.round(param * (beatSteps.length - 1))
+                return param === undefined ? undefined : Math.round(param * last)
             })
             this.writeRange(beat, index)
+            placeThumb(beat)
             if (this.beatCaption) {
-                this.beatCaption.textContent = index === undefined ? '--' : (beatSteps[Number(beat.value)] ?? '')
+                const value = Number(beat.value)
+                this.beatCaption.textContent =
+                    index === undefined ? '--' : grain ? `${Math.round(grainMs(value / last))}ms` : (beatSteps[value] ?? '')
             }
         }
         const bpm = this.bpmInput

@@ -12,7 +12,7 @@
 #include <vector>
 
 // One .beatality document. Addresses only: a bundled file name, or a path on disk.
-// warp is the engine's mode number: 0 none, 1 beat, 2 pitch. The file stores it by name.
+// warp is the engine's mode number: 0 none, 1 beat, 2 pitch, 3 grain. The file stores it by name.
 // bpm is the sample's own tempo, 1.0..999.9. Packs without the warp fields read as none, 120, and 0.
 struct PackTrack {
     bool internal = false;

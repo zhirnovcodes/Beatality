@@ -221,7 +221,7 @@ export function Widget({
                     <div className="window" />
                     <div className="content" id={settingsId}>
                         {/* The selected sample's controls: VOL / PAN, ST. / start time, LEN. / LOOP,
-                            then WARPING: TYPE (none, beat, pitch) / BPM, SIZE (1/32 .. 2) */}
+                            then WARPING: TYPE (none, beat, pitch, grain) / BPM, SIZE (1/32 .. 2, or 10 .. 200 ms in grain) */}
                         <fieldset className="sample-panel" disabled={selection.length === 0} ref={onPanel}>
                             <span className="name vol">VOL</span>
                             <div className="slider vol">

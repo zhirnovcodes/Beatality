@@ -1,5 +1,5 @@
 // In the engine's order: the index is the mode number bt_set_track takes.
-export const warpModes = ['none', 'beat', 'pitch'] as const
+export const warpModes = ['none', 'beat', 'pitch', 'grain'] as const
 export type WarpMode = (typeof warpModes)[number]
 
 // bpm is the sample's own tempo, 1.0..999.9 in steps of 0.1. warpParam is 0..1.
