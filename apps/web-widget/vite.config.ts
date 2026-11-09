@@ -136,7 +136,8 @@ function presetLibrary(): Plugin {
                 }
                 try {
                     if (req.method === 'POST' && url.pathname === '/__presets/sample') {
-                        const name = safeName(url.searchParams.get('name'))
+                        // Sample ids become URL paths; '#', '%' and friends break serving them, so they turn into '_'.
+                        const name = safeName((url.searchParams.get('name') ?? '').replace(/[#%?&+]/g, '_'))
                         if (!name) {
                             reply(400, { error: 'bad sample name' })
                             return

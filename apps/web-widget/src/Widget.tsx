@@ -188,8 +188,8 @@ export function Widget({
         placeThumb(input)
     }
 
-    const onSelectBank = () => {
-        const bank = model.factoryBanks[bankIndex]
+    const onSelectBank = (index = bankIndex) => {
+        const bank = model.factoryBanks[index]
         if (!bank || loadingPack) {
             return
         }
@@ -801,6 +801,7 @@ export function Widget({
                                                 role="option"
                                                 aria-selected={index === bankIndex}
                                                 onClick={() => setBankIndex(index)}
+                                                onDblClick={() => onSelectBank(index)}
                                             >
                                                 {index + 1}. {bank.name}
                                             </li>
@@ -886,7 +887,7 @@ export function Widget({
                         />
 
                         <div className="bank-panel">
-                            <button type="button" className="bank-btn" disabled={loadingPack || model.factoryBanks.length === 0} onClick={onSelectBank}>
+                            <button type="button" className="bank-btn" disabled={loadingPack || model.factoryBanks.length === 0} onClick={() => onSelectBank()}>
                                 SELECT
                             </button>
                             <button type="button" className="bank-btn" disabled={!model.canLoadFile} onClick={() => model.loadFile()}>

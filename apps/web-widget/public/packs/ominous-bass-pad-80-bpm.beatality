@@ -1,0 +1,93 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "ominous bass pad 80 bpm",
+  "bpm": 20,
+  "loop": 16,
+  "slices": -3,
+  "attack": 8,
+  "volume": 1,
+  "panMin": -0.45,
+  "panMax": 0.68,
+  "bpmSync": false,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 0.963380286693573,
+    "globalChance": 0.03995811939239502,
+    "beatMin": -1,
+    "beatMax": 0,
+    "delayPower": 0.36977243423461914,
+    "delayChance": 0.5432212948799133,
+    "reverbPower": 0.67271320104599,
+    "reverbChance": 0.7636045813560486,
+    "reversePower": 0.3248074960708618,
+    "reverseChance": 0.8356667757034302,
+    "filterPower": 0.4547657370567322,
+    "filterChance": 0.09615010023117065,
+    "flangerPower": 1,
+    "flangerChance": 0.6713564991950989,
+    "trancePower": 0.6661275839805603,
+    "tranceChance": 0.6099482774734497,
+    "shiftPower": 1,
+    "shiftChance": 0.018459618091583252
+  },
+  "repeat": {
+    "enabled": true,
+    "sizeMin": -4,
+    "sizeMax": -2,
+    "length": -3,
+    "chance": 0.4494529962539673,
+    "mix": 0.08342492580413818,
+    "positions": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "chaos": {
+    "trigger": "beats",
+    "value": 1,
+    "beatSize": 1,
+    "loopSize": 4,
+    "sliceSize": 0,
+    "groups": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "orgolorg acapella.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 115,
+      "warpParam": 0.16666666666666666
+    }
+  ]
+}

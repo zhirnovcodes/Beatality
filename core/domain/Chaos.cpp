@@ -8,31 +8,22 @@ namespace bt {
 
 namespace {
 
-// Ranges at chaos 0 and at chaos 1. Exponents are 2^n beats; Slices is 2^n slices.
-constexpr ChaosRange kPanMin{0, 0, -1, 0};
-constexpr ChaosRange kPanMax{0, 0, 0, 1};
-constexpr ChaosRange kSlice{-1, 0, SliceGrid::kExpMin, SliceGrid::kExpMax};
-// Powers reach past the max at chaos 1 and are clamped to it, so about a quarter of full-chaos rolls land on full power.
-constexpr ChaosRange kPower{0, 0.75, 0.25, 1.33};
-constexpr ChaosRange kChance{0, 0.35, 0, 1};
-constexpr ChaosRange kEffectTime{-2, 0, Effects::kBeatMin, Effects::kBeatMax};
-constexpr ChaosRange kRepeatSize{-2, -1, BeatRepeatSettings::kSizeMin, BeatRepeatSettings::kSizeMax};
-constexpr ChaosRange kRepeatMix{0, 0.5, 0, 1};
-constexpr ChaosRange kRepeatLength{-1, 0, BeatRepeatSettings::kLengthMin, BeatRepeatSettings::kLengthMax};
-constexpr ChaosRange kRepeatChance{0, 0.25, 0, 1};
-constexpr ChaosRange kChaosValue{0, 0.5, 0, 1};
-constexpr ChaosRange kBeatSize{-1, 0, ChaosSettings::kBeatSizeMin, ChaosSettings::kBeatSizeMax};
-constexpr ChaosRange kLoopSize{2, 4, ChaosSettings::kLoopSizeMin, ChaosSettings::kLoopSizeMax};
-constexpr ChaosRange kSliceSize{-1, 0, ChaosSettings::kSliceSizeMin, ChaosSettings::kSliceSizeMax};
-
 double blend(double at0, double at1, double value) { return at0 + (at1 - at0) * value; }
 
 bool coin(Rng& rng) { return rng.nextFloat() < 0.5f; }
 
-// Two steps from the same range, low one first.
-std::pair<int, int> stepPair(const ChaosRange& range, double value, Rng& rng) {
-    const int a = chaosStep(range, value, rng.nextFloat());
-    const int b = chaosStep(range, value, rng.nextFloat());
+double rollValue(const ChaosRange& range, double value, Rng& rng, double low, double high) {
+    return std::clamp(chaosValue(range, value, rng.nextFloat()), low, high);
+}
+
+int rollStep(const ChaosRange& range, double value, Rng& rng, int low, int high) {
+    return std::clamp(chaosStep(range, value, rng.nextFloat()), low, high);
+}
+
+// A min and a max from their own ranges, low one first.
+std::pair<int, int> rollPair(const ChaosRange& min, const ChaosRange& max, double value, Rng& rng, int low, int high) {
+    const int a = rollStep(min, value, rng, low, high);
+    const int b = rollStep(max, value, rng, low, high);
     return {std::min(a, b), std::max(a, b)};
 }
 
@@ -53,24 +44,27 @@ int chaosStep(const ChaosRange& range, double value, float roll) {
 }
 
 ChaosRoll rollChaos(Controls& controls, Rng& rng) {
+    namespace playRanges = chaosRanges::play;
     ChaosSettings& chaos = controls.chaos;
     const double value = chaos.value;
     ChaosRoll roll;
     if (chaos.on(ChaosGroup::Pan)) {
-        controls.play.panMin = chaosValue(kPanMin, value, rng.nextFloat());
-        controls.play.panMax = chaosValue(kPanMax, value, rng.nextFloat());
+        controls.play.panMin = rollValue(playRanges::panMin, value, rng, -1, 1);
+        controls.play.panMax = rollValue(playRanges::panMax, value, rng, -1, 1);
     }
     if (chaos.on(ChaosGroup::Slices)) {
-        controls.play.sliceExp = chaosStep(kSlice, value, rng.nextFloat());
+        controls.play.sliceExp = rollStep(playRanges::slices, value, rng, SliceGrid::kExpMin, SliceGrid::kExpMax);
     }
     if (chaos.on(ChaosGroup::Randomize)) {
         roll.randomize = true;
     }
     Effects& fx = controls.effects;
+    namespace fxRanges = chaosRanges::effects;
     if (chaos.on(ChaosGroup::EffectsGlobal)) {
-        fx.globalPower = std::min(chaosValue(kPower, value, rng.nextFloat()), Effects::kPowerMax);
-        fx.globalChance = chaosValue(kChance, value, rng.nextFloat());
-        const auto [beatMin, beatMax] = stepPair(kEffectTime, value, rng);
+        fx.globalPower = rollValue(fxRanges::power, value, rng, Effects::kPowerMin, Effects::kPowerMax);
+        fx.globalChance = rollValue(fxRanges::chance, value, rng, Effects::kChanceMin, Effects::kChanceMax);
+        const auto [beatMin, beatMax] =
+            rollPair(fxRanges::timeMin, fxRanges::timeMax, value, rng, Effects::kBeatMin, Effects::kBeatMax);
         fx.beatMin = beatMin;
         fx.beatMax = beatMax;
     }
@@ -83,13 +77,15 @@ ChaosRoll rollChaos(Controls& controls, Rng& rng) {
         double* const chances[] = {&fx.delayChance, &fx.reverbChance, &fx.reverseChance, &fx.filterChance,
                                    &fx.flangerChance, &fx.tranceChance, &fx.shiftChance};
         for (int i = 0; i < 7; ++i) {
-            *powers[i] = std::min(chaosValue(kPower, value, rng.nextFloat()), Effects::kPowerMax);
-            const double chance = chaosValue(kChance, value, rng.nextFloat());
+            *powers[i] = rollValue(fxRanges::effectPower, value, rng, Effects::kPowerMin, Effects::kPowerMax);
+            const double chance = rollValue(fxRanges::effectChance, value, rng, Effects::kChanceMin, Effects::kChanceMax);
             roll.regenerateEffects = roll.regenerateEffects || chance != *chances[i];
             *chances[i] = chance;
         }
     }
     BeatRepeatSettings& repeat = controls.repeat;
+    namespace repeatRanges = chaosRanges::beatRepeat;
+    using Repeat = BeatRepeatSettings;
     if (chaos.on(ChaosGroup::RepeatOn)) {
         repeat.enabled = coin(rng);
     }
@@ -99,22 +95,24 @@ ChaosRoll rollChaos(Controls& controls, Rng& rng) {
         }
     }
     if (chaos.on(ChaosGroup::RepeatParams)) {
-        const auto [sizeMin, sizeMax] = stepPair(kRepeatSize, value, rng);
+        const auto [sizeMin, sizeMax] =
+            rollPair(repeatRanges::sizeMin, repeatRanges::sizeMax, value, rng, Repeat::kSizeMin, Repeat::kSizeMax);
         repeat.sizeMin = sizeMin;
         repeat.sizeMax = sizeMax;
-        repeat.mix = chaosValue(kRepeatMix, value, rng.nextFloat());
-        repeat.length = chaosStep(kRepeatLength, value, rng.nextFloat());
-        const double chance = chaosValue(kRepeatChance, value, rng.nextFloat());
+        repeat.mix = rollValue(repeatRanges::mix, value, rng, Repeat::kMixMin, Repeat::kMixMax);
+        repeat.length = rollStep(repeatRanges::length, value, rng, Repeat::kLengthMin, Repeat::kLengthMax);
+        const double chance = rollValue(repeatRanges::chance, value, rng, Repeat::kChanceMin, Repeat::kChanceMax);
         roll.regenerateRepeat = chance != repeat.chance;
         repeat.chance = chance;
     }
+    namespace timeRanges = chaosRanges::chaos;
     if (chaos.on(ChaosGroup::Value)) {
-        chaos.value = chaosValue(kChaosValue, value, rng.nextFloat());
+        chaos.value = rollValue(timeRanges::value, value, rng, 0, 1);
     }
     if (chaos.on(ChaosGroup::Time)) {
-        chaos.beatSize = chaosStep(kBeatSize, value, rng.nextFloat());
-        chaos.loopSize = chaosStep(kLoopSize, value, rng.nextFloat());
-        chaos.sliceSize = chaosStep(kSliceSize, value, rng.nextFloat());
+        chaos.beatSize = rollStep(timeRanges::beatSize, value, rng, ChaosSettings::kBeatSizeMin, ChaosSettings::kBeatSizeMax);
+        chaos.loopSize = rollStep(timeRanges::loopSize, value, rng, ChaosSettings::kLoopSizeMin, ChaosSettings::kLoopSizeMax);
+        chaos.sliceSize = rollStep(timeRanges::sliceSize, value, rng, ChaosSettings::kSliceSizeMin, ChaosSettings::kSliceSizeMax);
     }
     return roll;
 }

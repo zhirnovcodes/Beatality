@@ -1,0 +1,93 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "ominous vox pad 80 bpm",
+  "bpm": 20,
+  "loop": 16,
+  "slices": -1,
+  "attack": 4,
+  "volume": 1,
+  "panMin": -0.49,
+  "panMax": 0.49,
+  "bpmSync": false,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 0.5,
+    "globalChance": 0.49,
+    "beatMin": -3,
+    "beatMax": -1,
+    "delayPower": 1,
+    "delayChance": 1,
+    "reverbPower": 1,
+    "reverbChance": 0.61,
+    "reversePower": 1,
+    "reverseChance": 0.48,
+    "filterPower": 1,
+    "filterChance": 0.24,
+    "flangerPower": 1,
+    "flangerChance": 0.45,
+    "trancePower": 1,
+    "tranceChance": 0,
+    "shiftPower": 1,
+    "shiftChance": 0
+  },
+  "repeat": {
+    "enabled": true,
+    "sizeMin": -2,
+    "sizeMax": -1,
+    "length": -1,
+    "chance": 0.25,
+    "mix": 0.55,
+    "positions": [
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "chaos": {
+    "trigger": "slices",
+    "value": 0,
+    "beatSize": -1,
+    "loopSize": 4,
+    "sliceSize": 1,
+    "groups": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "orgolorg acapella.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "grain",
+      "bpm": 115,
+      "warpParam": 0.61
+    }
+  ]
+}

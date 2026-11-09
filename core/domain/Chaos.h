@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ChaosRanges.h"
 #include "Controls.h"
 #include "Rng.h"
 #include "SliceGrid.h"
@@ -7,14 +8,6 @@
 #include <cstdint>
 
 namespace bt {
-
-// A knob's range at chaos 0 and its range at chaos 1. The chaos value blends each end between them.
-struct ChaosRange {
-    double low0;
-    double high0;
-    double low1;
-    double high1;
-};
 
 // roll is in [0, 1). Uniform between the two blended ends.
 double chaosValue(const ChaosRange& range, double value, float roll);
@@ -30,9 +23,9 @@ struct ChaosRoll {
     bool regenerateRepeat = false;
 };
 
-// Rolls every group that is on into controls, with the chaos value it had before the roll.
+// Rolls every group that is on into controls, from ChaosRanges.h, with the chaos value it had before the roll.
 // Groups that are off keep their knobs. Randomize always writes a new sequence.
-// The on/off knobs are an even chance whatever the value.
+// The on/off knobs are an even chance whatever the value. A min above its max is swapped.
 ChaosRoll rollChaos(Controls& controls, Rng& rng);
 
 // Decides when chaos rolls, and rolls. It keeps no note or button state: the engine asks at the moment.

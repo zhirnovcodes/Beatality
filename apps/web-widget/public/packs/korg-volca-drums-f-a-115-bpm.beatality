@@ -1,0 +1,191 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "korg volca drums F# A# 115 BPM",
+  "bpm": 120,
+  "loop": 8,
+  "slices": 0,
+  "attack": 8,
+  "volume": 1,
+  "panMin": -0.09,
+  "panMax": 0.15,
+  "bpmSync": true,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 0.55,
+    "globalChance": 0.22,
+    "beatMin": -2,
+    "beatMax": 0,
+    "delayPower": 1,
+    "delayChance": 0.47,
+    "reverbPower": 0.57,
+    "reverbChance": 0.34,
+    "reversePower": 1,
+    "reverseChance": 0.43,
+    "filterPower": 1,
+    "filterChance": 0.36,
+    "flangerPower": 1,
+    "flangerChance": 0,
+    "trancePower": 1,
+    "tranceChance": 0.34,
+    "shiftPower": 1,
+    "shiftChance": 0
+  },
+  "repeat": {
+    "enabled": true,
+    "sizeMin": -2,
+    "sizeMax": 0,
+    "length": -1,
+    "chance": 0.26,
+    "mix": 0.27,
+    "positions": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "chaos": {
+    "trigger": "loop",
+    "value": 0,
+    "beatSize": -1,
+    "loopSize": 2,
+    "sliceSize": 0,
+    "groups": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "korg volca drums 115 bpm F_ A_.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "beat",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "korg volca drums 115 bpm F_ A_.wav"
+      },
+      "start": 0.12499996948242932,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "beat",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "korg volca drums 115 bpm F_ A_.wav"
+      },
+      "start": 0.24999993896485864,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "beat",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "korg volca drums 115 bpm F_ A_.wav"
+      },
+      "start": 0.3749999084472879,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "beat",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "korg volca drums 115 bpm F_ A_.wav"
+      },
+      "start": 0.4999998779297173,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "beat",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "korg volca drums 115 bpm F_ A_.wav"
+      },
+      "start": 0.6249998474121466,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "beat",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "korg volca drums 115 bpm F_ A_.wav"
+      },
+      "start": 0.7499998168945758,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "beat",
+      "bpm": 115,
+      "warpParam": 0.5
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "korg volca drums 115 bpm F_ A_.wav"
+      },
+      "start": 0.8749997863770053,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "beat",
+      "bpm": 115,
+      "warpParam": 0.5
+    }
+  ]
+}

@@ -50,5 +50,21 @@
   {
     "name": "swarog dnb 180 bpm",
     "file": "swarog-dnb-180-bpm.beatality"
+  },
+  {
+    "name": "korg sample perc 115 bpm",
+    "file": "korg-sample-perc-115-bpm.beatality"
+  },
+  {
+    "name": "ominous bass pad 80 bpm",
+    "file": "ominous-bass-pad-80-bpm.beatality"
+  },
+  {
+    "name": "ominous vox pad 80 bpm",
+    "file": "ominous-vox-pad-80-bpm.beatality"
+  },
+  {
+    "name": "korg volca drums F# A# 115 BPM",
+    "file": "korg-volca-drums-f-a-115-bpm.beatality"
   }
 ]
