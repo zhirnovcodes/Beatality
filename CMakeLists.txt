@@ -52,6 +52,7 @@ add_library(beatality_slice_engine
     core/engine/main/BeatRepeat.cpp
     core/engine/main/Clock.cpp
     core/engine/main/Curve.cpp
+    core/engine/main/Interpolator.cpp
     core/engine/main/Effect.cpp
     core/engine/main/SlicePlayer.cpp
     core/engine/main/EffectsBank.cpp

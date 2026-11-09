@@ -63,6 +63,7 @@ Frame Delay::apply(const SliceReader& slice, const ClockSettings& settings, cons
     const float dryR = dry.r;
     float echoL = 0.0f;
     float echoR = 0.0f;
+    float open = 1.0f;
     const bool arrived = delay > 0 && filled_ >= delay;
     if (arrived) {
         int read = write_ - delay;
@@ -71,9 +72,15 @@ Frame Delay::apply(const SliceReader& slice, const ClockSettings& settings, cons
         }
         echoL = left_[static_cast<std::size_t>(read)];
         echoR = right_[static_cast<std::size_t>(read)];
+        if (attacked_ < attack) {
+            open = static_cast<float>(attacked_) / static_cast<float>(attack);
+            ++attacked_;
+        }
     }
-    float inL = dryL + echoL * feedback;
-    float inR = dryR + echoR * feedback;
+    // The feedback takes the echo as it opens. A raw echo would write its first sample as a step into the line,
+    // and every later repeat would play that step as a click.
+    float inL = dryL + echoL * open * feedback;
+    float inR = dryR + echoR * open * feedback;
     if (inL > -1.0e-15f && inL < 1.0e-15f) {
         inL = 0.0f;
     }
@@ -92,11 +99,6 @@ Frame Delay::apply(const SliceReader& slice, const ClockSettings& settings, cons
     float delayedL = dryL;
     float delayedR = dryR;
     if (arrived) {
-        float open = 1.0f;
-        if (attacked_ < attack) {
-            open = static_cast<float>(attacked_) / static_cast<float>(attack);
-            ++attacked_;
-        }
         delayedL = dryL + (echoL - dryL) * open;
         delayedR = dryR + (echoR - dryR) * open;
     }

@@ -76,7 +76,9 @@ Frame BeatRepeat::render(Frame in, const ClockSettings& settings, const Clock& c
             fading_ = false;
         }
     }
-    const float mix = static_cast<float>(repeat.mix);
+    mix_.set(static_cast<float>(repeat.mix));
+    mix_.tick(1.0 / settings.sampleRate);
+    const float mix = mix_.get();
     return {in.l + (wet.l - in.l) * mix, in.r + (wet.r - in.r) * mix};
 }
 

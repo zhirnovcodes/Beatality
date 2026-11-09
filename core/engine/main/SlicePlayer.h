@@ -4,6 +4,7 @@
 #include "Curve.h"
 #include "Effects.h"
 #include "EffectsBank.h"
+#include "Interpolator.h"
 #include "SampleBank.h"
 #include "Sequence.h"
 
@@ -53,12 +54,11 @@ private:
     double panMax_ = 0;
     int at_ = 0;
     bool running_ = false;
-    // Effect knobs move toward their targets over about 5 ms, so a knob change does not step the sample.
-    // wet_ is 1 while the slice plays its effect and 0 while it plays dry.
-    float smooth_ = 0;
-    float localPower_ = 0;
-    float globalPower_ = 0;
-    float wet_ = 0;
+    // Effect knobs move to new values over Interpolator::kChangeSec, so a change does not step the sample.
+    Interpolator localPower_{};
+    Interpolator globalPower_{};
+    // 1 while the slice plays its effect, 0 while it plays dry.
+    Interpolator wet_{};
 };
 
 } // namespace bt

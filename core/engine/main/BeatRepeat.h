@@ -3,6 +3,7 @@
 #include "BeatRepeatSettings.h"
 #include "Clock.h"
 #include "Curve.h"
+#include "Interpolator.h"
 #include "RepeatSequence.h"
 #include "SliceReader.h"
 
@@ -49,6 +50,8 @@ private:
     int fadeElapsed_ = 0;
     int fadeLength_ = 1;
     Curve fade_{};
+    // The mix moves to a new value over Interpolator::kChangeSec.
+    Interpolator mix_{1.0f};
 };
 
 } // namespace bt
