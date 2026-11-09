@@ -48,6 +48,14 @@
       <span class="name beat">SIZE <b class="value"></b></span>
       <div class="slider beat"><div class="track"></div><div class="thumb"></div>
         <input type="range" id="track-beat" min="0" max="6" step="1" value="3" aria-label="Beat"></div>
+
+      <!-- SPLIT BY LOOP SIZE (design entries 108, 109, there named SLICE): click it and SURE? + OK / CANCEL take its place; either brings SPLIT back. -->
+      <div class="split-row" id="split-row" data-state="idle">
+        <button type="button" class="ss-btn split" id="track-split">SPLIT BY LOOP SIZE</button>
+        <span class="split-ask" aria-hidden="true">SURE?</span>
+        <button type="button" class="ss-btn ok" id="split-ok">OK</button>
+        <button type="button" class="ss-btn cancel" id="split-cancel">CANCEL</button>
+      </div>
     </fieldset>
     </div>
     <div class="case"></div>
@@ -288,6 +296,7 @@
       <button type="button" class="round-btn clear" id="clear">Clear</button>
       <button type="button" class="round-btn load" id="load-bank">Load</button>
       <button type="button" class="round-btn save" id="save">Save</button>
+      <button type="button" class="round-btn selectall" id="select-all">Select all</button>
 
       <!-- bank picker buttons (LOAD) -->
       <div class="bank-panel" id="bank-panel">

@@ -302,11 +302,13 @@
 .beatality-skin .round-btn.clear  { left: 106px; background-image: url("../shapes/btn_clear.png"); }
 .beatality-skin .round-btn.load   { left: 152px; background-image: url("../shapes/btn_load.png"); }
 .beatality-skin .round-btn.save   { left: 198px; background-image: url("../shapes/btn_save.png"); }
+.beatality-skin .round-btn.selectall { left: 244px; background-image: url("../shapes/btn_selectall.png"); }   /* design entry 110 */
 .beatality-skin .round-btn.append:active { background-image: url("../shapes/btn_append_pressed.png"); }
 .beatality-skin .round-btn.remove:active { background-image: url("../shapes/btn_remove_pressed.png"); }
 .beatality-skin .round-btn.clear:active  { background-image: url("../shapes/btn_clear_pressed.png"); }
 .beatality-skin .round-btn.load:active   { background-image: url("../shapes/btn_load_pressed.png"); }
 .beatality-skin .round-btn.save:active   { background-image: url("../shapes/btn_save_pressed.png"); }
+.beatality-skin .round-btn.selectall:active { background-image: url("../shapes/btn_selectall_pressed.png"); }
 .beatality-skin .round-btn:disabled { cursor: default; }
 /* greyed versions (btn_<id>_disabled.png) */
 .beatality-skin .round-btn.append:disabled { background-image: url("../shapes/btn_append_disabled.png"); }
@@ -314,6 +316,7 @@
 .beatality-skin .round-btn.clear:disabled  { background-image: url("../shapes/btn_clear_disabled.png"); }
 .beatality-skin .round-btn.load:disabled   { background-image: url("../shapes/btn_load_disabled.png"); }
 .beatality-skin .round-btn.save:disabled   { background-image: url("../shapes/btn_save_disabled.png"); }
+.beatality-skin .round-btn.selectall:disabled { background-image: url("../shapes/btn_selectall_disabled.png"); }
 .beatality-skin .missing-label {
   position: absolute;
   inset: 0;
@@ -330,7 +333,7 @@
 /* file name of the selected sample: short convex panel right of the buttons (bottom_panel.png, 234 x 32 at x 236, y 201;
    top level with the buttons' tops, right end at x 470 like the sample list screen) */
 .beatality-skin .track-name {
-  position: absolute; left: 236px; top: 201px; width: 234px; height: 32px; box-sizing: border-box; padding: 0 14px;
+  position: absolute; left: 286px; top: 201px; width: 184px; height: 32px; box-sizing: border-box; padding: 0 14px;   /* design entry 110: was x 236, 234 wide */
   background: url("../shapes/bottom_panel.png") 0 0 / 100% 100% no-repeat;
   font: 700 12px/32px Consolas, "Courier New", monospace; color: #0b1d02;   /* keeps the file name's case */
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -509,16 +512,16 @@
 .beatality-skin .bank-list > li[aria-selected="true"] { background: #050d02; color: #f0ff9a; }
 
 .beatality-skin .bank-panel {
-  display: none; position: absolute; left: 236px; top: 201px; width: 234px; height: 32px;
+  display: none; position: absolute; left: 286px; top: 201px; width: 184px; height: 32px;
   background: url("../shapes/bottom_panel.png") 0 0 / 100% 100% no-repeat;
-  align-items: center; justify-content: center; gap: 6px;
+  align-items: center; justify-content: center; gap: 4px;
 }
 .beatality-skin.picking-bank .bank-panel { display: flex; }
 .beatality-skin .bank-btn {
-  height: 22px; margin: 0; padding: 0 7px; cursor: pointer;
+  height: 22px; margin: 0; padding: 0 5px; cursor: pointer; white-space: nowrap;   /* design entry 110: 12 px, tighter, to fit the narrower panel */
   border: 1px solid #c9d0b4; outline: 1px solid #020600; border-radius: 0;
   background: #030a01; color: #d6ff3c;
-  font: 700 13px/20px Consolas, "Courier New", monospace; letter-spacing: 0.5px;
+  font: 700 12px/20px Consolas, "Courier New", monospace; letter-spacing: 0.3px;
 }
 .beatality-skin .bank-btn:active { background: #0f2a04; }
 .beatality-skin .bank-btn:disabled { cursor: default; background: #6f7166; border-color: #8a8c80; color: #d2d98a; }
@@ -935,7 +938,7 @@
    left of their controls. Bigger than the old strip: yellow pin of the top sliders, 11 px text, bigger fields.
    Left column x 16..113, right x 122..222. Rows: VOL | PAN; ST. | start time; LEN. | LOOP; WARPING; TYPE < > | BPM; SIZE value | slider. */
 .beatality-skin .ss-drawer {
-  position: absolute; left: 486px; top: 440px; width: 260px; height: 160px; z-index: 0;
+  position: absolute; left: 486px; top: 427px; width: 260px; height: 186px; z-index: 0;
   transform: translateX(-226px); transition: transform 0.25s ease;
 }
 .beatality-skin .ss-drawer.open { transform: none; }
@@ -950,13 +953,13 @@
 .beatality-skin .ss-drawer > .content { position: absolute; inset: 0; transition: visibility 0s; }
 .beatality-skin .ss-drawer:not(.open) > .content { visibility: hidden; transition: visibility 0s 0.25s; }
 .beatality-skin .ss-drawer-btn {
-  position: absolute; left: 236px; top: 0; width: 24px; height: 160px; margin: 0; padding: 0; border: 0;
+  position: absolute; left: 236px; top: 0; width: 24px; height: 186px; margin: 0; padding: 0; border: 0;
   font-size: 0; color: transparent; cursor: pointer; background: url("../shapes/ss_drawer_btn.png") 0 0 / 100% 100% no-repeat;
 }
 .beatality-skin .ss-drawer-btn:active { background-image: url("../shapes/ss_drawer_btn_pressed.png"); }
 .beatality-skin .ss-drawer-btn:focus-visible { outline: 1px dotted #2b2f2d; outline-offset: -4px; }
 
-.beatality-skin .ss-drawer .sample-panel { left: 0; top: 0; width: 260px; height: 160px; }
+.beatality-skin .ss-drawer .sample-panel { left: 0; top: 0; width: 260px; height: 186px; }
 /* captions: black bars, Silkscreen 11 px, lime (as .chaos-cap) */
 .beatality-skin .ss-drawer .sample-panel .name {
   height: 13px; padding: 0 3px; box-sizing: border-box; background: #0b1d02; color: #d8ff20; text-shadow: none; text-align: left;
@@ -1010,3 +1013,30 @@
 .beatality-skin .open > .chaos-drawer-btn::after,
 .beatality-skin .open > .br-drawer-btn::after,
 .beatality-skin .open > .ss-drawer-btn::after { opacity: 0; }
+
+
+/* SPLIT BY LOOP SIZE (design entries 108, 109, there named SLICE): bottom row of the SAMPLE SETTINGS drawer, as wide as the WARPING bar (x 16..221), 20 tall.
+   Dark raised button with lime text (Silkscreen 11 px, like the captions); pushed in while held.
+   Click SPLIT: SURE? + OK / CANCEL take its place (.split-row data-state="confirm"); either brings SPLIT back. */
+.beatality-skin .ss-drawer .split-row { position: absolute; left: 16px; top: 154px; width: 205px; height: 20px; display: flex; gap: 5px; }
+.beatality-skin .ss-drawer .ss-btn {
+  flex: 1; height: 20px; margin: 0; padding: 0; cursor: pointer; border: 1px solid #020600;
+  background: linear-gradient(#1c3a08, #0b1d02 55%, #061200); color: #d8ff20;
+  font: 400 11px/18px "Silkscreen", monospace; letter-spacing: 0.5px;
+  box-shadow: inset 1px 1px 0 rgba(200, 255, 80, 0.35), inset -1px -1px 0 rgba(0, 0, 0, 0.6), 1px 2px 2px rgba(0, 0, 0, 0.45);
+}
+.beatality-skin .ss-drawer .ss-btn:active {
+  background: linear-gradient(#061200, #0b1d02 50%, #13290a); color: #c8ef10; line-height: 20px;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.8), inset -1px -1px 0 rgba(200, 255, 80, 0.15);
+}
+.beatality-skin .ss-drawer .ss-btn:disabled { cursor: default; opacity: 0.4; }
+.beatality-skin .ss-drawer .ss-btn:focus-visible { outline: 1px dotted #d8ff20; outline-offset: -4px; }
+/* SURE?: caption left of OK / CANCEL while confirming, black bar like the other captions */
+.beatality-skin .ss-drawer .split-ask {
+  flex: none; align-self: center; height: 13px; padding: 0 3px; box-sizing: border-box; background: #0b1d02; color: #d8ff20;
+  font: 400 11px/13px "Silkscreen", monospace; letter-spacing: -0.5px; white-space: nowrap;
+}
+.beatality-skin .ss-drawer .split-row[data-state="idle"] .split-ask,
+.beatality-skin .ss-drawer .split-row[data-state="idle"] .ss-btn.ok,
+.beatality-skin .ss-drawer .split-row[data-state="idle"] .ss-btn.cancel,
+.beatality-skin .ss-drawer .split-row[data-state="confirm"] .ss-btn.split { display: none; }

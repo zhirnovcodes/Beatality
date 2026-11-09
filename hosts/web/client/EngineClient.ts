@@ -306,6 +306,50 @@ export class EngineClient {
         return decoded.length
     }
 
+    // Splits each listed track's file from its start to its end into LOOP-long pieces, whatever its length. The track
+    // itself is the first piece and is left as it is. Each later piece is appended: the same audio and file, a later start,
+    // length 1, and the source's loop, volume, pan, and warp. A last piece shorter than half a LOOP is dropped.
+    // Stops when the bank is full. Returns how many were added.
+    async splitTracks(indices: readonly number[]): Promise<number> {
+        await this.start()
+        const loopBeats = this.latest?.loopBeats ?? 8
+        const sources = this.registry.count
+        let added = 0
+        for (const index of [...indices].sort((a, b) => a - b)) {
+            const wave = index < sources ? this.registry.wave(index) : null
+            const source = this.registry.playAt(index)
+            if (!wave || !source || this.registry.missingAt(index) || wave.samples.length === 0) {
+                continue
+            }
+            const frames = wave.samples.length
+            // One LOOP at the sample's own tempo, in file frames.
+            const chunk = ((loopBeats * 60) / source.bpm) * wave.sampleRate
+            const first = Math.round(Math.min(1, Math.max(0, source.start)) * frames)
+            for (let piece = 1; this.registry.count < TrackRegistry.capacity; piece++) {
+                const at = first + piece * chunk
+                if (frames - at < chunk * 0.5) {
+                    break
+                }
+                const play: SampleSettings = { ...source, start: at / frames, length: 1 }
+                // Every track has its own wave arrays: the page finds a track's row by its samples array.
+                const own = { samples: wave.samples.slice(), right: wave.right.slice(), sampleRate: wave.sampleRate }
+                const id = this.registry.add(this.registry.list()[index], own, false, play, this.registry.fileAt(index))
+                if (id === null || !this.node) {
+                    break
+                }
+                // The audio thread keeps its own copy of every track.
+                const planar = new Float32Array(frames * 2)
+                planar.set(wave.samples, 0)
+                planar.set(wave.right, frames)
+                this.node.port.postMessage({ type: 'append', id, frames, planar }, [planar.buffer])
+                this.node.port.postMessage(trackMessage(this.registry.count - 1, play))
+                added++
+            }
+        }
+        this.emitList()
+        return added
+    }
+
     // Resolves each address, then stops playback and installs the pack.
     // A file path cannot be opened here, so that slot stays empty.
     async loadDocument(doc: PackDocument, openInternal: (id: string) => Promise<File | null>): Promise<void> {

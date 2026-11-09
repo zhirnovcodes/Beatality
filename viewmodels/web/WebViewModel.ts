@@ -83,6 +83,11 @@ export interface ViewActions {
     append: (files: File[]) => void
     remove: (index: number) => void
     clear: () => void
+    // Splits each listed track's file from its start into LOOP-long pieces. The track is the first piece; the later ones
+    // are appended with its settings.
+    split: (indices: readonly number[]) => void
+    // Selects every track in the bank.
+    selectAll: () => void
     randomize: () => void
     // The CHAOS button: one chaos roll in every trigger mode.
     chaos: () => void
@@ -315,6 +320,16 @@ export class WebViewModel {
 
     clear() {
         this.actions?.clear()
+    }
+
+    split(indices: readonly number[]) {
+        if (indices.length > 0) {
+            this.actions?.split(indices)
+        }
+    }
+
+    selectAll() {
+        this.actions?.selectAll()
     }
 
     randomize() {

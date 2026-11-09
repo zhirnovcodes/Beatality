@@ -95,6 +95,8 @@ export class WebPresenter {
             append: (files) => void this.perform(() => this.append(files)),
             remove: (index) => void this.perform(() => this.remove(index)),
             clear: () => void this.perform(() => this.clear()),
+            split: (indices) => void this.perform(() => this.client.splitTracks(indices).then(() => {})),
+            selectAll: () => this.selectAll(),
             randomize: () => void this.perform(() => this.randomize()),
             chaos: () => void this.perform(() => this.client.fireChaos()),
             setBpm: (bpm) => void this.perform(() => this.client.setBpm(bpm)),
@@ -521,6 +523,13 @@ export class WebPresenter {
         } else {
             this.selected = [...this.selected, index]
         }
+        this.markCells(this.columns())
+        this.syncPanel()
+        this.selectionListener(this.selected)
+    }
+
+    private selectAll() {
+        this.selected = this.model.tracks.map((_, index) => index)
         this.markCells(this.columns())
         this.syncPanel()
         this.selectionListener(this.selected)

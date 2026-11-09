@@ -150,6 +150,17 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
             }
             completion(true);
         })
+        .withNativeFunction("split", [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
+            juce::Array<int> indices;
+            if (!args.isEmpty() && args[0].isArray()) {
+                for (const auto& index : *args[0].getArray()) {
+                    indices.add(static_cast<int>(index));
+                }
+            }
+            processor.splitTracks(indices);
+            noteBank(false);
+            completion(true);
+        })
         .withNativeFunction("clear", [this](const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
             const bool ok = processor.clearBank();
             if (ok) {

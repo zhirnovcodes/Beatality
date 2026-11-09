@@ -3,6 +3,9 @@ import type { WebViewModel } from '../../../viewmodels/web/WebViewModel'
 import './ui/skin/skin.css'
 import './widget.css'
 
+// The bank holds this many samples (TrackRegistry.capacity). SPLIT has no room past it.
+const bankCapacity = 32
+
 export function Widget({
     model,
     grid,
@@ -24,6 +27,8 @@ export function Widget({
     const settingsId = useId()
     const [bankIndex, setBankIndex] = useState(0)
     const [selection, setSelection] = useState<readonly number[]>([])
+    // SPLIT asks SURE? with OK / CANCEL. Either answer, or another selection, puts SPLIT back.
+    const [splitAsking, setSplitAsking] = useState(false)
     const [dropping, setDropping] = useState(false)
     const skin = useRef<HTMLDivElement>(null)
     const viewportId = useId()
@@ -44,6 +49,7 @@ export function Widget({
 
     useEffect(() => model.subscribe(() => setTick((tick) => tick + 1)), [model])
     useEffect(() => listenSelection(setSelection), [listenSelection])
+    useEffect(() => setSplitAsking(false), [selection])
     useEffect(() => {
         const root = skin.current
         if (!root) {
@@ -288,6 +294,35 @@ export function Widget({
                                 <div className="track" />
                                 <div className="thumb" />
                                 <input type="range" min={0} max={6} step={1} defaultValue={3} aria-label="Beat" />
+                            </div>
+
+                            {/* SPLIT BY LOOP SIZE (design entries 108, 109, there named SLICE): OK splits each selected sample from its start into
+                                LOOP-long pieces of the same file. The sample itself is the first piece; the rest are added to the bank. */}
+                            <div className="split-row" data-state={splitAsking ? 'confirm' : 'idle'}>
+                                <button
+                                    type="button"
+                                    className="ss-btn split"
+                                    disabled={model.tracks.length >= bankCapacity}
+                                    onClick={() => setSplitAsking(true)}
+                                >
+                                    SPLIT BY LOOP SIZE
+                                </button>
+                                <span className="split-ask" aria-hidden="true">
+                                    SURE?
+                                </span>
+                                <button
+                                    type="button"
+                                    className="ss-btn ok"
+                                    onClick={() => {
+                                        setSplitAsking(false)
+                                        model.split(chosen())
+                                    }}
+                                >
+                                    OK
+                                </button>
+                                <button type="button" className="ss-btn cancel" onClick={() => setSplitAsking(false)}>
+                                    CANCEL
+                                </button>
                             </div>
                         </fieldset>
                     </div>
@@ -830,6 +865,14 @@ export function Widget({
                             onClick={() => model.save()}
                         >
                             Save
+                        </button>
+                        <button
+                            type="button"
+                            className="round-btn selectall"
+                            disabled={bankOpen || !model.hasTracks}
+                            onClick={() => model.selectAll()}
+                        >
+                            Select all
                         </button>
                         <input
                             ref={files}

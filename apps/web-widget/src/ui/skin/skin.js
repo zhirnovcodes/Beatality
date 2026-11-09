@@ -454,3 +454,19 @@
     });
   });
 })();
+
+/* SPLIT BY LOOP SIZE (design entries 108, 109, there named SLICE; SAMPLE SETTINGS drawer): #track-split switches #split-row to data-state="confirm" (OK / CANCEL shown);
+   #split-ok or #split-cancel switches it back to "idle". Each fires its own "click"; the row also fires
+   "slice" with detail "start", "ok" or "cancel". */
+(function () {
+  const row = document.getElementById("split-row");
+  if (!row) return;
+  function set(state, what, focus) {
+    row.dataset.state = state;
+    row.dispatchEvent(new CustomEvent("slice", { bubbles: true, detail: what }));
+    const f = document.getElementById(focus); if (f) f.focus();
+  }
+  document.getElementById("track-split").addEventListener("click", function () { set("confirm", "start", "split-ok"); });
+  document.getElementById("split-ok").addEventListener("click", function () { set("idle", "ok", "track-split"); });
+  document.getElementById("split-cancel").addEventListener("click", function () { set("idle", "cancel", "track-split"); });
+})();

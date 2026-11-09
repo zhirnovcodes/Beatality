@@ -46,6 +46,10 @@ public:
     // Message thread. These queue work. They do not move the playhead.
     void appendFiles(const juce::Array<juce::File>& files);
     void removeTrack(int index);
+    // Splits each listed track's file from its start to its end into LOOP-long pieces, whatever its length. The track itself
+    // is the first piece and is left as it is. Each later piece is appended: the same file, a later start, length 1, the same
+    // settings. A last piece shorter than half a LOOP is dropped. Stops when the bank is full.
+    void splitTracks(const juce::Array<int>& indices);
     void removeFirstTrack();
     void randomizeTracks();
     // The CHAOS button: one chaos roll in every trigger mode.

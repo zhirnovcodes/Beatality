@@ -64,6 +64,8 @@ const plays = []
 let pictures = { names: [], rates: [], frames: [], peaks: [] }
 // Rows whose sample controls are on the page. The first is the one WARP steps from.
 let selected = []
+// The selection the SPLIT row was last reset for. Any other selection puts SPLIT back from SURE? / OK / CANCEL.
+let splitSelection = ''
 let epoch = -1
 // Rows sent to the processor for removal, in the order sent: highest first.
 let pendingRemove = []
@@ -211,8 +213,24 @@ function syncCaptions() {
     }
 }
 
+// SPLIT row: 'idle' shows SPLIT BY LOOP SIZE, 'confirm' shows SURE? with OK and CANCEL.
+function setSplitState(value) {
+    const row = document.getElementById('split-row')
+    if (row) {
+        row.dataset.state = value
+    }
+}
+
 function syncButtons() {
     const has = plays.length > 0
+    const selectAll = document.getElementById('select-all')
+    if (selectAll instanceof HTMLButtonElement) {
+        selectAll.disabled = bankOpen || !has
+    }
+    const split = document.getElementById('track-split')
+    if (split instanceof HTMLButtonElement) {
+        split.disabled = !state.canAppend
+    }
     const append = document.getElementById('append')
     const remove = document.getElementById('remove')
     const clear = document.getElementById('clear')
@@ -374,6 +392,11 @@ function syncPanel() {
     const panel = document.getElementById('selected-sample')
     if (panel instanceof HTMLFieldSetElement) {
         panel.disabled = selected.length === 0
+    }
+    const selection = selected.join(',')
+    if (selection !== splitSelection) {
+        splitSelection = selection
+        setSplitState('idle')
     }
     syncWarpPanel()
     const duration = selected.length > 0 ? durationSec(selected[0]) : 0
@@ -617,7 +640,7 @@ function onBank(bank) {
     } else if (names.length >= plays.length && plays.every((play, index) => play.name === names[index])) {
         pendingRemove = []
         for (let index = plays.length; index < names.length; index++) {
-            plays.push(freshPlay(names[index]))
+            plays.push(playFromBank(names[index], bank, index))
         }
     } else {
         pendingRemove = []
@@ -1386,6 +1409,27 @@ function wire() {
             return
         }
         void native('clear')
+    })
+    document.getElementById('select-all')?.addEventListener('click', () => {
+        selected = plays.map((_, index) => index)
+        markRows()
+        syncPanel()
+    })
+    // SPLIT asks SURE? first. OK splits every selected sample, from its start to the end of the file, into LOOP-long pieces.
+    // The sample itself is the first piece and stays as it is; the later pieces are added at the end of the bank.
+    document.getElementById('track-split')?.addEventListener('click', () => {
+        if (selected.length > 0) {
+            setSplitState('confirm')
+        }
+    })
+    document.getElementById('split-ok')?.addEventListener('click', () => {
+        setSplitState('idle')
+        if (selected.length > 0) {
+            void native('split', [...selected].sort((a, b) => a - b))
+        }
+    })
+    document.getElementById('split-cancel')?.addEventListener('click', () => {
+        setSplitState('idle')
     })
     document.getElementById('load-bank')?.addEventListener('click', () => {
         if (bankOpen) {

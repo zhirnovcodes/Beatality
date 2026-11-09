@@ -20,7 +20,8 @@
 
 namespace {
 
-constexpr int kQueueCapacity = 64;
+// Splitting into an empty bank pushes three slots for each of up to 31 new tracks in one go.
+constexpr int kQueueCapacity = 128;
 
 std::uint32_t packView(int count, int index, bool playing) {
     return static_cast<std::uint32_t>(count) | (static_cast<std::uint32_t>(index + 1) << 8) |
@@ -1363,6 +1364,101 @@ void Processor::removeTrack(int index) {
     names.remove(index);
     if (index >= 0 && index < static_cast<int>(pictures.size())) {
         pictures.erase(pictures.begin() + static_cast<std::size_t>(index));
+    }
+    error.clear();
+}
+
+void Processor::splitTracks(const juce::Array<int>& indices) {
+    const double rate = impl->publishedRate.load(std::memory_order_relaxed);
+    const int loopBeats = loopParam->get();
+    const int sources = names.size();
+    for (const int index : indices) {
+        if (!canAppend()) {
+            break;
+        }
+        if (index < 0 || index >= sources || index >= static_cast<int>(pictures.size())) {
+            continue;
+        }
+        const TrackPicture source = pictures[static_cast<std::size_t>(index)];
+        const juce::String name = names[index];
+        if (source.missing || source.frames <= 0 || source.rate <= 0.0) {
+            continue;
+        }
+        // One LOOP at the sample's own tempo, in file frames.
+        const double chunk = static_cast<double>(loopBeats) * 60.0 / source.bpm * source.rate;
+        const double first = std::round(std::clamp(source.start, 0.0, 1.0) * source.frames);
+
+        // The file is decoded once; each piece gets its own copy of it.
+        std::unique_ptr<juce::AudioFormatReader> reader;
+        if (source.internal) {
+            int bytes = 0;
+            const char* data = resourceBytes(source.address, bytes);
+            if (data != nullptr && bytes > 0) {
+                auto stream = std::make_unique<juce::MemoryInputStream>(data, static_cast<std::size_t>(bytes), false);
+                reader.reset(impl->formats.createReaderFor(std::move(stream)));
+            }
+        } else {
+            reader.reset(impl->formats.createReaderFor(juce::File(source.address)));
+        }
+        if (reader == nullptr) {
+            continue;
+        }
+        AppendPayload* decoded = payloadFromReader(*reader, rate, 0);
+        if (decoded == nullptr) {
+            continue;
+        }
+        for (int piece = 1; canAppend(); ++piece) {
+            const double at = first + piece * chunk;
+            if (static_cast<double>(source.frames) - at < chunk * 0.5) {
+                break;
+            }
+            auto* payload = new AppendPayload;
+            payload->id = impl->nextId.fetch_add(1, std::memory_order_relaxed);
+            payload->sourceRate = decoded->sourceRate;
+            payload->sourceFrames = decoded->sourceFrames;
+            payload->sourceLeft = new float[static_cast<std::size_t>(decoded->sourceFrames)];
+            payload->sourceRight = new float[static_cast<std::size_t>(decoded->sourceFrames)];
+            std::copy(decoded->sourceLeft, decoded->sourceLeft + decoded->sourceFrames, payload->sourceLeft);
+            std::copy(decoded->sourceRight, decoded->sourceRight + decoded->sourceFrames, payload->sourceRight);
+            if (decoded->deviceLeft != nullptr) {
+                payload->deviceFrames = decoded->deviceFrames;
+                payload->deviceLeft = new float[static_cast<std::size_t>(decoded->deviceFrames)];
+                payload->deviceRight = new float[static_cast<std::size_t>(decoded->deviceFrames)];
+                std::copy(decoded->deviceLeft, decoded->deviceLeft + decoded->deviceFrames, payload->deviceLeft);
+                std::copy(decoded->deviceRight, decoded->deviceRight + decoded->deviceFrames, payload->deviceRight);
+            }
+
+            TrackPicture picture = source;
+            picture.start = at / source.frames;
+            picture.length = 1;
+
+            CommandQueue::Slot append;
+            append.kind = CommandQueue::Slot::Kind::Append;
+            append.append = payload;
+            if (!impl->queue.push(append)) {
+                freePayload(payload);
+                break;
+            }
+            CommandQueue::Slot warp;
+            warp.kind = CommandQueue::Slot::Kind::Warp;
+            warp.index = names.size();
+            warp.number = picture.warp;
+            warp.first = picture.bpm;
+            warp.second = picture.warpParam;
+            impl->queue.push(warp);
+            CommandQueue::Slot track;
+            track.kind = CommandQueue::Slot::Kind::Track;
+            track.index = names.size();
+            track.first = picture.start;
+            track.second = picture.length;
+            track.third = picture.volume;
+            track.fourth = picture.pan;
+            track.flag = picture.loop;
+            impl->queue.push(track);
+            names.add(name);
+            pictures.push_back(std::move(picture));
+        }
+        freePayload(decoded);
     }
     error.clear();
 }
