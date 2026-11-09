@@ -6,8 +6,10 @@
 namespace bt {
 
 // Knobs for this sample. slot is the slice the voice is playing.
+// power is the effect's own power times the global power. localPower is the effect's own power alone.
 struct EffectParams {
     float power = 0;
+    float localPower = 0;
     double beats = 1;
     int slot = 0;
 };

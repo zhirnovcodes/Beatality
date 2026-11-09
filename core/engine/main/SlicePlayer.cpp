@@ -1,5 +1,7 @@
 #include "SlicePlayer.h"
 
+#include <cmath>
+
 namespace bt {
 
 namespace {
@@ -16,7 +18,11 @@ double unit(double value) {
 
 } // namespace
 
-SlicePlayer::SlicePlayer(double sampleRate, std::uint64_t seed) : bank_(sampleRate, seed) { curve_.stop(0); }
+SlicePlayer::SlicePlayer(double sampleRate, std::uint64_t seed) : bank_(sampleRate, seed) {
+    curve_.stop(0);
+    // One-pole step for a 5 ms time constant.
+    smooth_ = static_cast<float>(1.0 - std::exp(-1.0 / (0.005 * sampleRate)));
+}
 
 void SlicePlayer::setSlice(const SampleSettings& play, const WarpSettings& warp, int slot, EffectId effect, float roll, float panRoll, float beatRoll) {
     play_ = play;
@@ -71,33 +77,55 @@ void SlicePlayer::render(const SampleBuffer& slice, const ClockSettings& setting
     if (!curve_.fadingOut()) {
         curve_.setLength(clock.fadeFrames(settings, grid, attackMs));
     }
+    // The first sample of a slice takes the knobs as they are. The fade-in covers the start.
+    const bool first = at_ == 0;
     const float gain = curve_.y(at_);
     ++at_;
     const SliceReader reader(slice, play_, warp_, settings, grid, slot_, clock.sliceFrames(settings, grid));
-    Frame sample;
-    if (effects_.enabled && roll_ < effects_.globalChance && effect_ != EffectId::None) {
-        bank_.bind(slot_);
-        double localPower = effects_.reversePower;
-        if (effect_ == EffectId::Reverb) {
-            localPower = effects_.reverbPower;
-        } else if (effect_ == EffectId::Delay) {
-            localPower = effects_.delayPower;
-        } else if (effect_ == EffectId::Filter) {
-            localPower = effects_.filterPower;
-        } else if (effect_ == EffectId::Flanger) {
-            localPower = effects_.flangerPower;
-        } else if (effect_ == EffectId::Trance) {
-            localPower = effects_.trancePower;
-        } else if (effect_ == EffectId::Shift) {
-            localPower = effects_.shiftPower;
+
+    double localPower = effects_.reversePower;
+    if (effect_ == EffectId::Reverb) {
+        localPower = effects_.reverbPower;
+    } else if (effect_ == EffectId::Delay) {
+        localPower = effects_.delayPower;
+    } else if (effect_ == EffectId::Filter) {
+        localPower = effects_.filterPower;
+    } else if (effect_ == EffectId::Flanger) {
+        localPower = effects_.flangerPower;
+    } else if (effect_ == EffectId::Trance) {
+        localPower = effects_.trancePower;
+    } else if (effect_ == EffectId::Shift) {
+        localPower = effects_.shiftPower;
+    }
+    const float localTarget = static_cast<float>(unit(localPower));
+    const float globalTarget = static_cast<float>(effects_.globalPower);
+    const float wetTarget = effects_.enabled && roll_ < effects_.globalChance && effect_ != EffectId::None ? 1.0f : 0.0f;
+    if (first) {
+        localPower_ = localTarget;
+        globalPower_ = globalTarget;
+        wet_ = wetTarget;
+    } else {
+        localPower_ += (localTarget - localPower_) * smooth_;
+        globalPower_ += (globalTarget - globalPower_) * smooth_;
+        wet_ += (wetTarget - wet_) * smooth_;
+        if (wetTarget == 0.0f && wet_ > 0.0f && wet_ < 1.0e-4f) {
+            // The effect is off for now. If it comes back on this slice, it starts clean.
+            wet_ = 0.0f;
+            bank_.clean();
         }
+    }
+
+    Frame sample = reader.read(clock.localIn(slot_, settings, grid));
+    if (wet_ > 0.0f) {
+        bank_.bind(slot_);
         EffectParams params;
-        params.power = static_cast<float>(unit(localPower * effects_.globalPower));
+        params.power = static_cast<float>(unit(static_cast<double>(localPower_) * static_cast<double>(globalPower_)));
+        params.localPower = localPower_;
         params.beats = effects_.beats(beatRoll_);
         params.slot = slot_;
-        sample = bank_.apply(effect_, reader, settings, clock, grid, params);
-    } else {
-        sample = reader.read(clock.localIn(slot_, settings, grid));
+        const Frame fx = bank_.apply(effect_, reader, settings, clock, grid, params);
+        sample.l = sample.l * (1.0f - wet_) + fx.l * wet_;
+        sample.r = sample.r * (1.0f - wet_) + fx.r * wet_;
     }
 
     const double pan = panMin_ + (static_cast<double>(panRoll_) + 1.0) * 0.5 * (panMax_ - panMin_);

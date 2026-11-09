@@ -53,6 +53,12 @@ private:
     double panMax_ = 0;
     int at_ = 0;
     bool running_ = false;
+    // Effect knobs move toward their targets over about 5 ms, so a knob change does not step the sample.
+    // wet_ is 1 while the slice plays its effect and 0 while it plays dry.
+    float smooth_ = 0;
+    float localPower_ = 0;
+    float globalPower_ = 0;
+    float wet_ = 0;
 };
 
 } // namespace bt

@@ -10,7 +10,8 @@ constexpr double kPi = 3.14159265358979323846;
 constexpr float kWidthHz = 1000.0f;
 
 // Power 0 is dry. Power 1 replaces the sample with the shifted one.
-// Width is the deviation in hertz. The sine runs from -1 to 1, so power 1 reaches -1000 and +1000.
+// Width is the deviation in hertz. apply takes the width from the effect's own power, not the global power.
+// The sine runs from -1 to 1, so power 1 reaches -1000 and +1000.
 struct Settings {
     float width;
     float dry;
@@ -98,30 +99,46 @@ Frame Shift::apply(const SliceReader& slice, const ClockSettings& clockSettings,
     const double beats = params.beats;
     const double sampleRate = clockSettings.sampleRate;
     const double bpm = clockSettings.bpm;
+    // The mix follows power, the effect's power times the global power. The width follows the effect's own power only.
     const Settings settings = settingsFor(power);
+    const float width = settingsFor(params.localPower).width;
     const double cycle = beats * sampleRate * 60.0 / bpm;
 
-    const Frame dry = slice.read(clock.localIn(params.slot, clockSettings, grid));
+    const int local = clock.localIn(params.slot, clockSettings, grid);
+    const Frame dry = slice.read(local);
     const float dryL = dry.l;
     const float dryR = dry.r;
     if (armed_) {
         // Each slice starts the LFO at 90, 180, or 270 degrees.
         phase_ = 0.25 * static_cast<double>(1 + rng_.nextInt(3));
+        // The line runs kDelay frames ahead of the dry frame, so the in-phase tap is this frame.
+        // Fill it with the frames before the one this call writes, so the wet path starts full.
+        for (int n = 1; n < kTaps; ++n) {
+            int index = write_ - n;
+            if (index < 0) {
+                index += kTaps;
+            }
+            const Frame past = slice.read(local + kDelay - n);
+            left_[index] = past.l;
+            right_[index] = past.r;
+        }
         armed_ = false;
     }
+    // The newest frame in the line. The wet path's delay is kDelay, so the output lines up with the dry frame.
+    const Frame ahead = slice.read(local + kDelay);
     // One beat is one cycle. The sine is the shift, from -width to +width.
     const double lfo = std::sin(phase_ * 2.0 * kPi);
     phase_ += 1.0 / cycle;
     phase_ -= std::floor(phase_);
 
-    osc_ += lfo * static_cast<double>(settings.width) / sampleRate;
+    osc_ += lfo * static_cast<double>(width) / sampleRate;
     osc_ -= std::floor(osc_);
     const double angle = osc_ * 2.0 * kPi;
     const double cosine = std::cos(angle);
     const double sine = std::sin(angle);
 
-    const float wetL = channel(left_, dryL, cosine, sine);
-    const float wetR = channel(right_, dryR, cosine, sine);
+    const float wetL = channel(left_, ahead.l, cosine, sine);
+    const float wetR = channel(right_, ahead.r, cosine, sine);
     if (++write_ >= kTaps) {
         write_ = 0;
     }
