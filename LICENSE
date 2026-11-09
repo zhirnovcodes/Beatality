@@ -1,0 +1,44 @@
+Beatality
+Copyright (c) 2026 IvanCodes (Ivan Zhirnov). All rights reserved.
+
+This repository contains code under two different licenses.
+
+1. Open source (MIT License)
+
+   core/    the audio engine, domain logic and engine contract
+   tests/   the engine tests
+
+   These directories are licensed under the MIT License. See core/LICENSE
+   and tests/LICENSE.
+
+2. Proprietary (all rights reserved)
+
+   Everything else in this repository, including but not limited to:
+
+   hosts/        the VST3 plugin host and the web host
+   apps/         the web widget, its user interface, skins, fonts,
+                 artwork, presets, packs and samples
+   presenters/
+   viewmodels/
+   views/
+   ui/
+   Production/
+   build scripts and configuration outside core/ and tests/
+
+   This code and these assets are the property of IvanCodes (Ivan Zhirnov).
+   They are made visible for reference only. No license is granted to use,
+   copy, modify, merge, publish, distribute, sublicense or sell them, in
+   whole or in part, or to create derivative works from them, without prior
+   written permission from the copyright holder.
+
+   THIS MATERIAL IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
+   CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM IT OR ITS USE.
+
+3. Third-party code
+
+   third_party/ and any bundled third-party fonts or libraries keep their
+   own licenses. JUCE (third_party/JUCE) is licensed by Raw Material
+   Software Limited under its own terms; see that directory.
+
+Contact for permissions: IvanCodes (Ivan Zhirnov)
