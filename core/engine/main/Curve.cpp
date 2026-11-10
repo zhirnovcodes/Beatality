@@ -5,12 +5,12 @@
 namespace bt {
 
 int fadeLength(double sampleRate, double sliceSec, double attackSec) {
-    const int sliceFrames = static_cast<int>(std::llround(sliceSec * sampleRate));
+    const int sliceFrames = static_cast<int>(sliceSec * sampleRate + 0.5);
     if (sliceFrames < 2) {
         return 0;
     }
     const int half = sliceFrames / 2;
-    const long fade = std::lround(attackSec * sampleRate);
+    const long fade = static_cast<long>(attackSec * sampleRate + 0.5);
     const int frames = fade < 1 ? 1 : static_cast<int>(fade);
     return frames < half ? frames : half;
 }

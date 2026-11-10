@@ -15,11 +15,11 @@ int Clock::position(const ClockSettings& settings, const SliceGrid& grid) const 
 }
 
 int Clock::sliceFrames(const ClockSettings& settings, const SliceGrid& grid) const {
-    return static_cast<int>(std::llround(settings.framesPerBeat() * grid.sliceBeats()));
+    return static_cast<int>(settings.framesPerBeat() * grid.sliceBeats() + 0.5);
 }
 
 int Clock::loopFrames(const ClockSettings& settings, const SliceGrid& grid) const {
-    return static_cast<int>(std::llround(settings.framesPerBeat() * static_cast<double>(grid.loopBeats())));
+    return static_cast<int>(settings.framesPerBeat() * static_cast<double>(grid.loopBeats()) + 0.5);
 }
 
 int Clock::fadeFrames(const ClockSettings& settings, const SliceGrid& grid, int attackMs) const {

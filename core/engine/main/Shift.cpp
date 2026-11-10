@@ -39,6 +39,33 @@ Settings settingsFor(float power) {
     return settings;
 }
 
+// One cycle of a sine in kSineSteps steps, plus the first entry again so the last step can interpolate.
+// Filled when the library loads, not on the audio thread.
+constexpr int kSineSteps = 4096;
+
+struct SineTable {
+    float values[kSineSteps + 1];
+
+    SineTable() {
+        for (int i = 0; i <= kSineSteps; ++i) {
+            values[i] = static_cast<float>(std::sin(2.0 * kPi * static_cast<double>(i) / static_cast<double>(kSineSteps)));
+        }
+    }
+};
+
+const SineTable kSine;
+
+// sin(2 pi phase). phase is in turns and may be any value from 0 to 2. Linear interpolation, error about 1e-7.
+float sineAt(double phase) {
+    double position = phase * kSineSteps;
+    if (position >= kSineSteps) {
+        position -= kSineSteps;
+    }
+    const int index = static_cast<int>(position);
+    const float frac = static_cast<float>(position - static_cast<double>(index));
+    return kSine.values[index] + (kSine.values[index + 1] - kSine.values[index]) * frac;
+}
+
 void flush(float& value) {
     if (value > -1.0e-15f && value < 1.0e-15f) {
         value = 0.0f;
@@ -74,17 +101,23 @@ Shift::Shift(double, std::uint64_t seed) : rng_(seed) {
 
 float Shift::channel(float* line, float x, double cosine, double sine) {
     line[write_] = x;
-    double quad = 0.0;
-    for (int n = 0; n < kTaps; ++n) {
-        int index = write_ - n;
-        if (index < 0) {
-            index += kTaps;
-        }
-        quad += kernel_[n] * static_cast<double>(line[index]);
-    }
     int mid = write_ - kDelay;
     if (mid < 0) {
         mid += kTaps;
+    }
+    // Only the odd offsets from the centre are non-zero, and the kernel is odd: kernel_[kDelay + k] == -kernel_[kDelay - k].
+    // So each pair of taps is one multiply on a difference. 32 multiplies instead of 127.
+    double quad = 0.0;
+    for (int k = 1; k <= kDelay; k += 2) {
+        int older = mid - k;
+        if (older < 0) {
+            older += kTaps;
+        }
+        int newer = mid + k;
+        if (newer >= kTaps) {
+            newer -= kTaps;
+        }
+        quad += kernel_[kDelay + k] * (static_cast<double>(line[older]) - static_cast<double>(line[newer]));
     }
     const double inPhase = static_cast<double>(line[mid]);
     // Upward when the sine is positive: the quadrature part is subtracted.
@@ -127,15 +160,14 @@ Frame Shift::apply(const SliceReader& slice, const ClockSettings& clockSettings,
     // The newest frame in the line. The wet path's delay is kDelay, so the output lines up with the dry frame.
     const Frame ahead = slice.read(local + kDelay);
     // One beat is one cycle. The sine is the shift, from -width to +width.
-    const double lfo = std::sin(phase_ * 2.0 * kPi);
+    const double lfo = sineAt(phase_);
     phase_ += 1.0 / cycle;
     phase_ -= std::floor(phase_);
 
     osc_ += lfo * static_cast<double>(width) / sampleRate;
     osc_ -= std::floor(osc_);
-    const double angle = osc_ * 2.0 * kPi;
-    const double cosine = std::cos(angle);
-    const double sine = std::sin(angle);
+    const double cosine = sineAt(osc_ + 0.25);
+    const double sine = sineAt(osc_);
 
     const float wetL = channel(left_, ahead.l, cosine, sine);
     const float wetR = channel(right_, ahead.r, cosine, sine);

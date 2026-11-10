@@ -28,7 +28,7 @@ double unit(double value) {
 // Beat mode: param 0 is a 1/32-beat fragment, param 1 is 2 beats, in seven powers of two.
 double fragmentBeats(double param) {
     const int steps = kFragmentExpMax - kFragmentExpMin;
-    return std::ldexp(1.0, kFragmentExpMin + static_cast<int>(std::lround(unit(param) * steps)));
+    return std::ldexp(1.0, kFragmentExpMin + static_cast<int>(unit(param) * steps + 0.5));
 }
 
 // Grain mode: param 0 is a 10 ms grain, param 1 is 200 ms, on an exponential curve. In frames.
@@ -48,9 +48,9 @@ SliceReader::SliceReader(const SampleBuffer& buffer, const SampleSettings& play,
     const double start = unit(play.start);
     const double usableSec = static_cast<double>(buffer.frames) / settings.sampleRate * (1.0 - start);
     const int maxSlices = grid.trackSlices(usableSec / ratio);
-    const int sliceCount = static_cast<int>(std::llround(unit(play.length) * (maxSlices - 1))) + 1;
+    const int sliceCount = static_cast<int>(unit(play.length) * (maxSlices - 1) + 0.5) + 1;
     silent_ = !play.loop && slot >= sliceCount;
-    const int startFrame = static_cast<int>(std::llround(start * buffer.frames));
+    const int startFrame = static_cast<int>(start * buffer.frames + 0.5);
     origin_ = static_cast<double>(startFrame) + static_cast<double>(slot % sliceCount) * sourceSlice;
 
     end_ = std::numeric_limits<double>::infinity();

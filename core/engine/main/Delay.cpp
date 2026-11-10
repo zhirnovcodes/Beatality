@@ -25,7 +25,7 @@ int attackFrames(double beats, double sampleRate) {
         t = 1.0;
     }
     const double ms = kAttackMsMin + t * (kAttackMsMax - kAttackMsMin);
-    const int frames = static_cast<int>(std::llround(ms * 0.001 * sampleRate));
+    const int frames = static_cast<int>(ms * 0.001 * sampleRate + 0.5);
     return frames > 0 ? frames : 1;
 }
 
@@ -48,7 +48,7 @@ Frame Delay::apply(const SliceReader& slice, const ClockSettings& settings, cons
     if (frames > limit) {
         frames = limit;
     }
-    int delay = static_cast<int>(std::llround(frames));
+    int delay = static_cast<int>(frames + 0.5);
     if (delay < 0) {
         delay = 0;
     } else if (delay > capacity_) {
@@ -110,10 +110,8 @@ void Delay::clean() {
     if (quiet_) {
         return;
     }
-    for (int i = 0; i < capacity_; ++i) {
-        left_[static_cast<std::size_t>(i)] = 0.0f;
-        right_[static_cast<std::size_t>(i)] = 0.0f;
-    }
+    // The line is not zeroed. A read waits until filled_ reaches the delay, and with write_ back at 0
+    // that only reaches frames written since this clean. Zeroing 4 seconds here cost a spike on every slice.
     write_ = 0;
     filled_ = 0;
     attacked_ = 0;

@@ -6,7 +6,8 @@ namespace bt {
 
 namespace {
 
-double beatsOf(int exponent) { return std::ldexp(1.0, exponent); }
+// Exact for the grid's exponents, -4 to 4. std::ldexp is a library call, and this runs on every sample.
+double beatsOf(int exponent) { return exponent >= 0 ? static_cast<double>(1 << exponent) : 1.0 / static_cast<double>(1 << -exponent); }
 
 // Shrinks a legal exponent until the slice is no longer than the loop.
 int fitExp(int exponent, int loopBeats) {

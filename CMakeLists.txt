@@ -77,6 +77,10 @@ add_executable(pair_tests tests/engine/pair_tests.cpp)
 target_link_libraries(pair_tests PRIVATE beatality_slice_engine)
 beatality_core_flags(pair_tests)
 
+add_executable(perf_bench tests/engine/perf_bench.cpp)
+# No core flags: <chrono> wants exceptions on, and the benchmark is not part of the core.
+target_link_libraries(perf_bench PRIVATE beatality_slice_engine)
+
 if(EMSCRIPTEN)
     # Standalone module for the AudioWorklet: instantiated directly, no Emscripten JS glue.
     # The web page and the plugin both play the slice engine.
