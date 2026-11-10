@@ -225,8 +225,12 @@ struct PackPayload {
     double panMin = 0;
     double panMax = 0;
     int savedCount = 0;
+    bool bpmSync = false;
+    bool positions[bt::RepeatSequence::kPositions]{};
     std::vector<std::uint16_t> slots;
     std::vector<PackTrackPayload> tracks;
+    // How many commands had been queued when this pack was loaded. The ones before it are dropped.
+    std::uint64_t queueMark = 0;
 };
 
 void freePack(PackPayload* pack) {
@@ -317,10 +321,9 @@ AppendPayload* payloadFromReader(juce::AudioFormatReader& reader, double rate, s
 class CommandQueue {
 public:
     struct Slot {
-        enum class Kind { Randomize, Chaos, Remove, Append, Clear, Bpm, BpmSync, Attack, RepeatPosition, Track, Warp, Pack };
+        enum class Kind { Randomize, Chaos, Remove, Append, Clear, Bpm, BpmSync, Attack, RepeatPosition, Track, Warp };
         Kind kind = Kind::Randomize;
         AppendPayload* append = nullptr;
-        PackPayload* pack = nullptr;
         int index = 0;
         int number = 0;
         double first = 0;
@@ -338,6 +341,7 @@ public:
             return false;
         }
         slots[static_cast<std::size_t>(writeIndex)] = slot;
+        pushed.fetch_add(1, std::memory_order_relaxed);
         write.store(next, std::memory_order_release);
         return true;
     }
@@ -348,8 +352,22 @@ public:
             return false;
         }
         slot = slots[static_cast<std::size_t>(readIndex)];
+        popped.fetch_add(1, std::memory_order_relaxed);
         read.store((readIndex + 1) % kQueueCapacity, std::memory_order_release);
         return true;
+    }
+
+    // Message thread: how many commands have been queued so far.
+    std::uint64_t mark() const {
+        return pushed.load(std::memory_order_relaxed);
+    }
+
+    // Consumer: drops the commands queued before mark. A loaded pack replaces what they would have done.
+    void dropUntil(std::uint64_t mark) {
+        Slot slot;
+        while (popped.load(std::memory_order_relaxed) < mark && pop(slot)) {
+            freePayload(slot.append);
+        }
     }
 
     // Holds off push until fn has taken every queued command.
@@ -363,16 +381,16 @@ public:
     }
 
     void discard() {
-        drain([](Slot slot) {
-            freePayload(slot.append);
-            freePack(slot.pack);
-        });
+        drain([](Slot slot) { freePayload(slot.append); });
     }
 
 private:
     Slot slots[kQueueCapacity]{};
     std::atomic<int> read{0};
     std::atomic<int> write{0};
+    // Running totals. Unlike the ring indices they never wrap, so a mark stays comparable.
+    std::atomic<std::uint64_t> pushed{0};
+    std::atomic<std::uint64_t> popped{0};
     std::mutex mutex;
 };
 
@@ -832,9 +850,6 @@ struct Processor::Impl {
         case CommandQueue::Slot::Kind::Warp:
             applyWarp(slot.index, warpSettings(slot.number, slot.first, slot.second));
             break;
-        case CommandQueue::Slot::Kind::Pack:
-            applyPack(slot.pack);
-            break;
         }
     }
 
@@ -849,7 +864,9 @@ struct Processor::Impl {
         }
         sources.clear();
         ownBpm = pack->bpm;
+        bpmSync = pack->bpmSync;
         knobs.play.bpm = playedBpm();
+        std::copy(std::begin(pack->positions), std::end(pack->positions), std::begin(knobs.repeat.positions));
         knobs.play.loop = pack->loop;
         knobs.play.sliceExp = pack->slices;
         knobs.play.attackMs = pack->attack;
@@ -916,7 +933,12 @@ struct Processor::Impl {
         remember();
     }
 
+    // The audio thread is stopped here (prepareToPlay), so the message thread may consume.
     void drain() {
+        if (PackPayload* pack = pendingPack.exchange(nullptr)) {
+            queue.dropUntil(pack->queueMark);
+            applyPack(pack);
+        }
         queue.drain([this](CommandQueue::Slot slot) { applySlot(slot); });
     }
 
@@ -1054,6 +1076,9 @@ struct Processor::Impl {
     std::atomic<double>& head;
     juce::AudioFormatManager formats;
     CommandQueue queue;
+    // The pack loaded on the message thread that the audio thread has not taken yet. A newer load replaces it,
+    // so loads never wait on the queue and never pile up while the host is not processing.
+    std::atomic<PackPayload*> pendingPack{nullptr};
     std::vector<SourceTrack> sources;
     std::vector<DeviceAudio> devices;
     std::unique_ptr<bt::SliceEngine> engine;
@@ -1158,6 +1183,7 @@ Processor::~Processor() {
     stopTimer();
     impl->engine.reset();
     impl->queue.discard();
+    freePack(impl->pendingPack.exchange(nullptr));
 }
 
 void Processor::prepareToPlay(double sampleRate, int) {
@@ -1182,6 +1208,11 @@ void Processor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&
         return;
     }
 
+    // A loaded pack comes first. Commands queued before the load are dropped; the ones after it follow.
+    if (PackPayload* pack = impl->pendingPack.exchange(nullptr)) {
+        impl->queue.dropUntil(pack->queueMark);
+        impl->applyPack(pack);
+    }
     CommandQueue::Slot slot;
     while (impl->queue.pop(slot)) {
         impl->applySlot(slot);
@@ -2011,6 +2042,45 @@ bool Processor::loadPackText(const juce::String& text) {
         error = "Could not read that pack.";
         return false;
     }
+
+    // A load replaces everything. Knob values the engine sent up before it, and Shuffle presses not yet handled,
+    // would otherwise land on top of the loaded knobs on the next timer tick.
+    {
+        std::lock_guard<std::mutex> lock(impl->outbox.mutex);
+        impl->outbox.full = false;
+    }
+    shufflesDone = shuffleCount();
+
+    // The knobs are parameters; they are restored here and do not wait for the audio thread.
+    // The pack sets the same values on the engine; the next block applies them again, which changes nothing.
+    savedName = decoded->name;
+    savedBpm = decoded->bpm;
+    savedAttack = decoded->attack;
+    savedBpmSync = decoded->bpmSync;
+    setFromWindow(*loopParam, static_cast<float>(decoded->loop));
+    setFromWindow(*sliceParam, static_cast<float>(decoded->slices));
+    setFromWindow(*volumeParam, static_cast<float>(decoded->volume));
+    setFromWindow(*panMinParam, static_cast<float>(decoded->panMin));
+    setFromWindow(*panMaxParam, static_cast<float>(decoded->panMax));
+    setRetrig(decoded->retrig);
+    setEffectsSettings(decoded->effects);
+    const bt::BeatRepeatSettings& repeat = decoded->repeat;
+    setRepeatEnabled(repeat.enabled);
+    setRepeatSizeRange(repeat.sizeMin, repeat.sizeMax);
+    setRepeatLength(repeat.length);
+    setRepeatChance(repeat.chance);
+    setRepeatMix(repeat.mix);
+    std::copy(std::begin(repeat.positions), std::end(repeat.positions), std::begin(savedPositions));
+    const bt::ChaosSettings& chaosSettings = decoded->chaos;
+    setChaosTrigger(static_cast<int>(chaosSettings.trigger));
+    setChaosValue(chaosSettings.value);
+    setChaosBeatSize(chaosSettings.beatSize);
+    setChaosLoopSize(chaosSettings.loopSize);
+    setChaosSliceSize(chaosSettings.sliceSize);
+    for (int group = 0; group < bt::ChaosSettings::kGroups; ++group) {
+        setChaosGroup(group, chaosSettings.groups[group]);
+    }
+
     const double rate = impl->publishedRate.load(std::memory_order_relaxed);
     auto* payload = new PackPayload;
     payload->bpm = decoded->bpm;
@@ -2021,6 +2091,8 @@ bool Processor::loadPackText(const juce::String& text) {
     payload->panMin = decoded->panMin;
     payload->panMax = decoded->panMax;
     payload->savedCount = decoded->savedCount;
+    payload->bpmSync = decoded->bpmSync;
+    std::copy(std::begin(repeat.positions), std::end(repeat.positions), std::begin(payload->positions));
     payload->slots = decoded->slots;
 
     juce::StringArray loaded;
@@ -2072,47 +2144,11 @@ bool Processor::loadPackText(const juce::String& text) {
         loadedPictures.push_back(std::move(picture));
     }
 
-    CommandQueue::Slot slot;
-    slot.kind = CommandQueue::Slot::Kind::Pack;
-    slot.pack = payload;
-    if (!impl->queue.push(slot)) {
-        freePack(payload);
-        error = "Could not load that pack.";
-        return false;
-    }
+    // The newest load wins: a pack the audio thread has not taken yet is replaced and freed here.
+    payload->queueMark = impl->queue.mark();
+    freePack(impl->pendingPack.exchange(payload));
     names = std::move(loaded);
     pictures = std::move(loadedPictures);
-    savedName = decoded->name;
-    savedBpm = decoded->bpm;
-    savedAttack = decoded->attack;
-    // The pack slot sets these on the engine first. The parameters follow; the next block applies the same values again,
-    // which leaves the engine and its sequence as they are.
-    setFromWindow(*loopParam, static_cast<float>(decoded->loop));
-    setFromWindow(*sliceParam, static_cast<float>(decoded->slices));
-    setFromWindow(*volumeParam, static_cast<float>(decoded->volume));
-    setFromWindow(*panMinParam, static_cast<float>(decoded->panMin));
-    setFromWindow(*panMaxParam, static_cast<float>(decoded->panMax));
-    setBpmSync(decoded->bpmSync);
-    setRetrig(decoded->retrig);
-    setEffectsSettings(decoded->effects);
-    const bt::BeatRepeatSettings& repeat = decoded->repeat;
-    setRepeatEnabled(repeat.enabled);
-    setRepeatSizeRange(repeat.sizeMin, repeat.sizeMax);
-    setRepeatLength(repeat.length);
-    setRepeatChance(repeat.chance);
-    setRepeatMix(repeat.mix);
-    for (int i = 0; i < bt::RepeatSequence::kPositions; ++i) {
-        setRepeatPosition(i, repeat.positions[i]);
-    }
-    const bt::ChaosSettings& chaosSettings = decoded->chaos;
-    setChaosTrigger(static_cast<int>(chaosSettings.trigger));
-    setChaosValue(chaosSettings.value);
-    setChaosBeatSize(chaosSettings.beatSize);
-    setChaosLoopSize(chaosSettings.loopSize);
-    setChaosSliceSize(chaosSettings.sliceSize);
-    for (int group = 0; group < bt::ChaosSettings::kGroups; ++group) {
-        setChaosGroup(group, chaosSettings.groups[group]);
-    }
     impl->storeSequence(decoded->slots, decoded->savedCount);
     error.clear();
     return true;
