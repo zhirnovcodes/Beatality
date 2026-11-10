@@ -27,6 +27,9 @@ private:
     bool armed_ = true;
     double phase_ = 0;
     bool quiet_ = true;
+    // 0 when a slice starts, rises to 1 over kRiseMs. Scales the feedback,
+    // so the frames written after the pre-fill join it without a step.
+    float rise_ = 0;
 };
 
 } // namespace bt

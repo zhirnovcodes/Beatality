@@ -10,6 +10,8 @@ namespace {
 constexpr double kPi = 3.14159265358979323846;
 constexpr double kDelayMsMin = 0.5;
 constexpr double kDelayMsMax = 8.0;
+// The feedback rises from 0 over this long at each slice start.
+constexpr double kRiseMs = 20.0;
 
 // Power 0 is dry. Power 1 is an even mix, where the sweep can cancel.
 // Feedback opens with power. It stays under 1, so the ring dies.
@@ -82,12 +84,26 @@ Frame Flanger::apply(const SliceReader& slice, const ClockSettings& clockSetting
     const double cycle = beats * sampleRate * 60.0 / bpm;
     const double limit = static_cast<double>(capacity_ - 2);
 
-    const Frame dry = slice.read(clock.localIn(params.slot, clockSettings, grid));
+    const int local = clock.localIn(params.slot, clockSettings, grid);
+    const Frame dry = slice.read(local);
     const float dryL = dry.l;
     const float dryR = dry.r;
     if (armed_) {
         // Each slice starts the LFO at 90, 180, or 270 degrees.
         phase_ = 0.25 * static_cast<double>(1 + rng_.nextInt(3));
+        // Fill the line with the frames before this one, so the echo starts full.
+        // An empty line would hold zeros, and the first echo would step in up to 8 ms after the fade-in.
+        // The fill holds no feedback, so the feedback starts at 0 and rises.
+        rise_ = 0.0f;
+        for (int n = 1; n < capacity_; ++n) {
+            int index = write_ - n;
+            if (index < 0) {
+                index += capacity_;
+            }
+            const Frame past = slice.read(local - n);
+            left_[static_cast<std::size_t>(index)] = past.l;
+            right_[static_cast<std::size_t>(index)] = past.r;
+        }
         armed_ = false;
     }
     // One beat is one cycle. The sine walks the delay from 0.5 ms to 8 ms.
@@ -103,8 +119,15 @@ Frame Flanger::apply(const SliceReader& slice, const ClockSettings& clockSetting
 
     const float echoL = tap(left_.get(), capacity_, write_, delay);
     const float echoR = tap(right_.get(), capacity_, write_, delay);
-    float inL = dryL + echoL * settings.feedback;
-    float inR = dryR + echoR * settings.feedback;
+    const float feedback = settings.feedback * rise_;
+    if (rise_ < 1.0f) {
+        rise_ += static_cast<float>(1.0 / (kRiseMs * 0.001 * sampleRate));
+        if (rise_ > 1.0f) {
+            rise_ = 1.0f;
+        }
+    }
+    float inL = dryL + echoL * feedback;
+    float inR = dryR + echoR * feedback;
     flush(inL);
     flush(inR);
     left_[static_cast<std::size_t>(write_)] = inL;
