@@ -82,7 +82,11 @@ Editor::Editor(Processor& processorIn) : juce::AudioProcessorEditor(processorIn)
         browser->goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
         startTimerHz(30);
     } else {
+       #if JUCE_WINDOWS
         missing.setText("Install the Microsoft Edge WebView2 Runtime to open this window.", juce::dontSendNotification);
+       #else
+        missing.setText("This window could not open its web view.", juce::dontSendNotification);
+       #endif
         missing.setJustificationType(juce::Justification::centred);
         missing.setColour(juce::Label::textColourId, juce::Colours::white);
         addAndMakeVisible(missing);
@@ -117,6 +121,8 @@ void Editor::timerCallback() {
 }
 
 juce::WebBrowserComponent::Options Editor::browserOptions() {
+    juce::WebBrowserComponent::Options options;
+   #if JUCE_WINDOWS
     auto folder = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("Beatality").getChildFile("WebView2");
     folder.createDirectory();
 
@@ -125,11 +131,11 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
                   .withStatusBarDisabled()
                   .withBackgroundColour(juce::Colour(0xff2a2c30));
 
-    juce::WebBrowserComponent::Options options;
-    return options.withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
-        .withKeepPageLoadedWhenBrowserIsHidden()
+    options = options.withBackend(juce::WebBrowserComponent::Options::Backend::webview2).withWinWebView2Options(webview);
+   #endif
+    // Elsewhere the default backend is the system web view (WKWebView on macOS).
+    return options.withKeepPageLoadedWhenBrowserIsHidden()
         .withNativeIntegrationEnabled()
-        .withWinWebView2Options(webview)
         .withResourceProvider([](const juce::String& url) { return loadSkin(url); })
         .withNativeFunction("ready", [this](const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion completion) {
             pageReady = true;

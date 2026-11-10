@@ -1,4 +1,10 @@
 cmake_minimum_required(VERSION 3.25)
+
+# macOS: one universal build for Apple Silicon and Intel, Big Sur and later. Must be set before project().
+# Other platforms ignore these.
+set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "macOS architectures")
+set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
+
 project(Beatality VERSION 0.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -98,78 +104,104 @@ if(EMSCRIPTEN)
         -sEXPORTED_FUNCTIONS=_bt_alloc,_bt_free,_bt_create,_bt_destroy,_bt_append,_bt_append_empty,_bt_install_sequence,_bt_midi,_bt_randomize,_bt_chaos,_bt_remove,_bt_clear,_bt_set_bpm,_bt_set_loop,_bt_set_slice,_bt_set_attack,_bt_set_global_power,_bt_set_effects_enabled,_bt_set_retrig,_bt_set_global_beat_range,_bt_set_global_chance,_bt_set_reverb_power,_bt_set_reverb_chance,_bt_set_delay_power,_bt_set_delay_chance,_bt_set_reverse_power,_bt_set_reverse_chance,_bt_set_filter_power,_bt_set_filter_chance,_bt_set_flanger_power,_bt_set_flanger_chance,_bt_set_trance_power,_bt_set_trance_chance,_bt_set_shift_power,_bt_set_shift_chance,_bt_set_repeat_enabled,_bt_set_repeat_size_range,_bt_set_repeat_length,_bt_set_repeat_chance,_bt_set_repeat_position,_bt_set_repeat_mix,_bt_set_chaos,_bt_controls_changed,_bt_controls_write,_bt_set_track,_bt_set_output,_bt_render,_bt_snapshot,_bt_snapshot_count,_bt_snapshot_playing,_bt_snapshot_slice_exp,_bt_snapshot_loop,_bt_snapshot_bpm,_bt_snapshot_play_slot,_bt_snapshot_play_track,_bt_snapshot_playhead,_bt_snapshot_released_count,_bt_snapshot_released_id
     )
 else()
+    set(JUCE_BUILD_EXTRAS OFF CACHE BOOL "" FORCE)
+    set(JUCE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    # A local checkout in third_party/JUCE wins. A clean clone (a CI machine) downloads the same commit.
     set(BEATALITY_JUCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/JUCE)
     if(EXISTS ${BEATALITY_JUCE_DIR}/CMakeLists.txt)
-        set(JUCE_BUILD_EXTRAS OFF CACHE BOOL "" FORCE)
-        set(JUCE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
         add_subdirectory(${BEATALITY_JUCE_DIR} ${CMAKE_BINARY_DIR}/_juce EXCLUDE_FROM_ALL)
-
-        juce_add_plugin(Beatality
-            COMPANY_NAME "Beatality"
-            PLUGIN_MANUFACTURER_CODE Btly
-            PLUGIN_CODE Bt01
-            FORMATS VST3 Standalone
-            PRODUCT_NAME "Beatality"
-            VERSION 0.0.1
-            IS_SYNTH TRUE
-            NEEDS_MIDI_INPUT TRUE
-            NEEDS_MIDI_OUTPUT FALSE
-            IS_MIDI_EFFECT FALSE
-            EDITOR_WANTS_KEYBOARD_FOCUS TRUE
-            COPY_PLUGIN_AFTER_BUILD FALSE
-            NEEDS_WEB_BROWSER TRUE
-            NEEDS_WEBVIEW2 TRUE
-            NEEDS_CURL FALSE
-            VST3_CATEGORIES Instrument Synth
-        )
-        target_sources(Beatality
-            PRIVATE
-                hosts/plugin/PackFile.cpp
-                hosts/plugin/PluginProcessor.cpp
-                hosts/plugin/PluginEditor.cpp
-        )
-        target_include_directories(Beatality PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hosts/common)
-        # The preset library the web page saves into. Resources are found by file name, so samples sit in one flat folder.
-        file(GLOB BEATALITY_PACK_FILES CONFIGURE_DEPENDS
-            "${CMAKE_CURRENT_SOURCE_DIR}/apps/web-widget/public/packs/banks.json"
-            "${CMAKE_CURRENT_SOURCE_DIR}/apps/web-widget/public/packs/*.beatality"
-            "${CMAKE_CURRENT_SOURCE_DIR}/apps/web-widget/public/packs/samples/*")
-        juce_add_binary_data(BeatalityBank SOURCES ${BEATALITY_PACK_FILES})
-        file(GLOB BEATALITY_SHAPE_PNGS CONFIGURE_DEPENDS
-            "${CMAKE_CURRENT_SOURCE_DIR}/apps/web-widget/src/ui/shapes/*.png")
-        juce_add_binary_data(BeatalitySkin
-            HEADER_NAME SkinData.h
-            NAMESPACE SkinData
-            SOURCES
-                hosts/plugin/ui/index.html
-                hosts/plugin/ui/plugin.js
-                apps/web-widget/src/ui/skin/skin.css
-                apps/web-widget/src/ui/skin/DSEG7Classic-Bold.woff2
-                apps/web-widget/src/ui/skin/Orbitron-Bold.ttf
-                apps/web-widget/src/ui/skin/silkscreen-latin-400-normal.woff2
-                apps/web-widget/src/ui/skin/silkscreen-latin-700-normal.woff2
-                ${BEATALITY_SHAPE_PNGS}
-        )
-        target_compile_definitions(Beatality
-            PUBLIC
-                JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1
-                JUCE_USE_CURL=0
-                JUCE_VST3_CAN_REPLACE_VST2=0
-                JUCE_USE_MP3AUDIOFORMAT=1
-        )
-        target_link_libraries(Beatality
-            PRIVATE
-                beatality_slice_engine
-                BeatalityBank
-                BeatalitySkin
-                juce::juce_audio_utils
-                juce::juce_audio_formats
-                juce::juce_gui_extra
-            PUBLIC
-                juce::juce_recommended_config_flags
-                juce::juce_recommended_warning_flags
-        )
     else()
-        message(STATUS "JUCE not found at third_party/JUCE; the plugin target was skipped")
+        include(FetchContent)
+        FetchContent_Declare(juce
+            GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
+            GIT_TAG ea77444750de45e036e0279bb0291144bf8e3688 # 8.0.16-security
+            GIT_SHALLOW FALSE
+            EXCLUDE_FROM_ALL)
+        FetchContent_MakeAvailable(juce)
     endif()
+
+    juce_add_plugin(Beatality
+        COMPANY_NAME "Beatality"
+        BUNDLE_ID com.ivancodes.beatality
+        PLUGIN_MANUFACTURER_CODE Btly
+        PLUGIN_CODE Bt01
+        FORMATS AU VST3 Standalone
+        AU_MAIN_TYPE kAudioUnitType_MusicDevice
+        HARDENED_RUNTIME_ENABLED TRUE
+        PRODUCT_NAME "Beatality"
+        VERSION 0.0.1
+        IS_SYNTH TRUE
+        NEEDS_MIDI_INPUT TRUE
+        NEEDS_MIDI_OUTPUT FALSE
+        IS_MIDI_EFFECT FALSE
+        EDITOR_WANTS_KEYBOARD_FOCUS TRUE
+        COPY_PLUGIN_AFTER_BUILD FALSE
+        NEEDS_WEB_BROWSER TRUE
+        NEEDS_WEBVIEW2 TRUE
+        NEEDS_CURL FALSE
+        VST3_CATEGORIES Instrument Synth
+    )
+    target_sources(Beatality
+        PRIVATE
+            hosts/plugin/PackFile.cpp
+            hosts/plugin/PluginProcessor.cpp
+            hosts/plugin/PluginEditor.cpp
+    )
+    target_include_directories(Beatality PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hosts/common)
+    # The preset library the web page saves into. Resources are found by file name, so samples sit in one flat folder.
+    # It ships as files in Resources/Factory inside each format (see factoryFile in PluginProcessor.cpp).
+    file(GLOB BEATALITY_PACK_FILES CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/apps/web-widget/public/packs/banks.json"
+        "${CMAKE_CURRENT_SOURCE_DIR}/apps/web-widget/public/packs/*.beatality"
+        "${CMAKE_CURRENT_SOURCE_DIR}/apps/web-widget/public/packs/samples/*")
+    foreach(format IN ITEMS AU VST3 Standalone)
+        set(format_target Beatality_${format})
+        if(NOT TARGET ${format_target})
+            continue()
+        endif()
+        if(format STREQUAL "Standalone" AND NOT APPLE)
+            set(factory_dir "$<TARGET_FILE_DIR:${format_target}>/Resources/Factory")
+        else()
+            get_target_property(bundle_dir ${format_target} JUCE_PLUGIN_ARTEFACT_FILE)
+            set(factory_dir "${bundle_dir}/Contents/Resources/Factory")
+        endif()
+        add_custom_command(TARGET ${format_target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E rm -rf "${factory_dir}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${factory_dir}"
+            COMMAND ${CMAKE_COMMAND} -E copy ${BEATALITY_PACK_FILES} "${factory_dir}"
+            VERBATIM)
+    endforeach()
+    file(GLOB BEATALITY_SHAPE_PNGS CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/apps/web-widget/src/ui/shapes/*.png")
+    juce_add_binary_data(BeatalitySkin
+        HEADER_NAME SkinData.h
+        NAMESPACE SkinData
+        SOURCES
+            hosts/plugin/ui/index.html
+            hosts/plugin/ui/plugin.js
+            apps/web-widget/src/ui/skin/skin.css
+            apps/web-widget/src/ui/skin/DSEG7Classic-Bold.woff2
+            apps/web-widget/src/ui/skin/Orbitron-Bold.ttf
+            apps/web-widget/src/ui/skin/silkscreen-latin-400-normal.woff2
+            apps/web-widget/src/ui/skin/silkscreen-latin-700-normal.woff2
+            ${BEATALITY_SHAPE_PNGS}
+    )
+    target_compile_definitions(Beatality
+        PUBLIC
+            JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1
+            JUCE_USE_CURL=0
+            JUCE_VST3_CAN_REPLACE_VST2=0
+            JUCE_USE_MP3AUDIOFORMAT=1
+    )
+    target_link_libraries(Beatality
+        PRIVATE
+            beatality_slice_engine
+            BeatalitySkin
+            juce::juce_audio_utils
+            juce::juce_audio_formats
+            juce::juce_gui_extra
+        PUBLIC
+            juce::juce_recommended_config_flags
+            juce::juce_recommended_warning_flags
+    )
 endif()

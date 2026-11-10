@@ -3,7 +3,6 @@
 #include "PackFile.h"
 #include "PluginEditor.h"
 
-#include "BinaryData.h"
 #include "NoteGate.h"
 #include "SliceEngine.h"
 
@@ -241,14 +240,18 @@ void freePack(PackPayload* pack) {
     delete pack;
 }
 
-const char* resourceBytes(const juce::String& filename, int& bytes) {
-    for (int i = 0; i < BinaryData::namedResourceListSize; ++i) {
-        if (filename.equalsIgnoreCase(BinaryData::originalFilenames[i])) {
-            return BinaryData::getNamedResource(BinaryData::namedResourceList[i], bytes);
-        }
+// The flat Factory folder that ships inside the plugin, beside its binary.
+// A VST3, AU, or macOS app binary sits in Contents/<platform>/, so the folder is Contents/Resources/Factory.
+// The Windows standalone is a bare exe; its folder is Resources/Factory next to it.
+juce::File factoryFile(const juce::String& filename) {
+    const juce::File binary = juce::File::getSpecialLocation(juce::File::currentExecutableFile);
+    juce::File root = binary.getParentDirectory().getParentDirectory();
+   #if JUCE_WINDOWS
+    if (juce::PluginHostType::getPluginLoadedAs() == juce::AudioProcessor::wrapperType_Standalone) {
+        root = binary.getParentDirectory();
     }
-    bytes = 0;
-    return nullptr;
+   #endif
+    return root.getChildFile("Resources").getChildFile("Factory").getChildFile(filename);
 }
 
 struct Stereo {
@@ -1391,12 +1394,7 @@ void Processor::splitTracks(const juce::Array<int>& indices) {
         // The file is decoded once; each piece gets its own copy of it.
         std::unique_ptr<juce::AudioFormatReader> reader;
         if (source.internal) {
-            int bytes = 0;
-            const char* data = resourceBytes(source.address, bytes);
-            if (data != nullptr && bytes > 0) {
-                auto stream = std::make_unique<juce::MemoryInputStream>(data, static_cast<std::size_t>(bytes), false);
-                reader.reset(impl->formats.createReaderFor(std::move(stream)));
-            }
+            reader.reset(impl->formats.createReaderFor(factoryFile(source.address)));
         } else {
             reader.reset(impl->formats.createReaderFor(juce::File(source.address)));
         }
@@ -1984,12 +1982,11 @@ void Processor::setWarp(int index, int mode, double bpm, double param) {
 
 juce::Array<juce::var> Processor::factoryBanks() const {
     juce::Array<juce::var> list;
-    int bytes = 0;
-    const char* data = resourceBytes("banks.json", bytes);
-    if (data == nullptr || bytes <= 0) {
+    const juce::String text = factoryFile("banks.json").loadFileAsString();
+    if (text.isEmpty()) {
         return list;
     }
-    const auto banks = decodeBanks(juce::String::fromUTF8(data, bytes));
+    const auto banks = decodeBanks(text);
     for (const auto& bank : banks) {
         auto* object = new juce::DynamicObject();
         object->setProperty("name", bank.first);
@@ -2000,13 +1997,12 @@ juce::Array<juce::var> Processor::factoryBanks() const {
 }
 
 bool Processor::loadFactory(const juce::String& file) {
-    int bytes = 0;
-    const char* data = resourceBytes(file, bytes);
-    if (data == nullptr || bytes <= 0) {
+    const juce::String text = factoryFile(file).loadFileAsString();
+    if (text.isEmpty()) {
         error = "Could not read that pack.";
         return false;
     }
-    return loadPackText(juce::String::fromUTF8(data, bytes));
+    return loadPackText(text);
 }
 
 bool Processor::loadPackText(const juce::String& text) {
@@ -2057,12 +2053,7 @@ bool Processor::loadPackText(const juce::String& text) {
         }
         std::unique_ptr<juce::AudioFormatReader> reader;
         if (track.internal) {
-            int bytes = 0;
-            const char* data = resourceBytes(track.address, bytes);
-            if (data != nullptr && bytes > 0) {
-                auto stream = std::make_unique<juce::MemoryInputStream>(data, static_cast<std::size_t>(bytes), false);
-                reader.reset(impl->formats.createReaderFor(std::move(stream)));
-            }
+            reader.reset(impl->formats.createReaderFor(factoryFile(track.address)));
         } else if (track.address.isNotEmpty()) {
             reader.reset(impl->formats.createReaderFor(juce::File(track.address)));
         }
