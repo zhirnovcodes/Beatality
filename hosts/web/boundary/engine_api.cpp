@@ -4,6 +4,7 @@
 #include "NoteGate.h"
 #include "SliceEngine.h"
 
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <new>
@@ -20,10 +21,17 @@ struct Instance {
     bt::SliceSnapshot snapshot;
     bt::NoteGate gate;
     double sampleRate;
-    // Off, the first note starts the loop where the project playhead is instead of at 0.
+    // Off, the first note starts the loop where the project playhead is instead of at 0,
+    // and the engine sounds only while the project's transport plays.
     bool retrig = true;
-    // The project playhead, in beats. bt_render moves it at the engine's tempo. It never stops.
-    double projectBeat = 0;
+    // On, the playhead follows the project's beat; off, the project's seconds at the engine's own tempo.
+    bool bpmSync = false;
+    // The project's transport as the last bt_transport gave it, and the frames rendered since while playing.
+    bool transportPlaying = false;
+    double anchorBeat = 0;
+    double anchorSeconds = 0;
+    double projectBpm = 120;
+    std::int64_t sinceAnchor = 0;
     float velocity = 1.0f;
     // The engine changed its own knobs (a chaos roll) since bt_controls_changed last answered.
     bool controlsChanged = false;
@@ -31,13 +39,22 @@ struct Instance {
     Instance(double rate, std::uint64_t seed) : engine(rate, seed), sampleRate(rate) {}
 };
 
+// The engine beat for now, from the project's transport. play() wraps it into the loop.
+double startBeat(const Instance& instance) {
+    const double since = static_cast<double>(instance.sinceAnchor) / instance.sampleRate;
+    if (instance.bpmSync) {
+        return instance.anchorBeat + since * instance.projectBpm / 60.0;
+    }
+    return (instance.anchorSeconds + since) * instance.engine.controls().play.bpm / 60.0;
+}
+
 void applyGate(Instance& instance, bt::Gate signal) {
     if (signal == bt::Gate::Start) {
         if (instance.engine.count() > 0) {
             if (instance.retrig) {
                 instance.engine.play();
-            } else {
-                instance.engine.play(instance.projectBeat);
+            } else if (instance.transportPlaying) {
+                instance.engine.play(startBeat(instance));
             }
         }
         return;
@@ -287,6 +304,43 @@ BT_EXPORT void bt_set_retrig(Instance* instance, int on) {
     instance->retrig = on != 0;
 }
 
+// on is 0 or 1.
+BT_EXPORT void bt_set_bpm_sync(Instance* instance, int on) {
+    if (instance == nullptr) {
+        return;
+    }
+    instance->bpmSync = on != 0;
+}
+
+// The project's transport now: playing is 0 or 1, beat and seconds count from the project start, bpm is the project's.
+// With retrig off and a note held, play starts the playhead, stop releases it, and a jump moves it.
+BT_EXPORT void bt_transport(Instance* instance, int playing, double beat, double seconds, double bpm) {
+    if (instance == nullptr || !(bpm > 0.0)) {
+        return;
+    }
+    const bool was = instance->transportPlaying;
+    const double expected = instance->anchorSeconds + static_cast<double>(instance->sinceAnchor) / instance->sampleRate;
+    // Within two frames is the same run of the transport: a tempo change or a repeat, not a jump.
+    const bool jumped = std::abs(seconds - expected) > 2.0 / instance->sampleRate;
+    instance->transportPlaying = playing != 0;
+    instance->anchorBeat = beat;
+    instance->anchorSeconds = seconds;
+    instance->projectBpm = bpm;
+    instance->sinceAnchor = 0;
+    if (instance->retrig || instance->gate.held() == 0) {
+        return;
+    }
+    if (!instance->transportPlaying) {
+        if (was) {
+            instance->engine.stop();
+        }
+        return;
+    }
+    if ((!was || jumped) && instance->engine.count() > 0) {
+        instance->engine.play(startBeat(*instance));
+    }
+}
+
 // 2^exponent beats, -4..1. min is not above max.
 BT_EXPORT void bt_set_global_beat_range(Instance* instance, int min, int max) {
     if (instance == nullptr || min < bt::Effects::kBeatMin || max > bt::Effects::kBeatMax || min > max) {
@@ -524,7 +578,9 @@ BT_EXPORT void bt_render(Instance* instance, float* left, float* right, int fram
     }
     const bt::Controls before = instance->engine.controls();
     instance->engine.render(left, right, frames);
-    instance->projectBeat += static_cast<double>(frames) * instance->engine.controls().play.bpm / (60.0 * instance->sampleRate);
+    if (instance->transportPlaying) {
+        instance->sinceAnchor += frames;
+    }
     instance->controlsChanged = instance->controlsChanged || instance->engine.controls() != before;
     const float velocity = instance->velocity;
     if (velocity == 1.0f) {

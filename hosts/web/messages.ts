@@ -35,9 +35,10 @@ export interface DisposeMessage {
     type: 'dispose'
 }
 
+// time is in the context's seconds. A time already past plays at once.
 export interface MidiMessage {
     type: 'midi'
-    frame: number
+    time: number
     status: number
     note: number
     velocity: number
@@ -85,6 +86,22 @@ export interface EffectsEnabledMessage {
 // Off, the first note starts the loop where the project playhead is.
 export interface RetrigMessage {
     type: 'retrig'
+    on: boolean
+}
+
+// The project's transport at time, in the context's seconds. beat and seconds count from the project start.
+export interface TransportMessage {
+    type: 'transport'
+    time: number
+    playing: boolean
+    beat: number
+    seconds: number
+    bpm: number
+}
+
+// On, the engine plays the project's tempo, and with retrig off places the playhead by the project's beat.
+export interface BpmSyncMessage {
+    type: 'bpmSync'
     on: boolean
 }
 
@@ -288,6 +305,8 @@ export type HostMessage =
     | GlobalPowerMessage
     | EffectsEnabledMessage
     | RetrigMessage
+    | TransportMessage
+    | BpmSyncMessage
     | GlobalBeatRangeMessage
     | GlobalChanceMessage
     | ReverbPowerMessage

@@ -1,4 +1,4 @@
-import { sourceDragType, type PluginEvent, type PluginFactory, type PluginInstance } from '../../../../hosts/web/plugin'
+import { sourceDragType, type PluginEvent, type PluginFactory, type PluginInstance, type TransportState } from '../../../../hosts/web/plugin'
 import { beatality } from '../plugin'
 import { lfo } from './lfo'
 import './rack.css'
@@ -40,10 +40,14 @@ let nextId = 1
 let nextZ = 1
 let playing = false
 let bpm = 120
+// The rack's transport. Play starts it at 0; started is the context time its state was taken at.
+let transport: TransportState = { playing: false, bpm, beat: 0, seconds: 0 }
+let started = 0
 
 const desk = document.querySelector<HTMLElement>('#desk')!
 const toolbar = document.querySelector<HTMLElement>('#toolbar')!
 const play = document.querySelector<HTMLButtonElement>('#play')!
+const jump = document.querySelector<HTMLButtonElement>('#jump')!
 const tempoInput = document.querySelector<HTMLInputElement>('#tempo')!
 
 // Browsers start audio only after a gesture. Any click on the page counts.
@@ -101,6 +105,16 @@ async function add(kind: Kind) {
     const instance = await kind.factory.create(context, body)
     instance.audioOutput?.connect(context.destination)
     instance.schedule([{ type: 'tempo', time: context.currentTime, bpm }])
+    if (transport.playing) {
+        const since = context.currentTime - started
+        instance.schedule([
+            {
+                type: 'transport',
+                time: context.currentTime,
+                state: { ...transport, beat: transport.beat + (since * transport.bpm) / 60, seconds: transport.seconds + since },
+            },
+        ])
+    }
     const slot: Slot = { id, title, instance, frame, bindings: list, stops: [] }
     slots.set(id, slot)
     slot.stops.push(
@@ -209,17 +223,44 @@ for (const kind of kinds) {
     toolbar.insertBefore(button, play)
 }
 
+// Play resets the transport to 0 and holds a note; Stop releases the note and stops the transport.
 play.addEventListener('click', () => {
     playing = !playing
     play.textContent = playing ? 'Stop' : 'Play'
-    const bytes: [number, number, number] = playing ? [0x90, 36, 127] : [0x80, 36, 0]
-    sendAll({ type: 'midi', time: context.currentTime, bytes })
+    const time = context.currentTime
+    started = time
+    transport = { playing, bpm, beat: 0, seconds: 0 }
+    if (playing) {
+        sendAll({ type: 'transport', time, state: transport })
+        sendAll({ type: 'midi', time, bytes: [0x90, 36, 127] })
+    } else {
+        sendAll({ type: 'midi', time, bytes: [0x80, 36, 0] })
+        sendAll({ type: 'transport', time, state: transport })
+    }
+})
+
+// Moves a playing transport back to 0 with the note still held.
+jump.addEventListener('click', () => {
+    if (!transport.playing) {
+        return
+    }
+    started = context.currentTime
+    transport = { playing: true, bpm, beat: 0, seconds: 0 }
+    sendAll({ type: 'transport', time: started, state: transport })
 })
 
 tempoInput.value = String(bpm)
 tempoInput.addEventListener('change', () => {
     const next = Math.round(tempoInput.valueAsNumber)
     if (next >= 1 && next <= 999) {
+        // While playing, the transport carries the new tempo from where it is now.
+        if (transport.playing) {
+            const time = context.currentTime
+            const since = time - started
+            transport = { playing: true, bpm: next, beat: transport.beat + (since * transport.bpm) / 60, seconds: transport.seconds + since }
+            started = time
+            sendAll({ type: 'transport', time, state: transport })
+        }
         bpm = next
         sendAll({ type: 'tempo', time: context.currentTime, bpm })
     }

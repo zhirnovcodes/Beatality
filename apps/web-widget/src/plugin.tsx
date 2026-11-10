@@ -220,9 +220,12 @@ export const beatality = {
                 } else {
                     held.clear()
                 }
-                void client.midi(gate.status, gate.note, gate.velocity)
+                void client.midi(gate.status, gate.note, gate.velocity, event.time)
             } else if (event.type === 'automation') {
                 parameters.set(event.id, event.value)
+            } else if (event.type === 'transport') {
+                model.setProjectBpm(event.state.bpm)
+                void client.transport(event.time, event.state)
             } else {
                 model.setProjectBpm(event.bpm)
             }
@@ -235,7 +238,7 @@ export const beatality = {
             reloadBanks,
             parameters: () => parameters.info(),
             parameter: (id) => parameters.value(id),
-            // Applied when they arrive. time is not used yet.
+            // Notes and the transport land on their time in the audio thread. Automation applies when it arrives.
             schedule: (events) => {
                 for (const event of events) {
                     play(event)

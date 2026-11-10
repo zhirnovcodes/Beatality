@@ -1,8 +1,8 @@
-import type { PluginEvent } from '../../../hosts/web/plugin'
+import type { PluginEvent, TransportState } from '../../../hosts/web/plugin'
 import { beatality } from './plugin'
 import './page.css'
 
-// Stands in for the wrapper: one plugin, a Play button for a held note, and the project's tempo.
+// Stands in for the wrapper: one plugin, a Play button for the transport and a held note, and the project's tempo.
 // The page owns the context. It starts suspended, and the plugin resumes it on the first click that reaches the engine.
 const context = new AudioContext()
 
@@ -28,6 +28,9 @@ const previewNote = 36
 const previewVelocity = 127
 
 let previewHeld = false
+// The page's transport. Play starts it at 0; started is its context time.
+let transport: TransportState = { playing: false, bpm: 120, beat: 0, seconds: 0 }
+let started = 0
 const showPreview = () => {
     preview.textContent = previewHeld ? 'Stop' : 'Play'
 }
@@ -37,8 +40,21 @@ showPreview()
 preview.addEventListener('click', () => {
     previewHeld = !previewHeld
     showPreview()
-    const bytes: [number, number, number] = previewHeld ? [0x90, previewNote, previewVelocity] : [0x80, previewNote, 0]
-    plugin.schedule([{ type: 'midi', time: context.currentTime, bytes }])
+    const time = context.currentTime
+    if (previewHeld) {
+        started = time
+        transport = { playing: true, bpm, beat: 0, seconds: 0 }
+        plugin.schedule([
+            { type: 'transport', time, state: transport },
+            { type: 'midi', time, bytes: [0x90, previewNote, previewVelocity] },
+        ])
+    } else {
+        transport = { playing: false, bpm, beat: 0, seconds: 0 }
+        plugin.schedule([
+            { type: 'midi', time, bytes: [0x80, previewNote, 0] },
+            { type: 'transport', time, state: transport },
+        ])
+    }
 })
 
 let bpm = Math.round(projectBpm.valueAsNumber)
@@ -46,6 +62,14 @@ plugin.schedule([tempo(bpm)])
 projectBpm.addEventListener('change', () => {
     const next = Math.round(projectBpm.valueAsNumber)
     if (next >= 1 && next <= 999) {
+        // While playing, the transport carries the new tempo from where it is now.
+        if (transport.playing) {
+            const time = context.currentTime
+            const since = time - started
+            transport = { playing: true, bpm: next, beat: transport.beat + (since * transport.bpm) / 60, seconds: transport.seconds + since }
+            started = time
+            plugin.schedule([{ type: 'transport', time, state: transport }])
+        }
         bpm = next
         plugin.schedule([tempo(bpm)])
     }

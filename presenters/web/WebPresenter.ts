@@ -100,6 +100,7 @@ export class WebPresenter {
             randomize: () => void this.perform(() => this.randomize()),
             chaos: () => void this.perform(() => this.client.fireChaos()),
             setBpm: (bpm) => void this.perform(() => this.client.setBpm(bpm)),
+            setBpmSync: (on) => void this.perform(() => this.client.setBpmSync(on)),
             setLoop: (beats) => void this.perform(() => this.client.setLoop(beats)),
             setSlice: (exponent) => void this.perform(() => this.client.setSlice(exponent)),
             setAttack: (ms) => void this.perform(() => this.client.setAttack(ms)),

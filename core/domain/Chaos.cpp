@@ -145,6 +145,9 @@ bool Chaos::tick(const ChaosSettings& settings, const SliceGrid& grid, double sa
     return true;
 }
 
+// unit_ 0 matches no unit, so the next tick takes the clock where it is.
+void Chaos::restart() { unit_ = 0; }
+
 bool Chaos::noteOn(const ChaosSettings& settings) const { return settings.trigger == ChaosTrigger::Note; }
 
 ChaosRoll Chaos::roll(Controls& controls) { return rollChaos(controls, rng_); }

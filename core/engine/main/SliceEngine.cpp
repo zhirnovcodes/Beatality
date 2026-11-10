@@ -58,6 +58,8 @@ void SliceEngine::play(double beat) {
         repeatSequence_.generate(repeatRng_);
     }
     beatRepeat_.clean();
+    // The clock jumps to beat. Chaos counts from there: a unit is a roll only when it is crossed.
+    chaos_.restart();
     // A note inside the release rises from the gain the release reached. From silence the slice's own attack is the rise.
     const float left = gate_.fadingOut() ? gate_.y(gateAt_) : 1.0f;
     const int rise = playingClock_.fadeFrames(settings_, grid_, controls_.play.attackMs);

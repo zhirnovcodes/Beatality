@@ -653,12 +653,14 @@ void Editor::pushBank() {
         bpms.add(processor.trackBpm(i));
         warpParams.add(processor.trackWarpParam(i));
         missingTracks.add(processor.trackMissing(i));
-        juce::Array<juce::var> columns;
+        // One byte per column (peak * 255), base64, so tens of thousands of columns stay a small message.
         const auto& row = processor.trackPeaks(i);
-        for (float peak : row) {
-            columns.add(static_cast<double>(peak));
+        juce::MemoryBlock bytes(row.size());
+        auto* data = static_cast<std::uint8_t*>(bytes.getData());
+        for (std::size_t column = 0; column < row.size(); ++column) {
+            data[column] = static_cast<std::uint8_t>(std::lround(std::clamp(row[column], 0.0f, 1.0f) * 255.0f));
         }
-        peaks.add(juce::var(columns));
+        peaks.add(juce::Base64::toBase64(bytes.getData(), bytes.getSize()));
     }
 
     auto* object = new juce::DynamicObject();

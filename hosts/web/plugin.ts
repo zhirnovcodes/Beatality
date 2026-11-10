@@ -9,6 +9,15 @@ export interface ParameterInfo {
     max: number
 }
 
+// The project's transport. beat and seconds count from the project start, at the event's time.
+export interface TransportState {
+    playing: boolean
+    // The project's tempo.
+    bpm: number
+    beat: number
+    seconds: number
+}
+
 // time is in the context's seconds.
 export type PluginEvent =
     | { type: 'midi'; time: number; bytes: [number, number, number] }
@@ -16,6 +25,8 @@ export type PluginEvent =
     | { type: 'automation'; time: number; id: string; value: number }
     // The host's tempo.
     | { type: 'tempo'; time: number; bpm: number }
+    // Sent on play, stop, a jump, and a tempo change.
+    | { type: 'transport'; time: number; state: TransportState }
 
 export interface PluginInstance {
     readonly audioInput: AudioNode | null

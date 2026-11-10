@@ -299,7 +299,6 @@ function drawWave(canvas, index) {
         return
     }
 
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
     ctx.fillStyle = '#c1fd31'
     let volume = play.volume
     if (!Number.isFinite(volume)) {
@@ -310,12 +309,17 @@ function drawWave(canvas, index) {
     } else if (volume > 1.2) {
         volume = 1.2
     }
-    const mid = height * 0.5
+    // Drawn per device pixel. Each pixel shows the loudest column it covers, so nothing is skipped when zoomed out.
+    const mid = deviceHeight * 0.5
     const half = mid * volume
-    for (let x = 0; x < width; x++) {
-        let into = x
+    if (!(half > 0)) {
+        return
+    }
+    const step = 1 / ratio
+    for (let x = 0; x < deviceWidth; x++) {
+        let into = x * step
         if (play.loop && contentWidth > 0) {
-            into = x % contentWidth
+            into = into % contentWidth
             if (into < 0) {
                 into += contentWidth
             }
@@ -323,24 +327,47 @@ function drawWave(canvas, index) {
         if (into < 0 || into >= drawWidth) {
             continue
         }
-        const column = Math.floor(((lead + into) / imageWidth) * peaks.length)
-        if (column < 0 || column >= peaks.length) {
+        const first = Math.floor(((lead + into) / imageWidth) * peaks.length)
+        const last = Math.min(
+            peaks.length - 1,
+            Math.max(first, Math.ceil(((lead + Math.min(into + step, drawWidth)) / imageWidth) * peaks.length) - 1),
+        )
+        if (first < 0 || first >= peaks.length) {
             continue
         }
-        if (!(half > 0)) {
-            continue
+        let peak = 0
+        for (let column = first; column <= last; column++) {
+            if (peaks[column] > peak) {
+                peak = peaks[column]
+            }
         }
-        let bar = peaks[column] * half
-        if (volume >= 1 && bar > 0 && bar < 0.5) {
-            bar = 0.5
+        let bar = peak * half
+        if (volume >= 1 && bar > 0 && bar < 0.5 * ratio) {
+            bar = 0.5 * ratio
         }
         if (!(bar > 0)) {
             continue
         }
         const top = Math.max(0, mid - bar)
-        const drawn = Math.min(height, mid + bar) - top
+        const drawn = Math.min(deviceHeight, mid + bar) - top
         ctx.fillRect(x, top, 1, drawn)
     }
+}
+
+// The editor sends each track's peaks as base64 bytes, one per column (0..255).
+function decodePeaks(encoded) {
+    if (Array.isArray(encoded)) {
+        return encoded
+    }
+    if (typeof encoded !== 'string' || encoded.length === 0) {
+        return []
+    }
+    const text = atob(encoded)
+    const peaks = new Float32Array(text.length)
+    for (let i = 0; i < text.length; i++) {
+        peaks[i] = text.charCodeAt(i) / 255
+    }
+    return peaks
 }
 
 function redrawWaves() {
@@ -650,7 +677,7 @@ function onBank(bank) {
         names,
         rates: bank.rates || [],
         frames: bank.frames || [],
-        peaks: bank.peaks || [],
+        peaks: (bank.peaks || []).map(decodePeaks),
     }
     paintGrid()
 }

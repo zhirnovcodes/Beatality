@@ -230,6 +230,33 @@ void testTickStartsAgainWhenTheClockGoesBack() {
     CHECK(chaos.tick(settings, grid, 1000, true, 500));
 }
 
+// Retrig off: a note starts the clock at the project's beat, mid-loop or on a loop line.
+void testTickAfterRestartRollsOnlyWhenALineIsCrossed() {
+    bt::SliceGrid grid; // 8 beats: a loop is 4000 frames
+    bt::ChaosSettings settings;
+    settings.trigger = bt::ChaosTrigger::Loop;
+    settings.loopSize = 1;
+    bt::Chaos chaos(1);
+    for (int frame = 0; frame < 1000; ++frame) {
+        chaos.tick(settings, grid, 1000, true, frame);
+    }
+    // Forward to the middle of the fourth loop. Not a roll; the next loop line is.
+    chaos.restart();
+    CHECK(!chaos.tick(settings, grid, 1000, true, 14000));
+    CHECK(!chaos.tick(settings, grid, 1000, true, 15999));
+    CHECK(chaos.tick(settings, grid, 1000, true, 16000));
+    // Exactly on a loop line. Nothing was crossed, so not a roll.
+    chaos.restart();
+    CHECK(!chaos.tick(settings, grid, 1000, true, 24000));
+    CHECK(!chaos.tick(settings, grid, 1000, true, 27999));
+    CHECK(chaos.tick(settings, grid, 1000, true, 28000));
+    // Stopped after the restart: the count is taken once playing again.
+    chaos.restart();
+    CHECK(!chaos.tick(settings, grid, 1000, false, 40000));
+    CHECK(!chaos.tick(settings, grid, 1000, true, 41000));
+    CHECK(chaos.tick(settings, grid, 1000, true, 44000));
+}
+
 void testNoteRollsOnlyInNoteMode() {
     const bt::Chaos chaos(1);
     bt::ChaosSettings settings;
@@ -258,6 +285,7 @@ int main() {
     testTickCountsLoopsAndSlices();
     testTickIsQuietWhenStoppedOrNotCounting();
     testTickStartsAgainWhenTheClockGoesBack();
+    testTickAfterRestartRollsOnlyWhenALineIsCrossed();
     testNoteRollsOnlyInNoteMode();
 
     if (g_failed != 0) {

@@ -34,8 +34,10 @@ public:
     explicit Chaos(std::uint64_t seed);
 
     // True on the frame that starts a new Loop, Slices, or Beats unit. frame is the playing clock's frame;
-    // it starts at 0 with the note. The note start is not a roll. A new unit size starts counting again.
+    // it starts with the note, at 0 or at the project's beat. The note start is not a roll. A new unit size starts counting again.
     bool tick(const ChaosSettings& settings, const SliceGrid& grid, double sampleRate, bool playing, std::int64_t frame);
+    // The clock moved. The next tick counts from wherever it is now, without a roll.
+    void restart();
     // True when a note-on rolls: in Note mode.
     bool noteOn(const ChaosSettings& settings) const;
     // One roll into controls, with chaos's own generator, so the slice picks do not move.

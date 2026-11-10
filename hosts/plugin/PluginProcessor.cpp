@@ -31,11 +31,16 @@ int unpackIndex(std::uint32_t packed) {
     return static_cast<int>((packed >> 8) & 0xffu) - 1;
 }
 
-constexpr int kPeakColumns = 512;
+// One column per 64 frames (about 1.5 ms at 44.1 kHz), so a row zoomed in to one slice still has
+// a column per pixel. Very long files are capped and get coarser.
+constexpr int kFramesPerPeakColumn = 64;
+constexpr int kMaxPeakColumns = 32768;
 
 // Average of each channel's loudest sample in the column, matching the web waveform.
 std::vector<float> peakColumns(const float* left, const float* right, int frames) {
-    const int columns = frames > 0 && frames < kPeakColumns ? frames : (frames > 0 ? kPeakColumns : 0);
+    const int columns = frames > 0
+        ? std::clamp((frames + kFramesPerPeakColumn - 1) / kFramesPerPeakColumn, 1, kMaxPeakColumns)
+        : 0;
     std::vector<float> peaks(static_cast<std::size_t>(columns), 0.0f);
     if (left == nullptr || columns <= 0) {
         return peaks;
@@ -942,15 +947,26 @@ struct Processor::Impl {
         queue.drain([this](CommandQueue::Slot slot) { applySlot(slot); });
     }
 
-    // at is the note's frame in the block.
+    // The engine beat at frame at of this block, from the host's transport. play() wraps it into the loop.
+    // Synced, the host's beat; otherwise the host's seconds at the plugin's own tempo.
+    double startBeat(int at) const {
+        const double since = static_cast<double>(at) / rate;
+        if (bpmSync) {
+            return blockBeat + since * hostBpm / 60.0;
+        }
+        return (blockSeconds + since) * ownBpm / 60.0;
+    }
+
+    // at is the note's frame in the block. Retrig off sounds only while the host plays.
+    // The standalone app has no transport to follow: there retrig off starts the loop at 0 too.
     void startPlayhead(int at) {
         if (engine == nullptr || engine->count() == 0) {
             return;
         }
-        if (!retrig && blockBeat >= 0.0 && hostBpm > 0.0) {
-            engine->play(blockBeat + static_cast<double>(at) * hostBpm / (60.0 * rate));
-        } else {
+        if (retrig || juce::PluginHostType::getPluginLoadedAs() == juce::AudioProcessor::wrapperType_Standalone) {
             engine->play();
+        } else if (hostPlaying) {
+            engine->play(startBeat(at));
         }
         remember();
     }
@@ -1066,7 +1082,7 @@ struct Processor::Impl {
             engine->installSequence(keptSlots.data(), static_cast<int>(keptSlots.size()), keptCount);
         }
         if (gate.held() > 0 && trackCount > 0) {
-            engine->play();
+            startPlayhead(0);
         }
         remember();
     }
@@ -1106,9 +1122,14 @@ struct Processor::Impl {
     double ownBpm = 120;
     double hostBpm = 0;
     bool bpmSync = false;
-    // The retrig parameter, and the host's beat at the start of this block: -1 while the host is stopped or has none.
+    // The retrig parameter, and the host's beat and seconds at the start of this block: -1 while the host is stopped or has none.
     bool retrig = true;
     double blockBeat = -1;
+    double blockSeconds = -1.0;
+    // The host is playing this block with the position the playhead needs: the beat when synced, else the seconds.
+    bool hostPlaying = false;
+    // Where this block starts in seconds if the host did not jump; -1 while stopped.
+    double expectedSeconds = -1.0;
     // The host parameter values read on the last block. They start at the parameters' defaults.
     bt::Controls lastParams;
     // Knobs the engine changed by itself, for the message thread to write into the host parameters.
@@ -1252,6 +1273,7 @@ void Processor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&
     impl->readParams(controls);
     double hostBpm = 0.0;
     double blockBeat = -1.0;
+    double blockSeconds = -1.0;
     if (juce::AudioPlayHead* playHead = getPlayHead()) {
         if (const auto info = playHead->getPosition()) {
             if (const auto tempo = info->getBpm()) {
@@ -1260,11 +1282,31 @@ void Processor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&
             if (const auto ppq = info->getPpqPosition(); ppq && info->getIsPlaying() && std::isfinite(*ppq) && *ppq >= 0.0) {
                 blockBeat = *ppq;
             }
+            if (const auto seconds = info->getTimeInSeconds(); seconds && info->getIsPlaying() && std::isfinite(*seconds) && *seconds >= 0.0) {
+                blockSeconds = *seconds;
+            }
         }
     }
     impl->followHost(hostBpm > 0.0 && std::isfinite(hostBpm) ? hostBpm : 0.0);
     impl->retrig = retrigParam->get();
     impl->blockBeat = blockBeat;
+    impl->blockSeconds = blockSeconds;
+    // Retrig off with a note held follows the host: play starts the playhead, stop releases it, a jump moves it.
+    // Within two frames of where the last block predicted is the same run, not a jump.
+    const bool wasPlaying = impl->hostPlaying;
+    // Each mode needs only the position it plays from: synced, the beat; otherwise the seconds.
+    impl->hostPlaying = impl->bpmSync ? blockBeat >= 0.0 : blockSeconds >= 0.0;
+    if (!impl->retrig && impl->gate.held() > 0) {
+        // A jump is seen in the seconds. A host that sends none moves no playhead mid-run.
+        const bool jumped = wasPlaying && impl->hostPlaying && blockSeconds >= 0.0 && impl->expectedSeconds >= 0.0 &&
+                            std::abs(blockSeconds - impl->expectedSeconds) > 2.0 / impl->rate;
+        if (impl->hostPlaying && (!wasPlaying || jumped)) {
+            impl->startPlayhead(0);
+        } else if (wasPlaying && !impl->hostPlaying) {
+            impl->endPlayhead();
+        }
+    }
+    impl->expectedSeconds = impl->hostPlaying && blockSeconds >= 0.0 ? blockSeconds + static_cast<double>(buffer.getNumSamples()) / impl->rate : -1.0;
 
     const bt::Controls rendered = impl->engine->controls();
     int position = 0;

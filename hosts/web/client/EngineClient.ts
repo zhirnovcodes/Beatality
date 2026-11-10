@@ -1,5 +1,6 @@
 import type { ChaosFields, EngineControls, PackMessage, TrackMessage, WorkletMessage } from '../messages'
 import { sampleBpm, warpIndex, type PackDocument, type SampleSettings } from '../pack'
+import type { TransportState } from '../plugin'
 
 function trackMessage(index: number, play: SampleSettings): TrackMessage {
     return {
@@ -99,9 +100,15 @@ export class EngineClient {
         }
     }
 
-    async midi(status: number, note: number, velocity: number): Promise<void> {
+    // time is in the context's seconds. Without it the note plays at once.
+    async midi(status: number, note: number, velocity: number, time?: number): Promise<void> {
         await this.start()
-        this.node?.port.postMessage({ type: 'midi', frame: 0, status, note, velocity })
+        this.node?.port.postMessage({ type: 'midi', time: time ?? 0, status, note, velocity })
+    }
+
+    async transport(time: number, state: TransportState): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'transport', time, ...state })
     }
 
     async randomize(): Promise<void> {
@@ -158,6 +165,11 @@ export class EngineClient {
     async setRetrig(on: boolean): Promise<void> {
         await this.start()
         this.node?.port.postMessage({ type: 'retrig', on })
+    }
+
+    async setBpmSync(on: boolean): Promise<void> {
+        await this.start()
+        this.node?.port.postMessage({ type: 'bpmSync', on })
     }
 
     async setGlobalBeatRange(min: number, max: number): Promise<void> {

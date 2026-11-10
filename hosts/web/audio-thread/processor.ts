@@ -2,6 +2,8 @@
 // Served as one script, so this file imports nothing.
 
 declare const sampleRate: number
+// The first frame of the block process() is rendering.
+declare const currentFrame: number
 
 interface Core {
     memory: WebAssembly.Memory
@@ -24,6 +26,8 @@ interface Core {
     bt_set_global_power: (engine: number, power: number) => void
     bt_set_effects_enabled: (engine: number, on: number) => void
     bt_set_retrig: (engine: number, on: number) => void
+    bt_set_bpm_sync: (engine: number, on: number) => void
+    bt_transport: (engine: number, playing: number, beat: number, seconds: number, bpm: number) => void
     bt_set_global_beat_range: (engine: number, min: number, max: number) => void
     bt_set_global_chance: (engine: number, chance: number) => void
     bt_set_reverb_power: (engine: number, power: number) => void
@@ -109,20 +113,19 @@ interface DisposeMessage {
     type: 'dispose'
 }
 
+// time is in the context's seconds. A time already past plays at once.
 interface MidiMessage {
     type: 'midi'
-    frame: number
+    time: number
     status: number
     note: number
     velocity: number
 }
 
-interface QueuedMidi {
-    frame: number
-    status: number
-    note: number
-    velocity: number
-}
+// frame is on the context's clock: Math.round(time * sampleRate).
+type Timed =
+    | { frame: number; kind: 'midi'; status: number; note: number; velocity: number }
+    | { frame: number; kind: 'transport'; playing: boolean; beat: number; seconds: number; bpm: number }
 
 interface RemoveMessage {
     type: 'remove'
@@ -165,6 +168,22 @@ interface EffectsEnabledMessage {
 
 interface RetrigMessage {
     type: 'retrig'
+    on: boolean
+}
+
+// The project's transport at time, in the context's seconds. beat and seconds count from the project start.
+interface TransportMessage {
+    type: 'transport'
+    time: number
+    playing: boolean
+    beat: number
+    seconds: number
+    bpm: number
+}
+
+// On, the engine plays the project's tempo, and with retrig off places the playhead by the project's beat.
+interface BpmSyncMessage {
+    type: 'bpmSync'
     on: boolean
 }
 
@@ -361,6 +380,8 @@ type HostMessage =
     | GlobalPowerMessage
     | EffectsEnabledMessage
     | RetrigMessage
+    | TransportMessage
+    | BpmSyncMessage
     | GlobalBeatRangeMessage
     | GlobalChanceMessage
     | ReverbPowerMessage
@@ -422,7 +443,8 @@ class BeatalityProcessor extends AudioWorkletProcessor {
     private blocksLeft = 1
     private blocksPerSnapshot = 1
     private waiting: HostMessage[] = []
-    private midi: QueuedMidi[] = []
+    // Notes and transport changes waiting for their frame, kept across blocks.
+    private timed: Timed[] = []
     private disposed = false
     // bt_controls_write fills this. Allocated once, at init.
     private controlsPtr = 0
@@ -452,22 +474,23 @@ class BeatalityProcessor extends AudioWorkletProcessor {
 
         this.ensureRenderBuffers(frames)
         const core = this.core
-        const midi = this.midi.length > 0 ? this.midi : null
-        if (midi) {
-            this.midi = []
-            if (midi.length > 1) {
-                midi.sort((a, b) => a.frame - b.frame)
+        // The events due in this block, in order. Late ones play at its start; later ones wait.
+        const end = currentFrame + frames
+        let due: Timed[] | null = null
+        if (this.timed.length > 0) {
+            this.timed.sort((a, b) => a.frame - b.frame)
+            let count = 0
+            while (count < this.timed.length && this.timed[count].frame < end) {
+                count++
+            }
+            if (count > 0) {
+                due = this.timed.splice(0, count)
             }
         }
         let position = 0
-        if (midi) {
-            for (const event of midi) {
-                let at = event.frame
-                if (at < position) {
-                    at = position
-                } else if (at > frames) {
-                    at = frames
-                }
+        if (due) {
+            for (const event of due) {
+                const at = Math.max(position, event.frame - currentFrame)
                 if (at > position) {
                     core.bt_render(
                         this.engine,
@@ -477,7 +500,11 @@ class BeatalityProcessor extends AudioWorkletProcessor {
                     )
                 }
                 position = at
-                core.bt_midi(this.engine, event.status, event.note, event.velocity)
+                if (event.kind === 'midi') {
+                    core.bt_midi(this.engine, event.status, event.note, event.velocity)
+                } else {
+                    core.bt_transport(this.engine, event.playing ? 1 : 0, event.beat, event.seconds, event.bpm)
+                }
             }
         }
         if (position < frames) {
@@ -504,7 +531,7 @@ class BeatalityProcessor extends AudioWorkletProcessor {
         if (--this.blocksLeft <= 0) {
             this.blocksLeft = this.blocksPerSnapshot
             this.postSnapshot(peak)
-        } else if (midi) {
+        } else if (due) {
             this.postSnapshot(peak)
         }
         this.postControls()
@@ -567,12 +594,24 @@ class BeatalityProcessor extends AudioWorkletProcessor {
             this.core!.bt_chaos(this.engine)
             this.postSnapshot(0)
         } else if (message.type === 'midi') {
-            this.midi.push({
-                frame: message.frame,
+            this.timed.push({
+                frame: Math.round(message.time * sampleRate),
+                kind: 'midi',
                 status: message.status,
                 note: message.note,
                 velocity: message.velocity,
             })
+        } else if (message.type === 'transport') {
+            this.timed.push({
+                frame: Math.round(message.time * sampleRate),
+                kind: 'transport',
+                playing: message.playing,
+                beat: message.beat,
+                seconds: message.seconds,
+                bpm: message.bpm,
+            })
+        } else if (message.type === 'bpmSync') {
+            this.core!.bt_set_bpm_sync(this.engine, message.on ? 1 : 0)
         } else if (message.type === 'remove') {
             this.core!.bt_remove(this.engine, message.index)
             this.postSnapshot(0)

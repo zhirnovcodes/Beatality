@@ -92,6 +92,8 @@ export interface ViewActions {
     // The CHAOS button: one chaos roll in every trigger mode.
     chaos: () => void
     setBpm: (bpm: number) => void
+    // On, the engine follows the project's beat; off, the project's seconds at its own tempo.
+    setBpmSync: (on: boolean) => void
     setLoop: (beats: number) => void
     setSlice: (exponent: number) => void
     setAttack: (ms: number) => void
@@ -365,6 +367,7 @@ export class WebViewModel {
         }
         this.bpmSync = on
         this.notify()
+        this.actions?.setBpmSync(on)
         this.actions?.setBpm(this.engineBpm)
     }
 
