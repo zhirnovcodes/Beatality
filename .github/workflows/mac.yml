@@ -1,0 +1,116 @@
+name: macOS build
+
+# Builds the universal (Apple Silicon + Intel) AU, VST3 and Standalone, checks them,
+# and uploads an unsigned zip for testing. Signing and notarization come later.
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - "core/**"
+      - "hosts/**"
+      - "apps/web-widget/src/ui/**"
+      - "apps/web-widget/public/packs/**"
+      - "tests/**"
+      - "CMakeLists.txt"
+      - ".github/workflows/mac.yml"
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 60
+    env:
+      ARTEFACTS: build/Beatality_artefacts/Release
+    steps:
+      - uses: actions/checkout@v4
+
+      # third_party/ is not in the repo; CMake downloads the pinned JUCE commit. Keep it between runs.
+      - name: Cache JUCE download
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: juce-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Install Ninja
+        run: brew list ninja >/dev/null 2>&1 || brew install ninja
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build core tests
+        run: cmake --build build --target domain_tests chaos_tests slice_tests pair_tests
+
+      - name: Run core tests
+        run: |
+          for t in domain_tests chaos_tests slice_tests pair_tests; do
+            echo "== $t"; ./build/$t
+          done
+
+      - name: Build plugin
+        run: cmake --build build --target Beatality_AU Beatality_VST3 Beatality_Standalone
+
+      - name: Check bundles
+        run: |
+          for b in AU/Beatality.component VST3/Beatality.vst3 Standalone/Beatality.app; do
+            bundle="$ARTEFACTS/$b"
+            binary="$bundle/Contents/MacOS/Beatality"
+            echo "== $b: $(lipo -archs "$binary")"
+            lipo -archs "$binary" | grep -q arm64
+            lipo -archs "$binary" | grep -q x86_64
+            count=$(ls "$bundle/Contents/Resources/Factory" | wc -l)
+            echo "   Factory files: $count"
+            test "$count" -gt 0
+          done
+
+      # Ad-hoc signature over the whole bundle, Factory folder included, so it loads on Apple Silicon.
+      - name: Ad-hoc sign
+        run: |
+          for b in AU/Beatality.component VST3/Beatality.vst3 Standalone/Beatality.app; do
+            codesign --force --sign - --options runtime "$ARTEFACTS/$b"
+            codesign --verify --strict --verbose=2 "$ARTEFACTS/$b"
+          done
+
+      - name: Validate AU (auval)
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "$ARTEFACTS/AU/Beatality.component" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          auval -a | grep -i Btly || true
+          auval -strict -v aumu Bt01 Btly
+
+      # Not blocking yet: the results show what to fix before release.
+      - name: Validate with pluginval
+        continue-on-error: true
+        run: |
+          curl -sL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip
+          unzip -q pluginval.zip
+          PV=pluginval.app/Contents/MacOS/pluginval
+          $PV --strictness-level 10 --skip-gui-tests --validate-in-process "$ARTEFACTS/VST3/Beatality.vst3"
+          $PV --strictness-level 10 --skip-gui-tests --validate-in-process ~/Library/Audio/Plug-Ins/Components/Beatality.component
+
+      - name: Package
+        run: |
+          mkdir -p dist/Beatality-mac
+          cp -R "$ARTEFACTS/AU/Beatality.component" "$ARTEFACTS/VST3/Beatality.vst3" "$ARTEFACTS/Standalone/Beatality.app" dist/Beatality-mac/
+          cat > dist/Beatality-mac/README.txt <<'EOF'
+          Beatality test build (unsigned). Not for distribution.
+
+          Install:
+            Beatality.component  ->  ~/Library/Audio/Plug-Ins/Components/
+            Beatality.vst3       ->  ~/Library/Audio/Plug-Ins/VST3/
+            Beatality.app        ->  /Applications/ (or anywhere)
+
+          macOS blocks unsigned downloads. After copying, run in Terminal:
+            xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/Beatality.component
+            xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/Beatality.vst3
+            xattr -dr com.apple.quarantine /Applications/Beatality.app
+
+          Logic: if Beatality does not show up, open Logic > Settings > Plug-in Manager and rescan.
+          EOF
+          cd dist && ditto -c -k --keepParent Beatality-mac Beatality-mac.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Beatality-mac
+          path: dist/Beatality-mac.zip
+          retention-days: 14
