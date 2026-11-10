@@ -69,9 +69,7 @@ jobs:
           auval -a | grep -i Btly || true
           auval -strict -v aumu Bt01 Btly
 
-      # Not blocking yet: the results show what to fix before release.
       - name: Validate with pluginval
-        continue-on-error: true
         run: |
           curl -sL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip
           unzip -q pluginval.zip
