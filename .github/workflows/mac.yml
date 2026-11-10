@@ -37,15 +37,6 @@ jobs:
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
-      - name: Build core tests
-        run: cmake --build build --target domain_tests chaos_tests slice_tests pair_tests
-
-      - name: Run core tests
-        run: |
-          for t in domain_tests chaos_tests slice_tests pair_tests; do
-            echo "== $t"; ./build/$t
-          done
-
       - name: Build plugin
         run: cmake --build build --target Beatality_AU Beatality_VST3 Beatality_Standalone
 
@@ -114,3 +105,19 @@ jobs:
           name: Beatality-mac
           path: dist/Beatality-mac.zip
           retention-days: 14
+
+      # Last, so a failing test still leaves a plugin zip to try. The run is still marked failed.
+      - name: Build core tests
+        run: cmake --build build --target domain_tests chaos_tests slice_tests pair_tests
+
+      - name: Run core tests
+        run: |
+          failed=0
+          for t in domain_tests chaos_tests slice_tests pair_tests; do
+            echo "== $t"
+            out=$(./build/$t 2>&1) || failed=1
+            # One line per failing check, with how many times it failed.
+            printf '%s\n' "$out" | grep '^FAIL' | sort | uniq -c
+            printf '%s\n' "$out" | grep -v '^FAIL'
+          done
+          exit $failed
