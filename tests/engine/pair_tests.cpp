@@ -1,7 +1,9 @@
 #include "BeatRepeat.h"
 #include "Curve.h"
+#include "Interpolator.h"
 #include "SliceEngine.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -22,6 +24,13 @@ void check(bool ok, const char* text, int line) {
 #define CHECK(cond) check(static_cast<bool>(cond), #cond, __LINE__)
 
 bool near(double a, double b) { return std::fabs(a - b) < 1e-4; }
+
+// At a slice start the effect fades in over Interpolator::kChangeSec: the wet mix, the effect's power and the
+// global power each rise from 0 together, one step per frame. The effect's share of the sample is the three multiplied.
+double effectShare(int frame, int rate) {
+    const double ramp = std::min(1.0, static_cast<double>(frame + 1) / (bt::Interpolator::kChangeSec * rate));
+    return ramp * ramp * ramp;
+}
 
 bt::SampleBuffer bufferOf(std::uint32_t id, const std::vector<float>& samples) {
     return {id, samples.data(), samples.data(), static_cast<int>(samples.size())};
@@ -667,7 +676,7 @@ void testReverseSplitsTheSlice() {
     const int attack = bt::attackFrames(0.5, kRate);
     const int opening = attack / 2;
     const float open = static_cast<float>(opening) / static_cast<float>(attack);
-    CHECK(near(wet[opening], samples[opening] + (samples[2999 - opening] - samples[opening]) * open));
+    CHECK(near(wet[opening], samples[opening] + (samples[2999 - opening] - samples[opening]) * open * effectShare(opening, kRate)));
     CHECK(near(wet[2999], samples[2999]));
 
     const std::vector<float> mixed = play(0.5, 1, -1);
@@ -789,9 +798,10 @@ void testFlangerFollowsPowerAndBeat() {
     const std::vector<float> gated = play(held, 1, 0, 0);
     CHECK(gated[2500] == 1.0f);
 
-    // Full power is an even mix. The delay line is still empty, so only the dry half is heard.
+    // Full power is an even mix. Nothing precedes the first slice, so the line holds silence and only the dry half
+    // is heard. The effect is still fading in, so the dry half is not reached yet.
     const std::vector<float> open = play(held, 1, 1, 0);
-    CHECK(open[150] == 0.5f);
+    CHECK(near(open[150], 1.0 - 0.5 * effectShare(150, kRate)));
     // Feedback has filled the line, so a constant sits above that dry half.
     CHECK(open[2500] > 1.5f);
 
@@ -841,7 +851,8 @@ void testTranceFollowsPowerAndBeat() {
 
     // The slice fade has finished. The gate is halfway up its attack, then holding, then shut.
     const std::vector<float> open = play(1, 1, -4);
-    CHECK(near(open[96], 0.5));
+    // The effect is still fading in, so only that share of the half-open gate is heard.
+    CHECK(near(open[96], 1.0 - 0.5 * effectShare(96, kRate)));
     CHECK(open[2000] == 1.0f);
     CHECK(open[2400] == 1.0f);
     CHECK(open[2500] > 0.4f);
@@ -857,7 +868,8 @@ void testTranceFollowsPowerAndBeat() {
     const std::vector<float> wide = play(1, 1, 0);
     CHECK(wide[400] == 1.0f);
     CHECK(wide[2800] == 1.0f);
-    CHECK(wide[96] < 0.4f);
+    // Its attack is longer, so at the same moment the gate is open less than at a sixteenth.
+    CHECK(wide[96] < open[96]);
 }
 
 double toneEnergy(const std::vector<float>& samples, int first, int count, double freq, double rate) {

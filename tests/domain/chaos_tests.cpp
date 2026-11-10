@@ -52,7 +52,7 @@ void testChaosZeroStaysInTheNarrowRanges() {
         bt::Controls controls = allOn(0);
         bt::rollChaos(controls, rng);
         CHECK(controls.play.panMin == 0.0 && controls.play.panMax == 0.0);
-        CHECK(controls.play.sliceExp >= -1 && controls.play.sliceExp <= 0);
+        CHECK(controls.play.sliceExp >= -1 && controls.play.sliceExp <= 4);
         CHECK(controls.effects.globalPower >= 0 && controls.effects.globalPower < 0.75);
         CHECK(controls.effects.shiftChance >= 0 && controls.effects.shiftChance < 0.35);
         CHECK(controls.effects.beatMin >= -2 && controls.effects.beatMax <= 0);
@@ -81,7 +81,9 @@ void testChaosOneReachesTheWideEnds() {
         CHECK(controls.play.panMax >= 0 && controls.play.panMax <= 1);
         CHECK(controls.repeat.sizeMin >= bt::BeatRepeatSettings::kSizeMin && controls.repeat.sizeMax <= bt::BeatRepeatSettings::kSizeMax);
         lowSlice = lowSlice || controls.play.sliceExp == -4;
-        highSlice = highSlice || controls.play.sliceExp == 4;
+        // Full chaos slices from -4 to 0 (ChaosRanges.h).
+        CHECK(controls.play.sliceExp >= -4 && controls.play.sliceExp <= 0);
+        highSlice = highSlice || controls.play.sliceExp == 0;
         hardLeft = hardLeft || controls.play.panMin < -0.99;
         longLoop = longLoop || controls.chaos.loopSize == 8;
     }
