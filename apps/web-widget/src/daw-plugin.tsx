@@ -9,6 +9,7 @@ import type {
     PluginState,
     PortHandle,
     PortInfo,
+    TransportState,
 } from '../../../hosts/web/plugin-v2'
 import { WebPresenter } from '../../../presenters/web/WebPresenter'
 import { createCore } from './beatalityCore'
@@ -122,6 +123,22 @@ const factory: PluginFactory = {
             }
         })
 
+        // With retrig off a note sounds only while the project plays, from the project's position,
+        // so the engine needs the transport. v2 gives no seconds; they are counted along the beats
+        // at the tempo each stretch played at, which keeps tempo changes from reading as jumps.
+        let last: { beat: number; bpm: number; seconds: number } | null = null
+        const transport = (time: number, state: TransportState) => {
+            if (!(state.bpm > 0) || !Number.isFinite(state.beat)) {
+                return
+            }
+            const seconds = last ? last.seconds + ((state.beat - last.beat) * 60) / last.bpm : (state.beat * 60) / state.bpm
+            last = { beat: state.beat, bpm: state.bpm, seconds }
+            model.setProjectBpm(state.bpm)
+            void client.transport(time, { playing: state.playing, bpm: state.bpm, beat: state.beat, seconds })
+        }
+        // An instance added while the project already plays.
+        transport(host.audioContext.currentTime, host.transport())
+
         const play = (event: PluginEvent) => {
             if (event.type === 'midi') {
                 core.play(event)
@@ -131,8 +148,9 @@ const factory: PluginFactory = {
             } else if (event.type === 'tempo') {
                 // Only the project tempo. BPM sync stays as the pack set it.
                 core.play({ type: 'tempo', bpm: event.bpm })
+            } else {
+                transport(event.time, event.state)
             }
-            // transport is not used in v1.1.
         }
 
         // The widget is rendered once, into root, on the first mount. Unmount detaches root and keeps the tree,
