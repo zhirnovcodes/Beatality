@@ -26,13 +26,13 @@ constexpr ChaosRange slices{-1, 4, -4, 0};
 namespace effects {
 // 0..1. Powers reach past the max at chaos 1, so about a quarter of full-chaos rolls land on full power.
 constexpr ChaosRange power{0, 0.75, 0.25, 1.33};
-constexpr ChaosRange chance{0, 0.35, 0, 1};
+constexpr ChaosRange chance{0, 0.35, 0.2, 1};
 // 2^n beats, -4..1. A min above the max is swapped.
 constexpr ChaosRange timeMin{-2, 0, -4, 1};
 constexpr ChaosRange timeMax{-2, 0, -4, 1};
 // Each effect's own power and chance, 0..1.
 constexpr ChaosRange effectPower{0, 0.75, 0.25, 1.33};
-constexpr ChaosRange effectChance{0, 0.35, 0, 1};
+constexpr ChaosRange effectChance{0, 0.35, 0.2, 1};
 } // namespace effects
 
 namespace beatRepeat {
