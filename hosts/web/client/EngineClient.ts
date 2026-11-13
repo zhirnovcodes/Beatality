@@ -43,6 +43,10 @@ export interface EngineClientOptions {
     context: AudioContext
     wasmUrl: string
     processorUrl: string
+    // false: the host owns the context and starts it, so starting the engine does not wait on resume().
+    // A browser holds resume() until the user clicks, and a DAW may create the plugin before that.
+    // Default true: the widget page resumes the context on the first click that reaches the engine.
+    resumeContext?: boolean
 }
 
 // The page's handle on the audio thread. Safe to call before audio has started:
@@ -500,7 +504,7 @@ export class EngineClient {
 
     private async startInner(): Promise<void> {
         const context = this.options.context
-        if (context.state !== 'running') {
+        if (this.options.resumeContext !== false && context.state !== 'running') {
             await context.resume()
         }
         const wasmResponse = await fetch(this.options.wasmUrl)

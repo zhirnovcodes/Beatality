@@ -1,61 +1,10 @@
-import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
+import { processorScript } from './vite.processor.ts'
 
-const processorPath = fileURLToPath(new URL('../../hosts/web/audio-thread/processor.ts', import.meta.url))
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
-const tsc = fileURLToPath(new URL('./node_modules/typescript/bin/tsc', import.meta.url))
-
-// The worklet is one script with no imports. TypeScript 7 exposes no compiler
-// API on its main entry, so the tsc binary strips the types.
-function processorScript(): Plugin {
-    let cached: { mtimeMs: number; code: string } | null = null
-
-    const compile = () => {
-        const mtimeMs = fs.statSync(processorPath).mtimeMs
-        if (cached?.mtimeMs === mtimeMs) {
-            return cached.code
-        }
-        const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'beatality-processor-'))
-        execFileSync(process.execPath, [
-            tsc,
-            '--ignoreConfig',
-            processorPath,
-            '--target',
-            'ES2022',
-            '--module',
-            'ES2022',
-            '--moduleResolution',
-            'bundler',
-            '--skipLibCheck',
-            '--outDir',
-            outDir,
-        ])
-        const code = fs.readFileSync(path.join(outDir, 'processor.js'), 'utf8')
-        cached = { mtimeMs, code }
-        return code
-    }
-
-    return {
-        name: 'beatality-processor',
-        configureServer(server) {
-            server.middlewares.use((req, res, next) => {
-                if (req.url?.split('?')[0] !== '/beatality-processor.js') {
-                    next()
-                    return
-                }
-                res.setHeader('Content-Type', 'text/javascript')
-                res.end(compile())
-            })
-        },
-        generateBundle() {
-            this.emitFile({ type: 'asset', fileName: 'beatality-processor.js', source: compile() })
-        },
-    }
-}
 
 const packsDir = fileURLToPath(new URL('./public/packs', import.meta.url))
 const samplesDir = path.join(packsDir, 'samples')
@@ -206,8 +155,42 @@ function presetLibrary(): Plugin {
     }
 }
 
+const dawDir = fileURLToPath(new URL('./dist-daw', import.meta.url))
+const dawTypes: Record<string, string> = {
+    '.js': 'text/javascript',
+    '.wasm': 'application/wasm',
+    '.json': 'application/json',
+    '.beatality': 'application/json',
+}
+
+// Localhost only: daw-test.html loads the built dist-daw/ from a sub-path, as IvanDAW will.
+// The files are served as they are, with no Vite transform.
+function dawTestFiles(): Plugin {
+    return {
+        name: 'beatality-daw-test-files',
+        apply: 'serve',
+        configureServer(server) {
+            server.middlewares.use((req, res, next) => {
+                const url = new URL(req.url ?? '/', 'http://localhost')
+                if (!url.pathname.startsWith('/x/beatality/')) {
+                    next()
+                    return
+                }
+                const file = path.resolve(dawDir, decodeURIComponent(url.pathname.slice('/x/beatality/'.length)))
+                if (!file.startsWith(dawDir + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+                    res.statusCode = 404
+                    res.end(fs.existsSync(dawDir) ? 'not found' : 'dist-daw/ is missing: run build:daw first')
+                    return
+                }
+                res.setHeader('Content-Type', dawTypes[path.extname(file)] ?? 'application/octet-stream')
+                res.end(fs.readFileSync(file))
+            })
+        },
+    }
+}
+
 export default defineConfig({
-    plugins: [processorScript(), presetLibrary()],
+    plugins: [processorScript('beatality-processor.js'), presetLibrary(), dawTestFiles()],
     // localhost on this machine is IPv6-only unless the host is set, so a
     // browser that opens 127.0.0.1 is refused. Listen on every loopback.
     server: { host: true, port: 5173, fs: { allow: [repoRoot] } },

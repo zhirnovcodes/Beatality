@@ -84,6 +84,13 @@ void testChaosOneReachesTheWideEnds() {
         // Full chaos slices from -4 to 0 (ChaosRanges.h).
         CHECK(controls.play.sliceExp >= -4 && controls.play.sliceExp <= 0);
         highSlice = highSlice || controls.play.sliceExp == 0;
+        // Full chaos never rolls an effect chance under 0.2 (ChaosRanges.h).
+        const bt::Effects& fx = controls.effects;
+        CHECK(fx.globalChance >= 0.2 && fx.globalChance <= 1);
+        for (double chance : {fx.delayChance, fx.reverbChance, fx.reverseChance, fx.filterChance,
+                              fx.flangerChance, fx.tranceChance, fx.shiftChance}) {
+            CHECK(chance >= 0.2 && chance <= 1);
+        }
         hardLeft = hardLeft || controls.play.panMin < -0.99;
         longLoop = longLoop || controls.chaos.loopSize == 8;
     }

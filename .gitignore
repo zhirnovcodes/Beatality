@@ -5,6 +5,7 @@ third_party/
 # Build output (all CMake build trees: build/, build-check/, build-wasm/, ...)
 build*/
 dist/
+dist-daw/
 out/
 .emscripten
 

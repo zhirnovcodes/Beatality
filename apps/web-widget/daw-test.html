@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Beatality DAW test</title>
+        <style>
+            /* The stand-in IvanDAW around the built plugin. Not part of the plugin. */
+            body { margin: 0; background: #2a2c30; color: #ddd; font: 14px/1.4 system-ui, sans-serif; }
+            .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 16px; }
+            .bar button[aria-pressed='true'] { outline: 2px solid #6cf; }
+            #slot { margin: 0 16px; min-height: 40px; outline: 1px dashed #555; display: inline-block; }
+            #log { margin: 12px 16px; height: 160px; overflow: auto; background: #1d1e21; padding: 8px; font: 12px/1.4 ui-monospace, monospace; white-space: pre-wrap; }
+        </style>
+    </head>
+    <body>
+        <div class="bar">
+            <button id="start" type="button">Start</button>
+            <button id="note-on" type="button" disabled>Note on C1</button>
+            <button id="note-off" type="button" disabled>Note off</button>
+            <button id="all-off" type="button" disabled>CC 123</button>
+            <button id="mount" type="button" disabled>Unmount</button>
+            <button id="lfo" type="button" aria-pressed="false" disabled>LFO on volume</button>
+            <button id="tempo" type="button" disabled>Tempo 90</button>
+            <button id="state" type="button" disabled>Save + restore state</button>
+            <button id="dispose" type="button" disabled>Dispose</button>
+        </div>
+        <div id="slot"></div>
+        <div id="log"></div>
+        <script type="module" src="/src/dawTestMain.ts"></script>
+    </body>
+</html>
