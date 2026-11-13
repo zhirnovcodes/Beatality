@@ -1372,6 +1372,10 @@ function attachSampleScroll(root: ParentNode): () => void {
     thumb.addEventListener(
         'pointerdown',
         (event) => {
+            // Other buttons pass through: a DAW pans its canvas with a right-drag.
+            if (event.button !== 0) {
+                return
+            }
             event.preventDefault()
             event.stopPropagation()
             thumb.setPointerCapture(event.pointerId)
@@ -1398,7 +1402,7 @@ function attachSampleScroll(root: ParentNode): () => void {
     bar.addEventListener(
         'pointerdown',
         (event) => {
-            if (event.target !== bar) {
+            if (event.target !== bar || event.button !== 0) {
                 return
             }
             const above = event.clientY < thumb.getBoundingClientRect().top
@@ -1433,6 +1437,9 @@ function attachSampleScroll(root: ParentNode): () => void {
         btn.addEventListener(
             'pointerdown',
             (event) => {
+                if (event.button !== 0) {
+                    return
+                }
                 event.preventDefault()
                 viewport.scrollTop += dy
                 delay = window.setTimeout(() => {
