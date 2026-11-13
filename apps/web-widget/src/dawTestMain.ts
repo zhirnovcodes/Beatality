@@ -26,6 +26,7 @@ const buttons = {
     allOff: element('all-off', HTMLButtonElement),
     mount: element('mount', HTMLButtonElement),
     lfo: element('lfo', HTMLButtonElement),
+    play: element('play', HTMLButtonElement),
     tempo: element('tempo', HTMLButtonElement),
     state: element('state', HTMLButtonElement),
     dispose: element('dispose', HTMLButtonElement),
@@ -105,9 +106,32 @@ buttons.lfo.addEventListener('click', () => {
     buttons.lfo.setAttribute('aria-pressed', String(lfo !== 0))
 })
 
+// The project's playhead: transport.beat at anchor, in the context's seconds, moving while playing.
+let anchor = 0
+const beatNow = (time: number) => (transport.playing ? transport.beat + ((time - anchor) * transport.bpm) / 60 : transport.beat)
+const sendTransport = (time: number) => {
+    plugin?.schedule([{ type: 'transport', time, state: { ...transport } }])
+    log(`transport ${transport.playing ? 'playing' : 'stopped'} at beat ${transport.beat.toFixed(2)}, ${transport.bpm} bpm`)
+}
+
+buttons.play.addEventListener('click', () => {
+    const time = context.currentTime
+    transport.beat = beatNow(time)
+    transport.playing = !transport.playing
+    anchor = time
+    sendTransport(time)
+    buttons.play.setAttribute('aria-pressed', String(transport.playing))
+})
+
 buttons.tempo.addEventListener('click', () => {
+    const time = context.currentTime
+    transport.beat = beatNow(time)
+    anchor = time
     transport.bpm = transport.bpm === 90 ? 120 : 90
-    plugin?.schedule([{ type: 'tempo', time: context.currentTime, bpm: transport.bpm }])
+    plugin?.schedule([{ type: 'tempo', time, bpm: transport.bpm }])
+    if (transport.playing) {
+        sendTransport(time)
+    }
     buttons.tempo.textContent = `Tempo ${transport.bpm === 90 ? 120 : 90}`
     log(`tempo ${transport.bpm}`)
 })
