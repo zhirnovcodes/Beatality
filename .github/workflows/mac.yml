@@ -12,6 +12,7 @@ on:
       - "apps/web-widget/src/ui/**"
       - "apps/web-widget/public/packs/**"
       - "tests/**"
+      - "params.json"
       - "CMakeLists.txt"
       - ".github/workflows/mac.yml"
 
@@ -106,12 +107,12 @@ jobs:
 
       # Last, so a failing test still leaves a plugin zip to try. The run is still marked failed.
       - name: Build core tests
-        run: cmake --build build --target domain_tests chaos_tests slice_tests pair_tests
+        run: cmake --build build --target domain_tests params_tests chaos_tests slice_tests pair_tests
 
       - name: Run core tests
         run: |
           failed=0
-          for t in domain_tests chaos_tests slice_tests pair_tests; do
+          for t in domain_tests params_tests chaos_tests slice_tests pair_tests; do
             echo "== $t"
             out=$(./build/$t 2>&1) || failed=1
             # One line per failing check, with how many times it failed.

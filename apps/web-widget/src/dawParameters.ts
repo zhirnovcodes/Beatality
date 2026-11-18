@@ -1,62 +1,38 @@
-import { chaosTriggerNames } from '../../../hosts/web/pack'
 import type { ParameterInfo as V1ParameterInfo } from '../../../hosts/web/plugin'
 import type { ParameterChange, ParameterInfo } from '../../../hosts/web/plugin-v2'
+import { paramSpec } from '../../../presenters/web/params'
 
 // The v2 view of Beatality's parameters. BeatalityParameters stays on the v1 API for the rack page;
-// this file adds what v2 asks for on top of it.
+// this file adds what v2 asks for on top of it. Kind, group, unit, and choices come from params.json.
 
-// Fire on a rise past 0.5 and always read back 0.
-const triggers = new Set(['randomize', 'shuffle'])
-
-const groups: [string, string[]][] = [
-    ['Output', ['volume', 'panMin', 'panMax']],
-    ['Loop', ['loop', 'slice', 'retrig', 'randomize']],
-    [
-        'Effects',
-        [
-            'effectsOn', 'shuffle', 'globalPower', 'globalChance', 'fxTimeMin', 'fxTimeMax',
-            'delayPower', 'delayChance', 'reverbPower', 'reverbChance', 'reversePower', 'reverseChance',
-            'filterPower', 'filterChance', 'flangerPower', 'flangerChance', 'trancePower', 'tranceChance',
-            'shiftPower', 'shiftChance',
-        ],
-    ],
-    ['Repeat', ['repeatOn', 'repeatSizeMin', 'repeatSizeMax', 'repeatMix', 'repeatLength', 'repeatChance']],
-]
-const groupOf = new Map(groups.flatMap(([group, ids]) => ids.map((id) => [id, group] as const)))
-
-const units: Record<string, string> = { loop: 'beats' }
-
+// Fires on a rise past 0.5 and always reads back 0.
 export function isTrigger(id: string): boolean {
-    return triggers.has(id)
+    return paramSpec(id).kind === 'trigger'
 }
 
-// The group a parameter belongs to. Every chaos parameter starts with "chaos".
-export function groupFor(id: string): string | undefined {
-    return groupOf.get(id) ?? (id.startsWith('chaos') ? 'Chaos' : undefined)
+export function groupFor(id: string): string {
+    return paramSpec(id).group
 }
 
 // normalizedDefault is the parameter's 0..1 value with the default pack loaded.
 export function dawParameter(info: V1ParameterInfo, normalizedDefault: number): ParameterInfo {
-    const trigger = isTrigger(info.id)
+    const spec = paramSpec(info.id)
+    const trigger = spec.kind === 'trigger'
     const result: ParameterInfo = {
         id: info.id,
         label: info.label,
-        kind: trigger ? 'trigger' : info.id === 'chaosTrigger' ? 'choice' : info.kind,
+        kind: spec.kind,
         min: info.min,
         max: info.max,
         default: trigger ? info.min : denormalize(info, normalizedDefault),
-        automatable: true,
+        group: spec.group,
+        automatable: spec.automatable,
     }
-    if (info.id === 'chaosTrigger') {
-        result.choices = [...chaosTriggerNames]
+    if (spec.choices) {
+        result.choices = [...spec.choices]
     }
-    const group = groupFor(info.id)
-    if (group) {
-        result.group = group
-    }
-    const unit = units[info.id]
-    if (unit) {
-        result.unit = unit
+    if (spec.unit) {
+        result.unit = spec.unit
     }
     return result
 }

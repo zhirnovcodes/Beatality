@@ -2,6 +2,7 @@
 
 #include "PackFile.h"
 #include "PluginEditor.h"
+#include "SkinData.h"
 
 #include "NoteGate.h"
 #include "SliceEngine.h"
@@ -419,82 +420,43 @@ struct DeviceAudio {
     std::unique_ptr<float[]> right;
 };
 
-constexpr float kVolumeMax = 1.2f;
-
 // In bt::ChaosGroup order.
 const char* const kChaosGroupIds[bt::ChaosSettings::kGroups] = {
     "chaosPan",      "chaosSlices",          "chaosRandomize",    "chaosEffectsGlobal", "chaosEffectsOn", "chaosEffectsPrivate",
     "chaosRepeatOn", "chaosRepeatPositions", "chaosRepeatParams", "chaosValueOn",       "chaosTime"};
-const char* const kChaosGroupNames[bt::ChaosSettings::kGroups] = {
-    "Chaos pan",                "Chaos slices",                "Chaos randomize",          "Chaos effects (global)",
-    "Chaos effects on/off",     "Chaos effects (private)",     "Chaos beat repeat on/off", "Chaos beat repeat positions",
-    "Chaos beat repeat params", "Chaos chaos value",           "Chaos time"};
 
+// One host parameter per params.json entry, in its order. Ids, ranges, and classes are what hosts store
+// automation by, so params.json keeps them as they shipped. Floats are linear.
+// trigger and boolean are AudioParameterBool, int is AudioParameterInt, choice is AudioParameterChoice.
 juce::AudioProcessorValueTreeState::ParameterLayout parameterLayout() {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
-    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"loop", 1}, "Loop", bt::SliceGrid::kMinLoop, bt::SliceGrid::kMaxLoop, 8));
-    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"slice", 1}, "Slices", bt::SliceGrid::kExpMin, bt::SliceGrid::kExpMax, 0));
-    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"randomize", 1}, "Randomize", false));
-    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"chaos", 1}, "Chaos", false));
-    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"volume", 1}, "Volume", juce::NormalisableRange<float>(0.0f, kVolumeMax), 1.0f));
-    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"panMin", 1}, "Pan minimum", juce::NormalisableRange<float>(-1.0f, 1.0f), 0.0f));
-    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"panMax", 1}, "Pan maximum", juce::NormalisableRange<float>(-1.0f, 1.0f), 0.0f));
-
-    // Defaults match bt::Effects and bt::BeatRepeatSettings, which the engine starts with.
-    const bt::Effects fx;
-    const bt::BeatRepeatSettings repeat;
-    const auto unit = [&layout](const char* id, const char* name, double value) {
-        layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{id, 1}, name, juce::NormalisableRange<float>(0.0f, 1.0f),
-                                                               static_cast<float>(value)));
-    };
-    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"effectsOn", 1}, "Effects on", fx.enabled));
-    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"shuffle", 1}, "Shuffle", false));
-    unit("globalPower", "Global power", fx.globalPower);
-    unit("globalChance", "Global chance", fx.globalChance);
-    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"fxTimeMin", 1}, "Effect time minimum", bt::Effects::kBeatMin,
-                                                         bt::Effects::kBeatMax, fx.beatMin));
-    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"fxTimeMax", 1}, "Effect time maximum", bt::Effects::kBeatMin,
-                                                         bt::Effects::kBeatMax, fx.beatMax));
-    unit("delayPower", "Delay power", fx.delayPower);
-    unit("delayChance", "Delay chance", fx.delayChance);
-    unit("reverbPower", "Reverb power", fx.reverbPower);
-    unit("reverbChance", "Reverb chance", fx.reverbChance);
-    unit("reversePower", "Reverse power", fx.reversePower);
-    unit("reverseChance", "Reverse chance", fx.reverseChance);
-    unit("filterPower", "Filter power", fx.filterPower);
-    unit("filterChance", "Filter chance", fx.filterChance);
-    unit("flangerPower", "Flanger power", fx.flangerPower);
-    unit("flangerChance", "Flanger chance", fx.flangerChance);
-    unit("trancePower", "Trance power", fx.trancePower);
-    unit("tranceChance", "Trance chance", fx.tranceChance);
-    unit("shiftPower", "Shift power", fx.shiftPower);
-    unit("shiftChance", "Shift chance", fx.shiftChance);
-    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"repeatOn", 1}, "Beat repeat on", repeat.enabled));
-    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"repeatSizeMin", 1}, "Size minimum", bt::BeatRepeatSettings::kSizeMin,
-                                                         bt::BeatRepeatSettings::kSizeMax, repeat.sizeMin));
-    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"repeatSizeMax", 1}, "Size maximum", bt::BeatRepeatSettings::kSizeMin,
-                                                         bt::BeatRepeatSettings::kSizeMax, repeat.sizeMax));
-    unit("repeatMix", "Mix", repeat.mix);
-    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"repeatLength", 1}, "Length", bt::BeatRepeatSettings::kLengthMin,
-                                                         bt::BeatRepeatSettings::kLengthMax, repeat.length));
-    unit("repeatChance", "Chance", repeat.chance);
-
-    const bt::ChaosSettings chaos;
-    layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{"chaosTrigger", 1}, "Chaos trigger",
-                                                            juce::StringArray{"Note", "Loop", "Slices", "Beats", "None"},
-                                                            static_cast<int>(chaos.trigger)));
-    unit("chaosValue", "Chaos value", chaos.value);
-    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"chaosBeatSize", 1}, "Chaos beat size", bt::ChaosSettings::kBeatSizeMin,
-                                                         bt::ChaosSettings::kBeatSizeMax, chaos.beatSize));
-    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"chaosLoopSize", 1}, "Chaos loop size", bt::ChaosSettings::kLoopSizeMin,
-                                                         bt::ChaosSettings::kLoopSizeMax, chaos.loopSize));
-    layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{"chaosSliceSize", 1}, "Chaos slice size",
-                                                         bt::ChaosSettings::kSliceSizeMin, bt::ChaosSettings::kSliceSizeMax, chaos.sliceSize));
-    for (int group = 0; group < bt::ChaosSettings::kGroups; ++group) {
-        layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{kChaosGroupIds[group], 1}, kChaosGroupNames[group],
-                                                              chaos.groups[group]));
+    const juce::var doc = juce::JSON::parse(juce::String::fromUTF8(SkinData::params_json, SkinData::params_jsonSize));
+    const juce::Array<juce::var>* entries = doc["params"].getArray();
+    jassert(entries != nullptr);
+    for (const juce::var& entry : *entries) {
+        const juce::ParameterID id{entry["id"].toString(), 1};
+        const juce::String label = entry["label"].toString();
+        const juce::String kind = entry["kind"].toString();
+        const double min = entry["min"];
+        const double max = entry["max"];
+        const double def = entry["default"];
+        if (kind == "trigger" || kind == "boolean") {
+            layout.add(std::make_unique<juce::AudioParameterBool>(id, label, def > 0.5));
+        } else if (kind == "int") {
+            layout.add(std::make_unique<juce::AudioParameterInt>(id, label, juce::roundToInt(min), juce::roundToInt(max),
+                                                                 juce::roundToInt(def)));
+        } else if (kind == "choice") {
+            juce::StringArray choices;
+            for (const juce::var& choice : *entry["choices"].getArray()) {
+                choices.add(choice.toString());
+            }
+            layout.add(std::make_unique<juce::AudioParameterChoice>(id, label, choices, juce::roundToInt(def)));
+        } else {
+            jassert(kind == "float");
+            layout.add(std::make_unique<juce::AudioParameterFloat>(
+                id, label, juce::NormalisableRange<float>(static_cast<float>(min), static_cast<float>(max)), static_cast<float>(def)));
+        }
     }
-    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"retrig", 1}, "Retrig", true));
     return layout;
 }
 
@@ -1142,55 +1104,70 @@ struct Processor::Impl {
     std::atomic<int> shuffles{0};
 };
 
+template <typename Param>
+Param* Processor::hostParam(const char* id) {
+    auto* param = dynamic_cast<Param*>(params.getParameter(id));
+    if (param == nullptr) {
+        parameterError << (parameterError.isEmpty() ? "params.json is missing host parameters: " : ", ") << id;
+        DBG(parameterError);
+        jassertfalse;
+    }
+    return param;
+}
+
 Processor::Processor()
     : juce::AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       params(*this, nullptr, "Parameters", parameterLayout()),
-      loopParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("loop"))),
-      sliceParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("slice"))),
-      volumeParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("volume"))),
-      panMinParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("panMin"))),
-      panMaxParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("panMax"))),
-      effectsOnParam(dynamic_cast<juce::AudioParameterBool*>(params.getParameter("effectsOn"))),
-      globalPowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("globalPower"))),
-      globalChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("globalChance"))),
-      fxTimeMinParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("fxTimeMin"))),
-      fxTimeMaxParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("fxTimeMax"))),
-      delayPowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("delayPower"))),
-      delayChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("delayChance"))),
-      reverbPowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("reverbPower"))),
-      reverbChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("reverbChance"))),
-      reversePowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("reversePower"))),
-      reverseChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("reverseChance"))),
-      filterPowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("filterPower"))),
-      filterChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("filterChance"))),
-      flangerPowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("flangerPower"))),
-      flangerChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("flangerChance"))),
-      trancePowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("trancePower"))),
-      tranceChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("tranceChance"))),
-      shiftPowerParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("shiftPower"))),
-      shiftChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("shiftChance"))),
-      repeatOnParam(dynamic_cast<juce::AudioParameterBool*>(params.getParameter("repeatOn"))),
-      repeatSizeMinParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("repeatSizeMin"))),
-      repeatSizeMaxParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("repeatSizeMax"))),
-      repeatMixParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("repeatMix"))),
-      repeatLengthParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("repeatLength"))),
-      repeatChanceParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("repeatChance"))),
-      chaosTriggerParam(dynamic_cast<juce::AudioParameterChoice*>(params.getParameter("chaosTrigger"))),
-      chaosValueParam(dynamic_cast<juce::AudioParameterFloat*>(params.getParameter("chaosValue"))),
-      chaosBeatSizeParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("chaosBeatSize"))),
-      chaosLoopSizeParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("chaosLoopSize"))),
-      chaosSliceSizeParam(dynamic_cast<juce::AudioParameterInt*>(params.getParameter("chaosSliceSize"))),
-      retrigParam(dynamic_cast<juce::AudioParameterBool*>(params.getParameter("retrig"))),
+      loopParam(hostParam<juce::AudioParameterInt>("loop")),
+      sliceParam(hostParam<juce::AudioParameterInt>("slice")),
+      volumeParam(hostParam<juce::AudioParameterFloat>("volume")),
+      panMinParam(hostParam<juce::AudioParameterFloat>("panMin")),
+      panMaxParam(hostParam<juce::AudioParameterFloat>("panMax")),
+      effectsOnParam(hostParam<juce::AudioParameterBool>("effectsOn")),
+      globalPowerParam(hostParam<juce::AudioParameterFloat>("globalPower")),
+      globalChanceParam(hostParam<juce::AudioParameterFloat>("globalChance")),
+      fxTimeMinParam(hostParam<juce::AudioParameterInt>("fxTimeMin")),
+      fxTimeMaxParam(hostParam<juce::AudioParameterInt>("fxTimeMax")),
+      delayPowerParam(hostParam<juce::AudioParameterFloat>("delayPower")),
+      delayChanceParam(hostParam<juce::AudioParameterFloat>("delayChance")),
+      reverbPowerParam(hostParam<juce::AudioParameterFloat>("reverbPower")),
+      reverbChanceParam(hostParam<juce::AudioParameterFloat>("reverbChance")),
+      reversePowerParam(hostParam<juce::AudioParameterFloat>("reversePower")),
+      reverseChanceParam(hostParam<juce::AudioParameterFloat>("reverseChance")),
+      filterPowerParam(hostParam<juce::AudioParameterFloat>("filterPower")),
+      filterChanceParam(hostParam<juce::AudioParameterFloat>("filterChance")),
+      flangerPowerParam(hostParam<juce::AudioParameterFloat>("flangerPower")),
+      flangerChanceParam(hostParam<juce::AudioParameterFloat>("flangerChance")),
+      trancePowerParam(hostParam<juce::AudioParameterFloat>("trancePower")),
+      tranceChanceParam(hostParam<juce::AudioParameterFloat>("tranceChance")),
+      shiftPowerParam(hostParam<juce::AudioParameterFloat>("shiftPower")),
+      shiftChanceParam(hostParam<juce::AudioParameterFloat>("shiftChance")),
+      repeatOnParam(hostParam<juce::AudioParameterBool>("repeatOn")),
+      repeatSizeMinParam(hostParam<juce::AudioParameterInt>("repeatSizeMin")),
+      repeatSizeMaxParam(hostParam<juce::AudioParameterInt>("repeatSizeMax")),
+      repeatMixParam(hostParam<juce::AudioParameterFloat>("repeatMix")),
+      repeatLengthParam(hostParam<juce::AudioParameterInt>("repeatLength")),
+      repeatChanceParam(hostParam<juce::AudioParameterFloat>("repeatChance")),
+      chaosTriggerParam(hostParam<juce::AudioParameterChoice>("chaosTrigger")),
+      chaosValueParam(hostParam<juce::AudioParameterFloat>("chaosValue")),
+      chaosBeatSizeParam(hostParam<juce::AudioParameterInt>("chaosBeatSize")),
+      chaosLoopSizeParam(hostParam<juce::AudioParameterInt>("chaosLoopSize")),
+      chaosSliceSizeParam(hostParam<juce::AudioParameterInt>("chaosSliceSize")),
+      retrigParam(hostParam<juce::AudioParameterBool>("retrig")),
       impl(std::make_unique<Impl>(view, slot, head)) {
+    for (int group = 0; group < bt::ChaosSettings::kGroups; ++group) {
+        chaosGroupParams[group] = hostParam<juce::AudioParameterBool>(kChaosGroupIds[group]);
+    }
+    // No member reads these. parameterChanged listens for them.
+    for (const char* id : {"randomize", "chaos", "shuffle"}) {
+        hostParam<juce::AudioParameterBool>(id);
+    }
     seenPanMin = panMinParam->get();
     seenPanMax = panMaxParam->get();
     seenFxTimeMin = fxTimeMinParam->get();
     seenFxTimeMax = fxTimeMaxParam->get();
     seenSizeMin = repeatSizeMinParam->get();
     seenSizeMax = repeatSizeMaxParam->get();
-    for (int group = 0; group < bt::ChaosSettings::kGroups; ++group) {
-        chaosGroupParams[group] = dynamic_cast<juce::AudioParameterBool*>(params.getParameter(kChaosGroupIds[group]));
-    }
     params.addParameterListener("randomize", this);
     params.addParameterListener("chaos", this);
     params.addParameterListener("shuffle", this);
@@ -2287,7 +2264,7 @@ bool Processor::trackMissing(int index) const {
 }
 
 juce::String Processor::errorText() const {
-    return error;
+    return parameterError.isNotEmpty() ? parameterError : error;
 }
 
 void Processor::setChaosTrigger(int trigger) {

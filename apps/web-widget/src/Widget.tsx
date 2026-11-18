@@ -968,7 +968,7 @@ function ChaosSides({ model }: { model: WebViewModel }) {
         {
             trigger: 2,
             min: -1,
-            max: 2,
+            max: 1,
             value: model.chaosSliceSize,
             param: 'chaosSliceSize',
             label: 'Slices',

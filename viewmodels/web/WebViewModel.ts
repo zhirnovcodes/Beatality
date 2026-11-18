@@ -11,7 +11,7 @@ export interface FactoryBank {
 }
 
 // The chaos knobs. trigger is 0 Note, 1 Loop, 2 Slices, 3 Beats, 4 None.
-// beatSize is 2^n beats, -2..1. loopSize is loops, 1..8. sliceSize is 2^n slices, -1..2.
+// beatSize is 2^n beats, -2..1. loopSize is loops, 1..8. sliceSize is 2^n slices, -1..1.
 // groups is one toggle per chaosGroupNames entry, in that order.
 export interface ChaosState {
     trigger: number
@@ -843,9 +843,9 @@ export class WebViewModel {
         this.sendChaos()
     }
 
-    // 2^exponent slices, -1..2.
+    // 2^exponent slices, -1..1.
     setChaosSliceSize(exponent: number) {
-        if (!Number.isInteger(exponent) || exponent < -1 || exponent > 2 || exponent === this.chaosSliceSize) {
+        if (!Number.isInteger(exponent) || exponent < -1 || exponent > 1 || exponent === this.chaosSliceSize) {
             return
         }
         this.chaosSliceSize = exponent

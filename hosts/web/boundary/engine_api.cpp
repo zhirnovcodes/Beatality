@@ -164,7 +164,7 @@ BT_EXPORT void bt_chaos(Instance* instance) {
     instance->controlsChanged = instance->controlsChanged || instance->engine.controls() != before;
 }
 
-// trigger is a bt::ChaosTrigger, 0..4. value is 0..1. beatSize is -2..1, loopSize 1..8, sliceSize -1..2.
+// trigger is a bt::ChaosTrigger, 0..4. value is 0..1. beatSize is -2..1, loopSize 1..8, sliceSize -1..1.
 // groups is a bit mask in bt::ChaosGroup order: bit 0 is Pan.
 BT_EXPORT void bt_set_chaos(Instance* instance, int trigger, double value, int beatSize, int loopSize, int sliceSize, int groups) {
     if (instance == nullptr || trigger < 0 || trigger > static_cast<int>(bt::ChaosTrigger::None)) {

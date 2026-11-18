@@ -46,6 +46,44 @@ add_executable(domain_tests tests/domain/session_tests.cpp)
 target_link_libraries(domain_tests PRIVATE beatality_domain)
 beatality_core_flags(domain_tests)
 
+# params.json is the one parameter list. params_tests checks it against the core constants.
+# The header is written at configure time; editing params.json re-runs configure.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/params.json)
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/params.json BEATALITY_PARAMS_JSON)
+string(JSON beatality_param_count LENGTH "${BEATALITY_PARAMS_JSON}" params)
+math(EXPR beatality_param_last "${beatality_param_count} - 1")
+set(beatality_param_rows "")
+foreach(index RANGE ${beatality_param_last})
+    string(JSON param_id GET "${BEATALITY_PARAMS_JSON}" params ${index} id)
+    string(JSON param_kind GET "${BEATALITY_PARAMS_JSON}" params ${index} kind)
+    string(JSON param_min GET "${BEATALITY_PARAMS_JSON}" params ${index} min)
+    string(JSON param_max GET "${BEATALITY_PARAMS_JSON}" params ${index} max)
+    string(JSON param_default GET "${BEATALITY_PARAMS_JSON}" params ${index} default)
+    string(APPEND beatality_param_rows
+        "    {\"${param_id}\", \"${param_kind}\", ${param_min}, ${param_max}, ${param_default}},
+")
+endforeach()
+file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/generated/ParamsJson.h CONTENT
+"#pragma once
+// Written by CMake from params.json. Do not edit.
+
+struct ParamSpec {
+    const char* id;
+    const char* kind;
+    double min;
+    double max;
+    double def;
+};
+
+inline constexpr ParamSpec kParams[] = {
+${beatality_param_rows}};
+" @ONLY)
+
+add_executable(params_tests tests/domain/params_tests.cpp)
+target_include_directories(params_tests PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated)
+target_link_libraries(params_tests PRIVATE beatality_slices)
+beatality_core_flags(params_tests)
+
 add_executable(chaos_tests tests/domain/chaos_tests.cpp)
 target_link_libraries(chaos_tests PRIVATE beatality_slices)
 beatality_core_flags(chaos_tests)
@@ -129,7 +167,7 @@ else()
         AU_MAIN_TYPE kAudioUnitType_MusicDevice
         HARDENED_RUNTIME_ENABLED TRUE
         PRODUCT_NAME "Beatality"
-        VERSION 0.0.1
+        VERSION 0.0.2
         IS_SYNTH TRUE
         NEEDS_MIDI_INPUT TRUE
         NEEDS_MIDI_OUTPUT FALSE
@@ -179,6 +217,7 @@ else()
         SOURCES
             hosts/plugin/ui/index.html
             hosts/plugin/ui/plugin.js
+            params.json
             apps/web-widget/src/ui/skin/skin.css
             apps/web-widget/src/ui/skin/DSEG7Classic-Bold.woff2
             apps/web-widget/src/ui/skin/Orbitron-Bold.ttf
