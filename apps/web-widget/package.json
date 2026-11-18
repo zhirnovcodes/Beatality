@@ -7,13 +7,15 @@
     "dev": "vite",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
-    "build:daw": "tsc --noEmit && vite build --config vite.daw.config.ts"
+    "test": "vitest run",
+    "build:daw": "tsc --noEmit && vitest run && vite build --config vite.daw.config.ts"
   },
   "dependencies": {
     "preact": "^11.0.1"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
-    "vite": "^8.3.4"
+    "vite": "^8.3.4",
+    "vitest": "^5.1.1"
   }
 }

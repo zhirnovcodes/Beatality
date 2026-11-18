@@ -1,20 +1,9 @@
 import type { ParameterInfo } from '../../hosts/web/plugin'
-import { chaosGroupNames, type WebViewModel } from '../../viewmodels/web/WebViewModel'
+import type { WebViewModel } from '../../viewmodels/web/WebViewModel'
+import { infoFor, params } from './params'
 
-// The same ids as the plugin's host parameters, in chaos group order.
-const chaosGroupIds = [
-    'chaosPan',
-    'chaosSlices',
-    'chaosRandomize',
-    'chaosEffectsGlobal',
-    'chaosEffectsOn',
-    'chaosEffectsPrivate',
-    'chaosRepeatOn',
-    'chaosRepeatPositions',
-    'chaosRepeatParams',
-    'chaosValueOn',
-    'chaosTime',
-]
+// The chaos group toggles: the boolean parameters in the Chaos group, in params.json order, which is chaos group order.
+const chaosGroupIds = params.filter((param) => param.group === 'Chaos' && param.kind === 'boolean').map((param) => param.id)
 
 interface Entry {
     info: ParameterInfo
@@ -34,24 +23,25 @@ export class BeatalityParameters {
     private readonly sent = new Map<string, number>()
     private stopModel: (() => void) | null = null
     private randomizeHeld = 0
+    private chaosHeld = 0
     private shuffleHeld = 0
 
     constructor(private readonly model: WebViewModel) {
         this.entries = [
             {
-                info: { id: 'loop', label: 'Loop', kind: 'int', min: 1, max: 32 },
+                info: infoFor('loop'),
                 read: () => model.loopBeats,
                 write: (beats) => model.setLoop(beats),
             },
             {
                 // The model keeps the slice no longer than the loop.
-                info: { id: 'slice', label: 'Slices', kind: 'int', min: -4, max: 4 },
+                info: infoFor('slice'),
                 read: () => model.sliceExp,
                 write: (exponent) => model.setSlice(exponent),
             },
             {
                 // Randomizes once each time the value rises past 0.5.
-                info: { id: 'randomize', label: 'Randomize', kind: 'boolean', min: 0, max: 1 },
+                info: infoFor('randomize'),
                 read: () => this.randomizeHeld,
                 write: (value) => {
                     const held = value > 0.5 ? 1 : 0
@@ -62,33 +52,40 @@ export class BeatalityParameters {
                 },
             },
             {
-                info: { id: 'volume', label: 'Volume', kind: 'float', min: 0, max: 1.2 },
+                // Presses CHAOS once each time the value rises past 0.5.
+                info: infoFor('chaos'),
+                read: () => this.chaosHeld,
+                write: (value) => {
+                    const held = value > 0.5 ? 1 : 0
+                    if (held === 1 && this.chaosHeld === 0) {
+                        model.chaos()
+                    }
+                    this.chaosHeld = held
+                },
+            },
+            {
+                info: infoFor('volume'),
                 read: () => model.outputVolume,
                 write: (volume) => model.setOutput(volume, model.outputPanMin, model.outputPanMax),
             },
             {
-                info: { id: 'panMin', label: 'Pan minimum', kind: 'float', min: -1, max: 1 },
+                info: infoFor('panMin'),
                 read: () => model.outputPanMin,
                 write: (pan) => model.setOutputPanMin(pan),
             },
             {
-                info: { id: 'panMax', label: 'Pan maximum', kind: 'float', min: -1, max: 1 },
+                info: infoFor('panMax'),
                 read: () => model.outputPanMax,
                 write: (pan) => model.setOutputPanMax(pan),
             },
             {
-                info: { id: 'retrig', label: 'Retrig', kind: 'boolean', min: 0, max: 1 },
-                read: () => (model.retrig ? 1 : 0),
-                write: (on) => model.setRetrig(on > 0.5),
-            },
-            {
-                info: { id: 'effectsOn', label: 'Effects on', kind: 'boolean', min: 0, max: 1 },
+                info: infoFor('effectsOn'),
                 read: () => (model.effectsEnabled ? 1 : 0),
                 write: (on) => model.setEffectsEnabled(on > 0.5),
             },
             {
                 // Presses Shuffle once each time the value rises past 0.5.
-                info: { id: 'shuffle', label: 'Shuffle', kind: 'boolean', min: 0, max: 1 },
+                info: infoFor('shuffle'),
                 read: () => this.shuffleHeld,
                 write: (value) => {
                     const held = value > 0.5 ? 1 : 0
@@ -99,158 +96,163 @@ export class BeatalityParameters {
                 },
             },
             {
-                info: { id: 'globalPower', label: 'Global power', kind: 'float', min: 0, max: 1 },
+                info: infoFor('globalPower'),
                 read: () => model.globalPower,
                 write: (value) => model.setGlobalPower(value),
             },
             {
-                info: { id: 'globalChance', label: 'Global chance', kind: 'float', min: 0, max: 1 },
+                info: infoFor('globalChance'),
                 read: () => model.globalChance,
                 write: (value) => model.setGlobalChance(value),
             },
             {
                 // The model keeps min no higher than max.
-                info: { id: 'fxTimeMin', label: 'Effect time minimum', kind: 'int', min: -4, max: 1 },
+                info: infoFor('fxTimeMin'),
                 read: () => model.globalBeatMinExp,
                 write: (exponent) => model.setGlobalBeatMin(exponent),
             },
             {
-                info: { id: 'fxTimeMax', label: 'Effect time maximum', kind: 'int', min: -4, max: 1 },
+                info: infoFor('fxTimeMax'),
                 read: () => model.globalBeatMaxExp,
                 write: (exponent) => model.setGlobalBeatMax(exponent),
             },
             {
-                info: { id: 'delayPower', label: 'Delay power', kind: 'float', min: 0, max: 1 },
+                info: infoFor('delayPower'),
                 read: () => model.delayPower,
                 write: (value) => model.setDelayPower(value),
             },
             {
-                info: { id: 'delayChance', label: 'Delay chance', kind: 'float', min: 0, max: 1 },
+                info: infoFor('delayChance'),
                 read: () => model.delayChance,
                 write: (value) => model.setDelayChance(value),
             },
             {
-                info: { id: 'reverbPower', label: 'Reverb power', kind: 'float', min: 0, max: 1 },
+                info: infoFor('reverbPower'),
                 read: () => model.reverbPower,
                 write: (value) => model.setReverbPower(value),
             },
             {
-                info: { id: 'reverbChance', label: 'Reverb chance', kind: 'float', min: 0, max: 1 },
+                info: infoFor('reverbChance'),
                 read: () => model.reverbChance,
                 write: (value) => model.setReverbChance(value),
             },
             {
-                info: { id: 'reversePower', label: 'Reverse power', kind: 'float', min: 0, max: 1 },
+                info: infoFor('reversePower'),
                 read: () => model.reversePower,
                 write: (value) => model.setReversePower(value),
             },
             {
-                info: { id: 'reverseChance', label: 'Reverse chance', kind: 'float', min: 0, max: 1 },
+                info: infoFor('reverseChance'),
                 read: () => model.reverseChance,
                 write: (value) => model.setReverseChance(value),
             },
             {
-                info: { id: 'filterPower', label: 'Filter power', kind: 'float', min: 0, max: 1 },
+                info: infoFor('filterPower'),
                 read: () => model.filterPower,
                 write: (value) => model.setFilterPower(value),
             },
             {
-                info: { id: 'filterChance', label: 'Filter chance', kind: 'float', min: 0, max: 1 },
+                info: infoFor('filterChance'),
                 read: () => model.filterChance,
                 write: (value) => model.setFilterChance(value),
             },
             {
-                info: { id: 'flangerPower', label: 'Flanger power', kind: 'float', min: 0, max: 1 },
+                info: infoFor('flangerPower'),
                 read: () => model.flangerPower,
                 write: (value) => model.setFlangerPower(value),
             },
             {
-                info: { id: 'flangerChance', label: 'Flanger chance', kind: 'float', min: 0, max: 1 },
+                info: infoFor('flangerChance'),
                 read: () => model.flangerChance,
                 write: (value) => model.setFlangerChance(value),
             },
             {
-                info: { id: 'trancePower', label: 'Trance power', kind: 'float', min: 0, max: 1 },
+                info: infoFor('trancePower'),
                 read: () => model.trancePower,
                 write: (value) => model.setTrancePower(value),
             },
             {
-                info: { id: 'tranceChance', label: 'Trance chance', kind: 'float', min: 0, max: 1 },
+                info: infoFor('tranceChance'),
                 read: () => model.tranceChance,
                 write: (value) => model.setTranceChance(value),
             },
             {
-                info: { id: 'shiftPower', label: 'Shift power', kind: 'float', min: 0, max: 1 },
+                info: infoFor('shiftPower'),
                 read: () => model.shiftPower,
                 write: (value) => model.setShiftPower(value),
             },
             {
-                info: { id: 'shiftChance', label: 'Shift chance', kind: 'float', min: 0, max: 1 },
+                info: infoFor('shiftChance'),
                 read: () => model.shiftChance,
                 write: (value) => model.setShiftChance(value),
             },
             {
-                info: { id: 'repeatOn', label: 'Beat repeat on', kind: 'boolean', min: 0, max: 1 },
+                info: infoFor('repeatOn'),
                 read: () => (model.repeatEnabled ? 1 : 0),
                 write: (on) => model.setRepeatEnabled(on > 0.5),
             },
             {
                 // The model keeps min no higher than max.
-                info: { id: 'repeatSizeMin', label: 'Size minimum', kind: 'int', min: -5, max: 1 },
+                info: infoFor('repeatSizeMin'),
                 read: () => model.repeatSizeMinExp,
                 write: (exponent) => model.setRepeatSizeMin(exponent),
             },
             {
-                info: { id: 'repeatSizeMax', label: 'Size maximum', kind: 'int', min: -5, max: 1 },
+                info: infoFor('repeatSizeMax'),
                 read: () => model.repeatSizeMaxExp,
                 write: (exponent) => model.setRepeatSizeMax(exponent),
             },
             {
-                info: { id: 'repeatMix', label: 'Mix', kind: 'float', min: 0, max: 1 },
+                info: infoFor('repeatMix'),
                 read: () => model.repeatMix,
                 write: (value) => model.setRepeatMix(value),
             },
             {
-                info: { id: 'repeatLength', label: 'Length', kind: 'int', min: -4, max: 1 },
+                info: infoFor('repeatLength'),
                 read: () => model.repeatLengthExp,
                 write: (exponent) => model.setRepeatLength(exponent),
             },
             {
-                info: { id: 'repeatChance', label: 'Chance', kind: 'float', min: 0, max: 1 },
+                info: infoFor('repeatChance'),
                 read: () => model.repeatChance,
                 write: (value) => model.setRepeatChance(value),
             },
             {
                 // 0 Note, 1 Loop, 2 Slices, 3 Beats, 4 None.
-                info: { id: 'chaosTrigger', label: 'Chaos trigger', kind: 'int', min: 0, max: 4 },
+                info: infoFor('chaosTrigger'),
                 read: () => model.chaosTrigger,
                 write: (trigger) => model.setChaosTrigger(trigger),
             },
             {
-                info: { id: 'chaosValue', label: 'Chaos value', kind: 'float', min: 0, max: 1 },
+                info: infoFor('chaosValue'),
                 read: () => model.chaosValue,
                 write: (value) => model.setChaosValue(value),
             },
             {
-                info: { id: 'chaosBeatSize', label: 'Chaos beat size', kind: 'int', min: -2, max: 1 },
+                info: infoFor('chaosBeatSize'),
                 read: () => model.chaosBeatSize,
                 write: (exponent) => model.setChaosBeatSize(exponent),
             },
             {
-                info: { id: 'chaosLoopSize', label: 'Chaos loop size', kind: 'int', min: 1, max: 8 },
+                info: infoFor('chaosLoopSize'),
                 read: () => model.chaosLoopSize,
                 write: (loops) => model.setChaosLoopSize(loops),
             },
             {
-                info: { id: 'chaosSliceSize', label: 'Chaos slice size', kind: 'int', min: -1, max: 2 },
+                info: infoFor('chaosSliceSize'),
                 read: () => model.chaosSliceSize,
                 write: (exponent) => model.setChaosSliceSize(exponent),
             },
             ...chaosGroupIds.map((id, group) => ({
-                info: { id, label: `Chaos ${chaosGroupNames[group].toLowerCase()}`, kind: 'boolean' as const, min: 0, max: 1 },
+                info: infoFor(id),
                 read: () => (model.chaosGroups[group] ? 1 : 0),
                 write: (on: number) => model.setChaosGroup(group, on > 0.5),
             })),
+            {
+                info: infoFor('retrig'),
+                read: () => (model.retrig ? 1 : 0),
+                write: (on) => model.setRetrig(on > 0.5),
+            },
         ]
     }
 
@@ -271,7 +273,7 @@ export class BeatalityParameters {
         const { kind, min, max } = entry.info
         const scaled = min + Math.min(1, Math.max(0, value)) * (max - min)
         entry.write(kind === 'float' ? scaled : Math.round(scaled))
-        // Randomize and Shuffle hold no model state, so the model does not report them.
+        // Randomize, Chaos, and Shuffle hold no model state, so the model does not report them.
         if (kind === 'boolean') {
             this.report()
         }

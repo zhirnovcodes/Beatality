@@ -341,7 +341,7 @@ function decodeChaos(value: unknown): PackChaos {
     chaos.value = numberIn(record, 'value', chaos.value, 0, 1)
     chaos.beatSize = wholeIn(record, 'beatSize', chaos.beatSize, -2, 1)
     chaos.loopSize = wholeIn(record, 'loopSize', chaos.loopSize, 1, 8)
-    chaos.sliceSize = wholeIn(record, 'sliceSize', chaos.sliceSize, -1, 2)
+    chaos.sliceSize = wholeIn(record, 'sliceSize', chaos.sliceSize, -1, 1)
     chaos.groups = flagList(record.groups, chaos.groups)
     return chaos
 }

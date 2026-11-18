@@ -95,7 +95,7 @@ public:
     void setRepeatPosition(int index, bool on);
     void setRepeatMix(double mix);
     // trigger is a bt::ChaosTrigger. value is 0..1. group is a bt::ChaosGroup.
-    // beatSize is -2..1, loopSize is 1..8, sliceSize is -1..2. See bt::ChaosSettings.
+    // beatSize is -2..1, loopSize is 1..8, sliceSize is -1..1. See bt::ChaosSettings.
     void setChaosTrigger(int trigger);
     void setChaosValue(double value);
     void setChaosGroup(int group, bool on);
@@ -200,8 +200,14 @@ private:
     void parameterChanged(const juce::String& id, float value) override;
     // Message thread. Writes the knobs the engine changed by itself into the host parameters.
     void receiveControls();
+    // Looks up a host parameter by id. When params.json lacks the id, or gives it another class,
+    // adds the id to parameterError and asserts. Returns null then.
+    template <typename Param>
+    Param* hostParam(const char* id);
 
     struct Impl;
+    // Ids hostParam could not find. Declared before params and the pointers, so it exists when they are looked up.
+    juce::String parameterError;
     // Ids match the web plugin's parameters.
     // The audio thread reads them each block and applies the ones that changed.
     juce::AudioProcessorValueTreeState params;

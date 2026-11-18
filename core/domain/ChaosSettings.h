@@ -27,7 +27,7 @@ enum class ChaosGroup {
 
 // The chaos knobs.
 // value is 0..1. It widens each knob's range from the range at 0 toward the range at 1.
-// beatSize is 2^beatSize beats, 1/4..2. loopSize is loops, 1..8. sliceSize is 2^sliceSize slices, 1/2..4.
+// beatSize is 2^beatSize beats, 1/4..2. loopSize is loops, 1..8. sliceSize is 2^sliceSize slices, 1/2..2.
 struct ChaosSettings {
     static constexpr int kGroups = static_cast<int>(ChaosGroup::Count);
     static constexpr int kBeatSizeMin = -2;
