@@ -167,7 +167,7 @@ else()
         AU_MAIN_TYPE kAudioUnitType_MusicDevice
         HARDENED_RUNTIME_ENABLED TRUE
         PRODUCT_NAME "Beatality"
-        VERSION 0.0.2
+        VERSION 0.0.3
         IS_SYNTH TRUE
         NEEDS_MIDI_INPUT TRUE
         NEEDS_MIDI_OUTPUT FALSE

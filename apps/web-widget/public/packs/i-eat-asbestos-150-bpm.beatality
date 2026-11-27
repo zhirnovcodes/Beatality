@@ -1,0 +1,191 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "I eat asbestos 150 bpm",
+  "bpm": 120,
+  "loop": 8,
+  "slices": -1,
+  "attack": 8,
+  "volume": 1,
+  "panMin": -0.3,
+  "panMax": 0.28,
+  "bpmSync": true,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 1,
+    "globalChance": 0.56,
+    "beatMin": -2,
+    "beatMax": 0,
+    "delayPower": 1,
+    "delayChance": 0.21590421724319458,
+    "reverbPower": 0.7237492894887925,
+    "reverbChance": 0.5664104093313218,
+    "reversePower": 0.4981889702320099,
+    "reverseChance": 0.5707432926893234,
+    "filterPower": 0.8147440860509872,
+    "filterChance": 0.3617276842594147,
+    "flangerPower": 0.8845929840326309,
+    "flangerChance": 0.7271852140426636,
+    "trancePower": 0.9582196581840515,
+    "tranceChance": 0.7471956893205642,
+    "shiftPower": 0.7685215431213379,
+    "shiftChance": 0.5581166301965714
+  },
+  "repeat": {
+    "enabled": false,
+    "sizeMin": -2,
+    "sizeMax": -2,
+    "length": 0,
+    "chance": 0,
+    "mix": 1,
+    "positions": [
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "chaos": {
+    "trigger": "loop",
+    "value": 0.64,
+    "beatSize": -1,
+    "loopSize": 2,
+    "sliceSize": 0,
+    "groups": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 timmy.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 timmy.wav"
+      },
+      "start": 0.125,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 timmy.wav"
+      },
+      "start": 0.25,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 timmy.wav"
+      },
+      "start": 0.375,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 timmy.wav"
+      },
+      "start": 0.5,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 timmy.wav"
+      },
+      "start": 0.625,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 timmy.wav"
+      },
+      "start": 0.75,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 timmy.wav"
+      },
+      "start": 0.875,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    }
+  ]
+}

@@ -1,44 +1,44 @@
 {
   "format": "beatality.pack",
   "version": 1,
-  "name": "orgolorg vox 115 bpm",
+  "name": "Leni 150 BPM",
   "bpm": 120,
-  "loop": 16,
-  "slices": -1,
+  "loop": 8,
+  "slices": 1,
   "attack": 8,
-  "volume": 1.2,
-  "panMin": -0.59,
-  "panMax": 0.5,
+  "volume": 1,
+  "panMin": -0.3,
+  "panMax": 0.28,
   "bpmSync": true,
   "retrig": true,
   "effects": {
     "enabled": true,
-    "globalPower": 0.8,
-    "globalChance": 0.65,
-    "beatMin": -3,
+    "globalPower": 0.4,
+    "globalChance": 0.56,
+    "beatMin": -2,
     "beatMax": 0,
-    "delayPower": 0.44,
-    "delayChance": 0.68,
-    "reverbPower": 0.01,
-    "reverbChance": 0.91,
-    "reversePower": 0.21,
-    "reverseChance": 0.84,
-    "filterPower": 0.53,
-    "filterChance": 0.99,
-    "flangerPower": 0.35,
-    "flangerChance": 0.18,
-    "trancePower": 0.74,
-    "tranceChance": 0.6,
-    "shiftPower": 0.46,
-    "shiftChance": 0.42
+    "delayPower": 0.685140304863453,
+    "delayChance": 0.6096337041258812,
+    "reverbPower": 0.22295795175433158,
+    "reverbChance": 0.39847021147608763,
+    "reversePower": 0.662548545062542,
+    "reverseChance": 0.5574163259565831,
+    "filterPower": 0.5361865393817425,
+    "filterChance": 0.6133931717276574,
+    "flangerPower": 0.2520885887145996,
+    "flangerChance": 0.2862096635997296,
+    "trancePower": 0.8452352305054666,
+    "tranceChance": 0.633897155225277,
+    "shiftPower": 0.4024685178101063,
+    "shiftChance": 0.5618409453332425
   },
   "repeat": {
     "enabled": true,
-    "sizeMin": -3,
+    "sizeMin": 0,
     "sizeMax": 0,
-    "length": 0,
-    "chance": 0.34,
-    "mix": 1,
+    "length": -2,
+    "chance": 0.4882890295982361,
+    "mix": 0.4157663524150848,
     "positions": [
       true,
       false,
@@ -47,25 +47,25 @@
       true,
       false,
       false,
-      true
+      false
     ]
   },
   "chaos": {
     "trigger": "loop",
-    "value": 0,
+    "value": 0.45,
     "beatSize": -1,
     "loopSize": 1,
     "sliceSize": 0,
     "groups": [
       false,
+      true,
+      true,
+      false,
       false,
       true,
       false,
       false,
-      false,
-      false,
-      false,
-      false,
+      true,
       false,
       false
     ]
@@ -78,7 +78,7 @@
     {
       "source": {
         "type": "internal",
-        "id": "orgolorg acapella.wav"
+        "id": "150 lenni.wav"
       },
       "start": 0,
       "length": 1,
@@ -86,63 +86,49 @@
       "volume": 1,
       "pan": 0,
       "warp": "pitch",
-      "bpm": 115,
+      "bpm": 150,
       "warpParam": 0
     },
     {
       "source": {
         "type": "internal",
-        "id": "orgolorg acapella.wav"
+        "id": "150 lenni.wav"
       },
-      "start": 0.4999995659725989,
-      "length": 1,
-      "loop": true,
-      "volume": 1,
-      "pan": 0,
-      "warp": "pitch",
-      "bpm": 115,
-      "warpParam": 0
-    },
-    {
-      "source": {
-        "type": "internal",
-        "id": "orgolorg acapella.wav"
-      },
-      "start": 0.81839551600232,
-      "length": 1,
-      "loop": true,
-      "volume": 1,
-      "pan": 0,
-      "warp": "pitch",
-      "bpm": 115,
-      "warpParam": 0
-    },
-    {
-      "source": {
-        "type": "internal",
-        "id": "orgolorg acapella.wav"
-      },
-      "start": 0,
-      "length": 0.879,
-      "loop": true,
-      "volume": 1,
-      "pan": 0,
-      "warp": "pitch",
-      "bpm": 115,
-      "warpParam": 0.16666666666666666
-    },
-    {
-      "source": {
-        "type": "internal",
-        "id": "orgolorg acapella.wav"
-      },
-      "start": 0,
+      "start": 0.25,
       "length": 1,
       "loop": false,
       "volume": 1,
       "pan": 0,
       "warp": "pitch",
-      "bpm": 115,
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 lenni.wav"
+      },
+      "start": 0.5,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 lenni.wav"
+      },
+      "start": 0.75,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
       "warpParam": 0
     }
   ]

@@ -1,60 +1,60 @@
 {
   "format": "beatality.pack",
   "version": 1,
-  "name": "Lobotomy perc preset - 115 BPM",
+  "name": "Leni + Gabba 150 BPM",
   "bpm": 120,
   "loop": 16,
   "slices": 0,
-  "attack": 2,
+  "attack": 8,
   "volume": 1,
-  "panMin": -0.29,
-  "panMax": 0.35,
+  "panMin": -0.3,
+  "panMax": 0.28,
   "bpmSync": true,
   "retrig": true,
   "effects": {
     "enabled": true,
-    "globalPower": 0.74,
-    "globalChance": 0.48,
-    "beatMin": -3,
-    "beatMax": -1,
-    "delayPower": 0.7693445295095444,
-    "delayChance": 0.22680910870432855,
-    "reverbPower": 0.5928519576787948,
-    "reverbChance": 0.05690962702035904,
-    "reversePower": 0.26210335493087766,
-    "reverseChance": 0.11346860975027084,
-    "filterPower": 0.6554395169019699,
-    "filterChance": 0.37935049772262575,
-    "flangerPower": 0.6840167552232742,
-    "flangerChance": 0.24385654002428056,
-    "trancePower": 0.2852380782365799,
-    "tranceChance": 0.13865709140896798,
-    "shiftPower": 0.549704110622406,
-    "shiftChance": 0.001426476240158081
+    "globalPower": 0.4,
+    "globalChance": 0.56,
+    "beatMin": -2,
+    "beatMax": 0,
+    "delayPower": 0.8704268067777158,
+    "delayChance": 0.5704953280091286,
+    "reverbPower": 0.5050082892179489,
+    "reverbChance": 0.6170287178456784,
+    "reversePower": 0.8188512572050096,
+    "reverseChance": 0.27385897606611254,
+    "filterPower": 0.5927160661518575,
+    "filterChance": 0.6078894837200642,
+    "flangerPower": 0.3319784398376942,
+    "flangerChance": 0.16891453787684443,
+    "trancePower": 0.824722145676613,
+    "tranceChance": 0.6421284660696984,
+    "shiftPower": 0.16853044983744622,
+    "shiftChance": 0.5378015276789666
   },
   "repeat": {
     "enabled": true,
-    "sizeMin": -2,
+    "sizeMin": -1,
     "sizeMax": -1,
-    "length": -1,
-    "chance": 0.08074659705162048,
-    "mix": 0.30218923240900036,
+    "length": 0,
+    "chance": 0.34196157455444337,
+    "mix": 0.1620214343070984,
     "positions": [
-      false,
-      true,
       true,
       false,
       true,
+      false,
       true,
-      true,
+      false,
+      false,
       false
     ]
   },
   "chaos": {
     "trigger": "loop",
-    "value": 0.15,
-    "beatSize": 0,
-    "loopSize": 2,
+    "value": 0.45,
+    "beatSize": -1,
+    "loopSize": 1,
     "sliceSize": 0,
     "groups": [
       false,
@@ -64,7 +64,7 @@
       false,
       true,
       false,
-      true,
+      false,
       true,
       false,
       false
@@ -78,7 +78,7 @@
     {
       "source": {
         "type": "internal",
-        "id": "lobotomy perc 115 5.wav"
+        "id": "150 gabba set.wav"
       },
       "start": 0,
       "length": 1,
@@ -86,13 +86,13 @@
       "volume": 1,
       "pan": 0,
       "warp": "pitch",
-      "bpm": 115,
+      "bpm": 150,
       "warpParam": 0
     },
     {
       "source": {
         "type": "internal",
-        "id": "lobotomy perc 115 4.wav"
+        "id": "150 lenni.wav"
       },
       "start": 0,
       "length": 1,
@@ -100,49 +100,49 @@
       "volume": 1,
       "pan": 0,
       "warp": "pitch",
-      "bpm": 115,
+      "bpm": 150,
       "warpParam": 0
     },
     {
       "source": {
         "type": "internal",
-        "id": "lobotomy perc 115 3.wav"
+        "id": "150 gabba set.wav"
       },
-      "start": 0,
+      "start": 0.25,
       "length": 1,
       "loop": false,
       "volume": 1,
       "pan": 0,
       "warp": "pitch",
-      "bpm": 115,
+      "bpm": 150,
       "warpParam": 0
     },
     {
       "source": {
         "type": "internal",
-        "id": "lobotomy perc 115 2.wav"
+        "id": "150 gabba set.wav"
       },
-      "start": 0,
+      "start": 0.75,
       "length": 1,
       "loop": false,
       "volume": 1,
       "pan": 0,
       "warp": "pitch",
-      "bpm": 115,
+      "bpm": 150,
       "warpParam": 0
     },
     {
       "source": {
         "type": "internal",
-        "id": "lobotomy perc 115 1.wav"
+        "id": "150 lenni.wav"
       },
-      "start": 0,
+      "start": 0.5,
       "length": 1,
       "loop": false,
       "volume": 1,
       "pan": 0,
       "warp": "pitch",
-      "bpm": 115,
+      "bpm": 150,
       "warpParam": 0
     }
   ]
