@@ -1,70 +1,62 @@
 [
   {
-    "name": "Lobotomy perc preset - 115 BPM",
-    "file": "lobotomy-perc-preset-115-bpm.beatality"
-  },
-  {
-    "name": "Lobotomy perc - crazy - 115 BPM",
-    "file": "lobotomy-perc-crazy-115-bpm.beatality"
-  },
-  {
     "name": "Default",
     "file": "default.beatality"
   },
   {
-    "name": "Whisp tender vox set 150 BPM",
-    "file": "whisp-tender-vox-set-150-bpm.beatality"
+    "name": "Father hip hop drums 85 BPM",
+    "file": "father-hip-hop-drums-85-bpm.beatality"
   },
   {
-    "name": "Whisp tender vapor wave 115 BPM",
-    "file": "whisp-tender-vapor-wave-115-bpm.beatality"
+    "name": "Gabba 150 BPM",
+    "file": "gabba-150-bpm.beatality"
   },
   {
-    "name": "u i i i a a a 150 bpm",
-    "file": "u-i-i-i-a-a-a-150-bpm.beatality"
-  },
-  {
-    "name": "u i i i a a a crazier 150 bpm",
-    "file": "u-i-i-i-a-a-a-crazier-150-bpm.beatality"
-  },
-  {
-    "name": "xolotl drums 115 BPM",
-    "file": "xolotl-drums-115-bpm.beatality"
-  },
-  {
-    "name": "what they wont teach you at school drums 115 BPM",
-    "file": "what-they-wont-teach-you-at-school-drums-115-bpm.beatality"
-  },
-  {
-    "name": "orgolorg vox 115 bpm",
-    "file": "orgolorg-vox-115-bpm.beatality"
-  },
-  {
-    "name": "Fuku Fuku vox 115 bpm",
-    "file": "fuku-fuku-vox-115-bpm.beatality"
+    "name": "I eat asbestos 150 bpm",
+    "file": "i-eat-asbestos-150-bpm.beatality"
   },
   {
     "name": "J2 perc DBM 180 bpm",
     "file": "j2-perc-dbm-180-bpm.beatality"
   },
   {
-    "name": "swarog dnb 180 bpm",
-    "file": "swarog-dnb-180-bpm.beatality"
-  },
-  {
     "name": "korg sample perc 115 bpm",
     "file": "korg-sample-perc-115-bpm.beatality"
   },
   {
-    "name": "ominous bass pad 80 bpm",
-    "file": "ominous-bass-pad-80-bpm.beatality"
-  },
-  {
-    "name": "ominous vox pad 80 bpm",
-    "file": "ominous-vox-pad-80-bpm.beatality"
-  },
-  {
     "name": "korg volca drums F# A# 115 BPM",
     "file": "korg-volca-drums-f-a-115-bpm.beatality"
+  },
+  {
+    "name": "Leni + Gabba 150 BPM",
+    "file": "leni-gabba-150-bpm.beatality"
+  },
+  {
+    "name": "Leni 150 BPM",
+    "file": "leni-150-bpm.beatality"
+  },
+  {
+    "name": "Lobotomy perc - crazy - 115 BPM",
+    "file": "lobotomy-perc-crazy-115-bpm.beatality"
+  },
+  {
+    "name": "swarog dnb 180 bpm",
+    "file": "swarog-dnb-180-bpm.beatality"
+  },
+  {
+    "name": "u i i i a a a crazier 150 bpm",
+    "file": "u-i-i-i-a-a-a-crazier-150-bpm.beatality"
+  },
+  {
+    "name": "what they wont teach you at school drums 115 BPM",
+    "file": "what-they-wont-teach-you-at-school-drums-115-bpm.beatality"
+  },
+  {
+    "name": "Whisp tender vapor wave 115 BPM",
+    "file": "whisp-tender-vapor-wave-115-bpm.beatality"
+  },
+  {
+    "name": "xolotl drums 115 BPM",
+    "file": "xolotl-drums-115-bpm.beatality"
   }
 ]

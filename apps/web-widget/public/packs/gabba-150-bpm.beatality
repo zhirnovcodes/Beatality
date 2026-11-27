@@ -1,0 +1,191 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "Gabba 150 BPM",
+  "bpm": 120,
+  "loop": 8,
+  "slices": -1,
+  "attack": 8,
+  "volume": 1,
+  "panMin": -0.3,
+  "panMax": 0.28,
+  "bpmSync": true,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 0.4,
+    "globalChance": 0.56,
+    "beatMin": -2,
+    "beatMax": 0,
+    "delayPower": 0.7861719991445542,
+    "delayChance": 0.3652907972335816,
+    "reverbPower": 0.6941439958751202,
+    "reverbChance": 0.24088726130127908,
+    "reversePower": 0.6594373890340328,
+    "reverseChance": 0.5586349740028382,
+    "filterPower": 0.5371253923118114,
+    "filterChance": 0.314253329962492,
+    "flangerPower": 0.40203776550889014,
+    "flangerChance": 0.5087867005765438,
+    "trancePower": 0.756028718829155,
+    "tranceChance": 0.581695138335228,
+    "shiftPower": 0.2548541109740734,
+    "shiftChance": 0.16571846860647202
+  },
+  "repeat": {
+    "enabled": true,
+    "sizeMin": -2,
+    "sizeMax": -2,
+    "length": 0,
+    "chance": 0.17651019191741943,
+    "mix": 0.3717685213685036,
+    "positions": [
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "chaos": {
+    "trigger": "loop",
+    "value": 0.37,
+    "beatSize": -1,
+    "loopSize": 1,
+    "sliceSize": 0,
+    "groups": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 gabba set.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 gabba set.wav"
+      },
+      "start": 0.125,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 gabba set.wav"
+      },
+      "start": 0.25,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 gabba set.wav"
+      },
+      "start": 0.375,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 gabba set.wav"
+      },
+      "start": 0.5,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 gabba set.wav"
+      },
+      "start": 0.625,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 gabba set.wav"
+      },
+      "start": 0.75,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 gabba set.wav"
+      },
+      "start": 0.875,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    }
+  ]
+}
