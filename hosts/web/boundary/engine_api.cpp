@@ -123,6 +123,15 @@ BT_EXPORT void bt_install_sequence(Instance* instance, const std::uint16_t* slot
     instance->engine.installSequence(slots, size, savedCount);
 }
 
+// After a pack load. A held note keeps playing, from beat in the old loop; play() wraps it into the new one.
+// Retrig off with the project playing, the project's beat instead.
+BT_EXPORT void bt_resume(Instance* instance, double beat) {
+    if (instance->gate.held() == 0 || instance->engine.count() == 0) {
+        return;
+    }
+    instance->engine.play(!instance->retrig && instance->transportPlaying ? startBeat(*instance) : beat);
+}
+
 // status is note-off, note-on, or all-off. Note is unused.
 // Velocity is 0..1. It scales the mix after output volume.
 BT_EXPORT void bt_midi(Instance* instance, int status, int, double velocity) {

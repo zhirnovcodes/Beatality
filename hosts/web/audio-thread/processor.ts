@@ -14,6 +14,7 @@ interface Core {
     bt_append: (engine: number, id: number, planar: number, frames: number) => number
     bt_append_empty: (engine: number, id: number) => number
     bt_install_sequence: (engine: number, slots: number, size: number, savedCount: number) => void
+    bt_resume: (engine: number, beat: number) => void
     bt_midi: (engine: number, status: number, note: number, velocity: number) => void
     bt_randomize: (engine: number) => void
     bt_chaos: (engine: number) => void
@@ -744,7 +745,9 @@ class BeatalityProcessor extends AudioWorkletProcessor {
 
     private applyPack(message: PackMessage) {
         const core = this.core!
-        core.bt_midi(this.engine, 2, 0, 0)
+        // A held note keeps playing through the load, from the beat the playhead had reached in the old loop.
+        this.postSnapshot(0)
+        const beat = core.bt_snapshot_playing(this.engine) !== 0 ? core.bt_snapshot_playhead(this.engine) * core.bt_snapshot_loop(this.engine) : 0
         core.bt_clear(this.engine)
         this.postSnapshot(0)
         message.tracks.forEach((track, index) => {
@@ -782,6 +785,7 @@ class BeatalityProcessor extends AudioWorkletProcessor {
                 core.bt_free(ptr)
             }
         }
+        core.bt_resume(this.engine, beat)
         this.postSnapshot(0)
     }
 

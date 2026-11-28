@@ -1,0 +1,107 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "Im a table kick hat 150 BPM",
+  "bpm": 120,
+  "loop": 16,
+  "slices": 0,
+  "attack": 16,
+  "volume": 1,
+  "panMin": 0,
+  "panMax": 0,
+  "bpmSync": true,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 0.55,
+    "globalChance": 0.32,
+    "beatMin": -2,
+    "beatMax": 0,
+    "delayPower": 0.31,
+    "delayChance": 0.38,
+    "reverbPower": 1,
+    "reverbChance": 0,
+    "reversePower": 0.55,
+    "reverseChance": 0,
+    "filterPower": 1,
+    "filterChance": 0,
+    "flangerPower": 0.49,
+    "flangerChance": 0.22,
+    "trancePower": 1,
+    "tranceChance": 0,
+    "shiftPower": 1,
+    "shiftChance": 0
+  },
+  "repeat": {
+    "enabled": false,
+    "sizeMin": -2,
+    "sizeMax": -1,
+    "length": 0,
+    "chance": 0.44,
+    "mix": 0.33,
+    "positions": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "chaos": {
+    "trigger": "loop",
+    "value": 0.38,
+    "beatSize": -1,
+    "loopSize": 4,
+    "sliceSize": 0,
+    "groups": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 Im a table.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    },
+    {
+      "source": {
+        "type": "internal",
+        "id": "150 Im a table.wav"
+      },
+      "start": 0,
+      "length": 0.048,
+      "loop": true,
+      "volume": 1,
+      "pan": 0,
+      "warp": "pitch",
+      "bpm": 150,
+      "warpParam": 0
+    }
+  ]
+}

@@ -61,14 +61,10 @@ export function createCore(context: AudioContext, urls: CoreUrls, options: CoreO
     const model = new WebViewModel()
     const client = new EngineClient({ context, wasmUrl: urls.wasm, processorUrl: urls.processor, resumeContext: options.resumeContext })
     const parameters = new BeatalityParameters(model)
-    // Notes the host holds. A pack load releases them first.
+    // Notes the host holds. A pack load keeps them: playback goes on with the new pack.
     const held = new Set<number>()
 
     const loadDocument = async (doc: PackDocument): Promise<void> => {
-        for (const note of held) {
-            await client.midi(MidiStatus.Off, note, 0)
-        }
-        held.clear()
         model.adopt({
             bpm: doc.bpm,
             loopBeats: doc.loop,
