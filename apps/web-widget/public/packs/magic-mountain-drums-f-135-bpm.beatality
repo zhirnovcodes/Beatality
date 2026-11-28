@@ -1,0 +1,93 @@
+{
+  "format": "beatality.pack",
+  "version": 1,
+  "name": "Magic Mountain drums F# 135 bpm",
+  "bpm": 120,
+  "loop": 8,
+  "slices": 0,
+  "attack": 2,
+  "volume": 1,
+  "panMin": 0,
+  "panMax": 0,
+  "bpmSync": true,
+  "retrig": true,
+  "effects": {
+    "enabled": true,
+    "globalPower": 0.28,
+    "globalChance": 0.57,
+    "beatMin": -3,
+    "beatMax": -1,
+    "delayPower": 1,
+    "delayChance": 0,
+    "reverbPower": 1,
+    "reverbChance": 0,
+    "reversePower": 1,
+    "reverseChance": 0.53,
+    "filterPower": 1,
+    "filterChance": 0.66,
+    "flangerPower": 1,
+    "flangerChance": 0,
+    "trancePower": 1,
+    "tranceChance": 0,
+    "shiftPower": 0.43,
+    "shiftChance": 0.42
+  },
+  "repeat": {
+    "enabled": true,
+    "sizeMin": -1,
+    "sizeMax": -1,
+    "length": 0,
+    "chance": 0.5,
+    "mix": 0.58,
+    "positions": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "chaos": {
+    "trigger": "none",
+    "value": 0,
+    "beatSize": 0,
+    "loopSize": 1,
+    "sliceSize": 0,
+    "groups": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "sequence": {
+    "savedCount": 0,
+    "slots": []
+  },
+  "tracks": [
+    {
+      "source": {
+        "type": "internal",
+        "id": "MAGIC MOUNTAIN 135 F_.wav"
+      },
+      "start": 0,
+      "length": 1,
+      "loop": false,
+      "volume": 1,
+      "pan": 0,
+      "warp": "beat",
+      "bpm": 135,
+      "warpParam": 0.5
+    }
+  ]
+}

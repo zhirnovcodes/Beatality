@@ -31,8 +31,17 @@ function readBanks(): { name: string; file: string }[] {
     return JSON.parse(fs.readFileSync(banksPath, 'utf8'))
 }
 
+// Default first, then every other preset in alphabetical order.
+function sortBanks(banks: { name: string; file: string }[]) {
+    const isDefault = (bank: { name: string }) => bank.name === 'Default'
+    return [...banks].sort((a, b) => {
+        if (isDefault(a) !== isDefault(b)) return isDefault(a) ? -1 : 1
+        return a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
+    })
+}
+
 function writeBanks(banks: { name: string; file: string }[]) {
-    fs.writeFileSync(banksPath, JSON.stringify(banks, null, 2) + '\n')
+    fs.writeFileSync(banksPath, JSON.stringify(sortBanks(banks), null, 2) + '\n')
 }
 
 // The internal sample ids a pack refers to.
