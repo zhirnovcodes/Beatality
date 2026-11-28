@@ -6,7 +6,7 @@ export const manifest: PluginManifest = {
     name: 'Beatality',
     vendor: 'zhirnovcodes',
     // The JUCE plugin's version.
-    version: '0.0.4',
+    version: '0.0.5',
     apiVersion: 2,
     kind: 'instrument',
     ports: [

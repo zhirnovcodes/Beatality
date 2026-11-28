@@ -824,9 +824,17 @@ struct Processor::Impl {
         if (pack == nullptr) {
             return;
         }
-        gate = {};
+        // A held note keeps playing through the load, from the beat the playhead had reached in the old loop.
+        // playing and playhead are from the last remember(), at the start of this block.
+        const bool resume = engine != nullptr && playing && gate.held() > 0;
+        const double beat = playhead * knobs.play.loop;
+        if (!resume) {
+            gate = {};
+        }
         if (engine != nullptr) {
-            engine->stop();
+            if (!resume) {
+                engine->stop();
+            }
             engine->clear();
         }
         sources.clear();
@@ -895,6 +903,11 @@ struct Processor::Impl {
         }
         if (engine != nullptr) {
             engine->installSequence(pack->slots.data(), static_cast<int>(pack->slots.size()), pack->savedCount);
+        }
+        // Following the host, the host's beat; otherwise the old beat, wrapped into the new loop by play().
+        // The old slice fades out on the outgoing voice while the new one arrives with its attack.
+        if (resume && engine->count() > 0) {
+            engine->play(!retrig && hostPlaying ? startBeat(0) : beat);
         }
         delete pack;
         remember();
